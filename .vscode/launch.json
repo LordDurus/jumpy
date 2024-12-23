@@ -1,0 +1,42 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"type": "lldb",
+			"request": "launch",
+			"name": "Debug executable 'Jumpy'",
+			"cargo": {
+				"args": [
+					"build",
+					"--bin=jumpy",
+					"--package=jumpy"
+				],
+				"filter": {
+					"name": "jumpy",
+					"kind": "bin"
+				}
+			},
+			"args": [],
+			"cwd": "${workspaceFolder}"
+		},
+		{
+			"type": "lldb",
+			"request": "launch",
+			"name": "Debug unit tests in executable 'Jumpy'",
+			"cargo": {
+				"args": [
+					"test",
+					"--no-run",
+					"--bin=jumpy",
+					"--package=jumpy"
+				],
+				"filter": {
+					"name": "jumpy",
+					"kind": "bin"
+				}
+			},
+			"args": [],
+			"cwd": "${workspaceFolder}"
+		}
+	]
+}
