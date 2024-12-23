@@ -1,6 +1,7 @@
-#[cfg(feature = "PC")]
+#[cfg(feature = "pc")]
 use nalgebra::Vector2 as NalgebraVector2;
 
+#[allow(dead_code)]
 pub trait Vector2 {
     fn new(x: f32, y: f32) -> Self;
     fn x(&self) -> f32;
@@ -51,7 +52,7 @@ impl Vector2 for MyVector2 {
 }
 
 // Optional: Implementation for nalgebra's Vector2
-#[cfg(feature = "PC")]
+#[cfg(feature = "pc")]
 impl Vector2 for NalgebraVector2<f32> {
     fn new(x: f32, y: f32) -> Self {
         Self::new(x, y)

@@ -19,6 +19,7 @@ impl World {
         }
     }
 
+    #[allow(dead_code)]
     // Create a new entity and return its ID
     pub fn create_entity(&mut self) -> EntityID {
         let id = self.next_entity_id;
@@ -26,6 +27,7 @@ impl World {
         id
     }
 
+    #[allow(dead_code)]
     // Remove an entity and its components
     pub fn destroy_entity(&mut self, id: EntityID) {
         self.positions.remove(&id);

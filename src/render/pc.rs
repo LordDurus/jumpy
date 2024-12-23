@@ -20,7 +20,7 @@ impl Renderer for PcRenderer {
         // Initialize PC-specific rendering (e.g., SDL2, winit)
     }
 
-    fn render_frame(&mut self, world: &mut World) {
+    fn render_frame(&mut self, _world: &mut World) {
         // Draw everything to the screen (e.g., sprites, UI)
         let now = Instant::now();
         let frame_duration = now - self.last_frame_time;
