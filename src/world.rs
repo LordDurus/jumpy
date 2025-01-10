@@ -19,6 +19,17 @@ impl World {
         }
     }
 
+    pub fn remove_entity(&mut self, entity_id: u32) {
+        self.positions.remove(&entity_id);
+        self.velocities.remove(&entity_id);
+    }
+    pub fn add_entity(&mut self, position: MyVector2, velocity: MyVector2) -> u32 {
+        let entity_id = self.create_entity();
+        self.positions.insert(entity_id, position);
+        self.velocities.insert(entity_id, velocity);
+        return entity_id;
+    }
+
     #[allow(dead_code)]
     // Create a new entity and return its ID
     pub fn create_entity(&mut self) -> EntityID {

@@ -8,12 +8,16 @@ repository = "https://github.com/LordDurus/jumpy"
 
 [features]
 default = ["pc"]
-gba = []          # GBA-specific feature
-pc = ["nalgebra"] # PC-specific feature, depends on nalgebra
+gba = ["agb"]                      # GBA specific feature
+pc = ["nalgebra", "sdl2", "rayon"] # PC specific feature
+psp = ["psp-support"]              # PSP specific feature
 
 [dependencies]
-nalgebra = { version = "0.33", optional = true } # PC-only dependency
-agb = { version = "0.5", optional = true }       # GBA-only dependency
+agb = { version = "0.5", optional = true }                             # GBA only dependency
+nalgebra = { version = "0.33", optional = true }                       # PC only dependency
+sdl2 = { version = "0.35", optional = true }                           # PC only dependency
+rayon = { version = "1.6", optional = true }                           # PC only dependency
+psp-support = { package = "psp", version = "0.3.11", optional = true } # Alias for the psp crate
 
 [profile.dev]
 debug = true
