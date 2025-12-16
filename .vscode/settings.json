@@ -1,0 +1,12 @@
+{
+	"terminal.integrated.profiles.windows": {
+		"VS2022 Dev Cmd": {
+			"path": "C:/Windows/System32/cmd.exe",
+			"args": [
+				"/k",
+				"D:/Program Files/Microsoft Visual Studio/2022/Professional/Common7/Tools/VsDevCmd.bat"
+			]
+		}
+	},
+	"terminal.integrated.defaultProfile.windows": "VS2022 Dev Cmd"
+}

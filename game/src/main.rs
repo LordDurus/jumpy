@@ -65,7 +65,7 @@ fn run_game_loop<R: Renderer>(
     let mut last_time = Instant::now();
     loop {
         let now = Instant::now();
-        let delta_time = (now - last_time).as_secs_f32();
+        let _delta_time = (now - last_time).as_secs_f32();
         last_time = now;
 
         #[cfg(feature = "pc")]
