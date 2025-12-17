@@ -8,7 +8,7 @@ this document defines the `.level` text format, the `.lvlb` binary format, and t
 
 - `.level` — human-readable source format
 - `.lvlb` — compiled binary format for pc and gba
-- `levelc` — rust command-line compiler
+- `level_compiler` — rust command-line compiler
 
 ---
 

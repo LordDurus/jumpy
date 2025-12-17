@@ -17,8 +17,8 @@ pub struct FileHeader {
 
     pub gravity_fixed: i16, // Q7.8
     pub background_id: u8,
-    pub reserved0: u8,
-
+    pub gravity_multiplier: u8,
+    pub reserved1: u16,
     pub tiles_per_layer: u32,
     pub tile_count_total: u32,
 
@@ -32,7 +32,7 @@ pub struct FileHeader {
 #[derive(Clone, Copy, Debug)]
 pub struct LayerRuntime {
     pub collision: u8,
-    pub reserved0: u8,
+    pub gravity_multiplier: u8,
     pub reserved1: u8,
     pub reserved2: u8,
 }
@@ -41,7 +41,7 @@ pub struct LayerRuntime {
 #[derive(Clone, Copy, Debug)]
 pub struct EntityRuntime {
     pub kind: u8,
-    pub reserved0: u8,
+    pub gravity_multiplier: u8,
     pub x: u16,
     pub y: u16,
     pub a: i16,
@@ -53,7 +53,7 @@ pub struct EntityRuntime {
 #[derive(Clone, Copy, Debug)]
 pub struct TriggerRuntime {
     pub kind: u8,
-    pub reserved0: u8,
+    pub gravity_multiplier: u8,
     pub x: u16,
     pub y: u16,
     pub width: u16,
@@ -76,6 +76,7 @@ pub enum EntityKind {
     PlayerStart = 0,
     Enemy = 1,
     Pickup = 2,
+    MovingPlatform = 3,
 }
 
 #[repr(u8)]

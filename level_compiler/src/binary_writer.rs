@@ -24,14 +24,14 @@ pub fn serialize_level(compiled: &CompiledLevel) -> Result<Vec<u8>, String> {
 
     for layer in &compiled.layers {
         write_u8(&mut buffer, layer.collision)?;
-        write_u8(&mut buffer, layer.reserved0)?;
+        write_u8(&mut buffer, layer.gravity_multiplier)?;
         write_u8(&mut buffer, layer.reserved1)?;
         write_u8(&mut buffer, layer.reserved2)?;
     }
 
     for e in &compiled.entities {
         write_u8(&mut buffer, e.kind)?;
-        write_u8(&mut buffer, e.reserved0)?;
+        write_u8(&mut buffer, e.gravity_multiplier)?;
         write_u16(&mut buffer, e.x)?;
         write_u16(&mut buffer, e.y)?;
         write_i16(&mut buffer, e.a)?;
@@ -41,7 +41,7 @@ pub fn serialize_level(compiled: &CompiledLevel) -> Result<Vec<u8>, String> {
 
     for t in &compiled.triggers {
         write_u8(&mut buffer, t.kind)?;
-        write_u8(&mut buffer, t.reserved0)?;
+        write_u8(&mut buffer, t.gravity_multiplier)?;
         write_u16(&mut buffer, t.x)?;
         write_u16(&mut buffer, t.y)?;
         write_u16(&mut buffer, t.width)?;
@@ -76,7 +76,8 @@ fn write_header(buffer: &mut Vec<u8>, h: &FileHeader) -> Result<(), String> {
     write_u16(buffer, h.trigger_count)?;
     write_i16(buffer, h.gravity_fixed)?;
     write_u8(buffer, h.background_id)?;
-    write_u8(buffer, h.reserved0)?;
+    write_u8(buffer, h.gravity_multiplier)?;
+    write_u16(buffer, h.reserved1)?;
     write_u32(buffer, h.tiles_per_layer)?;
     write_u32(buffer, h.tile_count_total)?;
     write_u32(buffer, h.offset_layers)?;
