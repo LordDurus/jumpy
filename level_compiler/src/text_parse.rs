@@ -343,6 +343,9 @@ pub fn load_level_from_str(text: &str) -> Result<LevelSource, String> {
                             ));
                         }
                     }
+                } else if line.starts_with("gravity") {
+                    let v = parse_f32_value(line, "gravity", line_number)?;
+                    current_entity_gravity_multiplier = v;
                 } else {
                     return Err(format!(
                         "Error: unexpected line in entity body at {}: {}",
