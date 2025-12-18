@@ -1,8 +1,8 @@
-use crate::vector2::Vector2;
-use crate::world::World;
+use crate::{game::world::World, physics::constants::WORLD_GRAVITY};
 
-pub fn gravity_system(world: &mut World) {
-    for velocity in world.velocities.values_mut() {
-        velocity.add(&crate::vector2::GRAVITY);
-    }
+#[inline(always)]
+pub fn apply(world: &mut World) {
+	for (_id, vel) in world.velocities.iter_mut() {
+		vel.y += world.gravity;
+	}
 }
