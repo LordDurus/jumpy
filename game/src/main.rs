@@ -1,16 +1,26 @@
 mod engine_math;
 mod game;
 mod physics;
+mod tile;
 
 use crate::{
 	engine_math::Vec2,
-	game::{render::pc::PcRenderer, world::World},
+	game::{game_state::GameState, render::pc::PcRenderer},
 };
 
 #[cfg(feature = "pc")]
 fn main() {
-	let mut world = World::new();
-	let player_id = world.add_entity(Vec2::new(100.0, 100.0), Vec2::zero());
+	let level = match game::level::Level::load_binary("../levels/sample.LLB") {
+		Ok(l) => l,
+		Err(e) => {
+			eprintln!("level load failed: {}", e);
+			return;
+		}
+	};
+
+	let mut state = GameState::new(level);
+
+	let player_id = state.add_entity(Vec2::new(100.0, 100.0), Vec2::zero());
 
 	let mut renderer = PcRenderer::new();
 	renderer.init();
@@ -22,7 +32,7 @@ fn main() {
 		}
 
 		// left/right + jump impulse
-		if let Some(v) = world.velocities.get_mut(&player_id) {
+		if let Some(v) = state.velocities.get_mut(&player_id) {
 			if input.left && !input.right {
 				v.set_x(-2.0);
 			} else if input.right && !input.left {
@@ -32,15 +42,15 @@ fn main() {
 			}
 
 			if input.jump {
-				physics::jump::apply(&mut world, player_id);
+				physics::movement::try_jump(&mut state, player_id);
 			}
 		}
 
-		physics::gravity::apply(&mut world);
-		physics::movement::apply(&mut world);
+		physics::gravity::apply(&mut state);
+		physics::movement::move_and_collide(&mut state);
 
 		renderer.begin_frame();
-		renderer.draw_world(&world);
+		renderer.draw_world(&state);
 		renderer.commit();
 	}
 }

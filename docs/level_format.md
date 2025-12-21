@@ -53,7 +53,6 @@ header
     author = "tom"
     width = 64
     height = 16
-    tile_size = 16
     gravity = 0.35
     background = "sky_blue"
 }

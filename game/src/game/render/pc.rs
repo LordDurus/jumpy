@@ -1,4 +1,4 @@
-use crate::game::world::World;
+use crate::game::game_state::GameState;
 use sdl2::{EventPump, event::Event, keyboard::Keycode, pixels::Color, rect::Rect, render::Canvas, video::Window};
 
 pub struct PcInput {
@@ -65,7 +65,7 @@ impl PcRenderer {
 		self.canvas.clear();
 	}
 
-	pub fn draw_world(&mut self, world: &World) {
+	pub fn draw_world(&mut self, world: &GameState) {
 		self.canvas.set_draw_color(Color::RGB(255, 255, 255));
 
 		for (_id, pos) in world.positions.iter() {

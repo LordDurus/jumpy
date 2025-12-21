@@ -1,4 +1,3 @@
-use crate::{render::Renderer, world::World};
 use std::{
 	thread::sleep,
 	time::{Duration, Instant},

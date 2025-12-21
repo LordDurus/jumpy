@@ -1,5 +1,4 @@
-use crate::game::world::World;
-pub(crate) use crate::physics::jump::apply;
+use crate::{game::game_state::GameState, physics::movement::try_jump};
 
 pub struct InputHandler {
 	pub is_jumping: bool,
@@ -10,18 +9,18 @@ impl InputHandler {
 		Self { is_jumping: false }
 	}
 
-	pub fn handle_input(&mut self, world: &mut World, entity_id: u32) {
+	pub fn handle_input(&mut self, world: &mut GameState, entity_id: u32) {
 		// PC Example: Detect spacebar for jump
 		#[cfg(feature = "pc")]
 		if check_jump_input_pc() && !self.is_jumping {
-			apply(world, entity_id);
+			try_jump(world, entity_id);
 			self.is_jumping = true;
 		}
 
 		// GBA Example: Detect button A for jump
 		#[cfg(feature = "gba")]
 		if check_jump_input_gba() && !self.is_jumping {
-			apply(world, entity_id);
+			try_jump(world, entity_id);
 			self.is_jumping = true;
 		}
 

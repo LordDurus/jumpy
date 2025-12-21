@@ -1,0 +1,54 @@
+use crate::source::{EntityKindSource, EntitySource};
+pub struct EntityParseState {
+	pub kind: Option<EntityKindSource>,
+	pub x: i32,
+	pub y: i32,
+	pub gravity_multiplier: f32,
+	pub jump_multiplier: f32,
+	pub attack_power: i32,
+	pub hit_points: i32,
+}
+
+impl EntityParseState {
+	pub fn new() -> EntityParseState {
+		return EntityParseState {
+			kind: None,
+			x: 0,
+			y: 0,
+			gravity_multiplier: 1.0,
+			jump_multiplier: 1.0,
+			attack_power: 1,
+			hit_points: 1,
+		};
+	}
+
+	pub fn clear(&mut self) {
+		self.kind = None;
+		self.x = 0;
+		self.y = 0;
+		self.gravity_multiplier = 1.0;
+		self.jump_multiplier = 1.0;
+		self.attack_power = 1;
+		self.hit_points = 1;
+	}
+
+	pub fn to_entity_source(&mut self, line_number: usize) -> Result<EntitySource, String> {
+		let kind = match self.kind.take() {
+			Some(k) => k,
+			None => {
+				return Err(format!("entity body closed without kind at line {}", line_number));
+			}
+		};
+
+		let e = EntitySource {
+			x: self.x,
+			y: self.y,
+			jump_multiplier: self.jump_multiplier,
+			attack_power: self.attack_power,
+			hit_points: self.hit_points,
+			gravity_multiplier: self.gravity_multiplier,
+			kind,
+		};
+		return Ok(e);
+	}
+}

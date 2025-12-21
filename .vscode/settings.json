@@ -8,5 +8,10 @@
 			]
 		}
 	},
-	"terminal.integrated.defaultProfile.windows": "VS2022 Dev Cmd"
+	"terminal.integrated.defaultProfile.windows": "VS2022 Dev Cmd",
+	"cSpell.words": [
+		"JLVL",
+		"spacebar",
+		"winit"
+	]
 }
