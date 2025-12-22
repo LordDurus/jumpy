@@ -1,10 +1,6 @@
 use crate::tile::TileKind;
 use std::fs;
 
-const MAX_LEVEL_WIDTH: u32 = 4096;
-const MAX_LEVEL_HEIGHT: u32 = 4096;
-const MAX_TILE_COUNT: usize = (MAX_LEVEL_WIDTH as usize) * (MAX_LEVEL_HEIGHT as usize);
-
 pub struct Level {
 	pub tile_width: u32,
 	pub tile_height: u32,
@@ -22,8 +18,8 @@ impl Level {
 	}
 
 	pub fn is_solid_world_i32(&self, world_x: i32, world_y: i32) -> bool {
-		let tile_x: i32 = world_x / 16;
-		let tile_y: i32 = world_y / 16;
+		let tile_x: i32 = world_x / self.tile_width as i32;
+		let tile_y: i32 = world_y / self.tile_height as i32;
 
 		let kind: TileKind = self.tile_at(tile_x, tile_y);
 		return kind.is_solid();
@@ -135,6 +131,7 @@ impl Level {
 		return Ok(level);
 	}
 
+	#[allow(dead_code)]
 	fn read_i16(bytes: &[u8], offset: &mut usize) -> Result<i16, String> {
 		if *offset + 2 > bytes.len() {
 			return Err("Unexpected eof reading i16".to_string());

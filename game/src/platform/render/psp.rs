@@ -1,15 +1,15 @@
-#![cfg(feature = "gba")]
+#![cfg(feature = "psp")]
 
 use crate::{
 	game::game_state::GameState,
 	platform::render::{InputState, Renderer},
 };
 
-pub struct GbaRenderer {
+pub struct PspRenderer {
 	frame_index: u32,
 }
 
-impl Renderer for GbaRenderer {
+impl Renderer for PspRenderer {
 	fn new() -> Self {
 		return Self { frame_index: 0 };
 	}
@@ -17,9 +17,8 @@ impl Renderer for GbaRenderer {
 	fn init(&mut self) {}
 
 	fn poll_input(&mut self) -> InputState {
-		return crate::platform::input::gba::poll();
+		return crate::platform::input::psp::poll();
 	}
-
 	fn begin_frame(&mut self) {}
 
 	fn draw_world(&mut self, _world: &GameState) {
@@ -27,7 +26,7 @@ impl Renderer for GbaRenderer {
 	}
 
 	fn commit(&mut self) {
-		// stub: don’t call agb unless you’ve got the crate enabled for gba builds
-		// agb::wait_for_vblank();
+		// stub: don’t call psp syscalls unless psp crate is enabled for psp builds
+		// unsafe { psp::sys::sceDisplayWaitVblankStart(); }
 	}
 }

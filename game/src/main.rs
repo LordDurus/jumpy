@@ -1,16 +1,23 @@
 mod engine_math;
 mod game;
 mod physics;
+mod platform;
 mod tile;
 
-use crate::{
-	engine_math::Vec2,
-	game::{game_state::GameState, render::pc::PcRenderer},
-};
+use crate::{engine_math::Vec2, game::game_state::GameState, platform::render::Renderer};
+
+#[cfg(feature = "pc")]
+type ActiveRenderer = crate::platform::render::pc::PcRenderer;
+
+#[cfg(feature = "gba")]
+type ActiveRenderer = crate::platform::render::gba::GbaRenderer;
+
+#[cfg(feature = "psp")]
+type ActiveRenderer = crate::platform::render::psp::PspRenderer;
 
 #[cfg(feature = "pc")]
 fn main() {
-	let level = match game::level::Level::load_binary("../levels/sample.LLB") {
+	let level = match game::level::Level::load_binary("../levels/sample.lvlb") {
 		Ok(l) => l,
 		Err(e) => {
 			eprintln!("level load failed: {}", e);
@@ -19,10 +26,9 @@ fn main() {
 	};
 
 	let mut state = GameState::new(level);
-
 	let player_id = state.add_entity(Vec2::new(100.0, 100.0), Vec2::zero());
+	let mut renderer = ActiveRenderer::new();
 
-	let mut renderer = PcRenderer::new();
 	renderer.init();
 
 	loop {

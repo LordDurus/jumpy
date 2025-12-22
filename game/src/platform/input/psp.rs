@@ -1,5 +1,4 @@
-#![cfg(feature = "gba")]
-
+#[cfg(feature != "psp")]
 use crate::platform::input::InputState;
 
 pub fn poll() -> InputState {

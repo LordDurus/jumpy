@@ -1,9 +1,10 @@
-#![cfg(feature = "pc")]
-use crate::platform::audio::{AudioBackend, SfxId};
+#![cfg(feature = "psp")]
 
-pub struct PcAudio;
+use crate::platform::audio::{Audio, SfxId};
 
-impl AudioBackend for PcAudio {
+pub struct PspAudio;
+
+impl Audio for PspAudio {
 	fn new() -> Self {
 		return Self;
 	}

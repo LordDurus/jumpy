@@ -1,4 +1,3 @@
-#[rear(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum TileKind {
 	Empty = 0,
@@ -31,6 +30,7 @@ impl TileKind {
 		}
 	}
 
+	#[allow(dead_code)]
 	pub fn is_hazard(self) -> bool {
 		match self {
 			TileKind::SpikeUp | TileKind::SpikeDown | TileKind::SpikeLeft | TileKind::SpikeRight => true,
@@ -38,6 +38,7 @@ impl TileKind {
 		}
 	}
 
+	#[allow(dead_code)]
 	pub fn is_liquid(self) -> bool {
 		match self {
 			TileKind::Water => true,
@@ -46,36 +47,26 @@ impl TileKind {
 	}
 }
 
-pub fn resolve_sheet_tile_id(tile_kind: u8, frame: u32, x: i32, y: i32) -> u16 {
-	if tile_kind == 0 {
-		return 0; // unused, caller should skip drawing
+pub fn resolve_sheet_tile_id(kind: TileKind, frame_index: u32, tile_x: i32, tile_y: i32) -> u16 {
+	match kind {
+		TileKind::Empty => return 0,
+		TileKind::Dirt => return 24,
+
+		TileKind::GrassTop => {
+			let ids: [u16; 3] = [0, 1, 2];
+			let idx: usize = ((tile_x + tile_y) as usize) % 3;
+			return ids[idx];
+		}
+
+		TileKind::Water => {
+			let ids: [u16; 4] = [14, 17, 38, 40];
+			let idx: usize = (frame_index as usize) & 3;
+			return ids[idx];
+		}
+
+		TileKind::SpikeUp => return 78,
+		TileKind::SpikeDown => return 6,
+		TileKind::SpikeLeft => return 30,
+		TileKind::SpikeRight => return 54,
 	}
-	if tile_kind == 1 {
-		return 24; // dirt
-	}
-	if tile_kind == 2 {
-		return 78; // spike up
-	}
-	if tile_kind == 3 {
-		// water: 14, 17, 38, 40
-		let ids: [u16; 4] = [14, 17, 38, 40];
-		let idx: usize = (frame as usize) & 3; // cheap animation
-		return ids[idx];
-	}
-	if tile_kind == 4 {
-		// grass top: 0,1,2 (variant/animation)
-		let ids: [u16; 3] = [0, 1, 2];
-		let idx: usize = ((x + y) as usize) % 3; // deterministic variation
-		return ids[idx];
-	}
-	if tile_kind == 5 {
-		return 6; // spike down
-	}
-	if tile_kind == 6 {
-		return 30; // spike left
-	}
-	if tile_kind == 7 {
-		return 54; // spike right
-	}
-	return 0;
 }

@@ -1,11 +1,16 @@
-// render/mod.rs
-pub trait Renderer {
-    fn init(&mut self);
-    fn render_frame(&mut self, world: &mut crate::world::World);
-}
+use crate::platform::input;
+
+pub mod backend;
+pub mod common;
+pub mod render;
+
+pub use render::Renderer;
 
 #[cfg(feature = "gba")]
 pub mod gba;
 
 #[cfg(feature = "pc")]
 pub mod pc;
+
+#[cfg(feature = "psp")]
+pub mod psp;

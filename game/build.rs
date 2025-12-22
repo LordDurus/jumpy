@@ -1,46 +1,39 @@
-use std::{env, fs, path::PathBuf};
+use std::{
+	env, fs,
+	path::{Path, PathBuf},
+};
+
+fn copy_if_exists(src: &Path, dst: &Path) {
+	if src.exists() {
+		let _ = fs::copy(src, dst);
+	}
+}
 
 fn main() {
-	//rerun when build script changes
 	println!("cargo:rerun-if-changed=build.rs");
 
-	let sdl2_dll = resolve_sdl2_dll().expect("could not find SDL2.dll (set SDL2_LIB_DIR or LIB)");
-
-	//copy next to the .exe (target\debug or target\release)
-	let out_exe_dir = target_exe_dir().expect("could not determine target output folder");
-	let dest = out_exe_dir.join("SDL2.dll");
-
-	fs::create_dir_all(&out_exe_dir).unwrap();
-	fs::copy(&sdl2_dll, &dest).unwrap();
-
-	println!("cargo:warning=copying SDL2.dll from {} -> {}", sdl2_dll.display(), dest.display());
-}
-
-fn resolve_sdl2_dll() -> Option<PathBuf> {
-	//preferred: your explicit env var
-	if let Ok(dir) = env::var("SDL2_LIB_DIR") {
-		let p = PathBuf::from(dir).join("SDL2.dll");
-		if p.exists() {
-			return Some(p);
-		}
+	if env::var("CARGO_CFG_TARGET_OS").unwrap_or_default() != "windows" {
+		return;
 	}
 
-	//fallback: scan LIB paths
-	let lib = env::var("LIB").ok()?;
-	for dir in lib.split(';').filter(|s| !s.is_empty()) {
-		let p = PathBuf::from(dir).join("SDL2.dll");
-		if p.exists() {
-			return Some(p);
-		}
-	}
+	let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+	let profile = env::var("PROFILE").unwrap(); // debug / release
 
-	None
-}
+	// .../target/{debug|release}/build/<crate>/out -> .../target/{debug|release}
+	let target_dir = out_dir.ancestors().find(|p| p.ends_with(&profile)).expect("failed to locate target dir");
 
-fn target_exe_dir() -> Option<PathBuf> {
-	let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").ok()?);
-	let profile = env::var("PROFILE").ok()?; // "debug" or "release"
+	let vcpkg_root = match env::var("VCPKG_ROOT") {
+		Ok(v) => PathBuf::from(v),
+		Err(_) => return,
+	};
 
-	//if you use a workspace, this crate’s Cargo.toml might be in /game; adjust if needed
-	Some(manifest_dir.join("target").join(profile))
+	let bin_dir = vcpkg_root.join("installed").join("x64-windows").join("bin");
+
+	// required runtime dlls
+	copy_if_exists(&bin_dir.join("SDL2.dll"), &target_dir.join("SDL2.dll"));
+	copy_if_exists(&bin_dir.join("SDL2_image.dll"), &target_dir.join("SDL2_image.dll"));
+
+	// common deps pulled by SDL2_image (copy if present)
+	copy_if_exists(&bin_dir.join("libpng16.dll"), &target_dir.join("libpng16.dll"));
+	copy_if_exists(&bin_dir.join("zlib1.dll"), &target_dir.join("zlib1.dll"));
 }
