@@ -1,20 +1,87 @@
 use crate::{engine_math::MyVector2 as Vec2, game::level::Level};
 
 pub fn resolve_floor_collision(level: &Level, pos: &mut Vec2, vel: &mut Vec2, half_w: f32, half_h: f32) {
-	// only care if moving downward (positive y is down)
 	if vel.y <= 0.0 {
 		return;
 	}
 
-	let foot_y = pos.y + half_h;
-	let left_x = pos.x - half_w + 1.0;
-	let right_x = pos.x + half_w - 1.0;
+	let layer: u32 = level.collision_layer_index() as u32;
 
-	if level.is_solid_world_f32(left_x, foot_y) || level.is_solid_world_f32(right_x, foot_y) {
-		let ty = (foot_y / level.tile_height as f32).floor();
-		let top_of_tile = ty * level.tile_height as f32;
+	let tile_w: f32 = level.tile_width as f32;
+	let tile_h: f32 = level.tile_height as f32;
 
-		pos.y = top_of_tile - half_h;
-		vel.y = 0.0;
+	let bottom_y: f32 = pos.y + half_h;
+
+	// probe slightly below feet to detect ground reliably
+	let probe_y: f32 = bottom_y + 0.5;
+
+	let ty: i32 = (probe_y / tile_h).floor() as i32;
+	let inset: f32 = 0.5;
+	let test_left: i32 = ((pos.x - half_w + inset) / tile_w).floor() as i32;
+	let test_right: i32 = ((pos.x + half_w - inset) / tile_w).floor() as i32;
+
+	let hit: bool = level.tile_at_layer(layer, test_left, ty).is_solid() || level.tile_at_layer(layer, test_right, ty).is_solid();
+
+	if !hit {
+		return;
 	}
+
+	let tile_top: f32 = (ty as f32) * tile_h;
+	pos.y = tile_top - half_h;
+	vel.y = 0.0;
+}
+
+pub fn resolve_wall_collision(level: &Level, pos: &mut Vec2, vel: &mut Vec2, half_w: f32, half_h: f32) {
+	if vel.x == 0.0 {
+		return;
+	}
+
+	let layer: u32 = level.collision_layer_index() as u32;
+
+	let tile_w: f32 = level.tile_width as f32;
+	let tile_h: f32 = level.tile_height as f32;
+
+	// sample three points along the side
+	let inset_y: f32 = 0.5;
+	let y_top: f32 = pos.y - half_h + inset_y;
+	let y_mid: f32 = pos.y;
+	let y_bot: f32 = pos.y + half_h - inset_y;
+
+	let ty_top: i32 = (y_top / tile_h).floor() as i32;
+	let ty_mid: i32 = (y_mid / tile_h).floor() as i32;
+	let ty_bot: i32 = (y_bot / tile_h).floor() as i32;
+
+	let inset_x: f32 = 0.5;
+
+	if vel.x > 0.0 {
+		// moving right
+		let probe_x: f32 = pos.x + half_w + inset_x;
+		let tx: i32 = (probe_x / tile_w).floor() as i32;
+
+		let hit: bool =
+			level.tile_at_layer(layer, tx, ty_top).is_solid() || level.tile_at_layer(layer, tx, ty_mid).is_solid() || level.tile_at_layer(layer, tx, ty_bot).is_solid();
+
+		if hit {
+			let tile_left: f32 = (tx as f32) * tile_w;
+			pos.x = tile_left - half_w - inset_x;
+			vel.x = 0.0;
+		}
+
+		return;
+	}
+
+	// moving left
+	let probe_x: f32 = pos.x - half_w - inset_x;
+	let tx: i32 = (probe_x / tile_w).floor() as i32;
+
+	let hit: bool =
+		level.tile_at_layer(layer, tx, ty_top).is_solid() || level.tile_at_layer(layer, tx, ty_mid).is_solid() || level.tile_at_layer(layer, tx, ty_bot).is_solid();
+
+	if hit {
+		let tile_right: f32 = ((tx + 1) as f32) * tile_w;
+		pos.x = tile_right + half_w + inset_x;
+		vel.x = 0.0;
+	}
+
+	return;
 }

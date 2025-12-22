@@ -168,8 +168,5 @@ impl From<NalgebraVector2<f32>> for Vec2 {
 	}
 }
 
-// gravity constant (engine space)
-pub const GRAVITY: Vec2 = Vec2 { x: 0.0, y: 0.35 };
-
 // compatibility aliases (temporary; delete once everything is migrated)
 pub type MyVector2 = Vec2;

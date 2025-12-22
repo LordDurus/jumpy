@@ -8,20 +8,29 @@ pub struct Level {
 	pub width: u32,
 	pub height: u32,
 	pub floor_y: f32,
+	pub layer_count: u8,
+	pub tiles_per_layer: usize,
 }
 
 impl Level {
 	pub fn is_solid_world_f32(&self, world_x: f32, world_y: f32) -> bool {
-		let wx: i32 = world_x.floor() as i32;
-		let wy: i32 = world_y.floor() as i32;
-		return self.is_solid_world_i32(wx, wy);
+		let tile_w: f32 = self.tile_width as f32;
+		let tile_h: f32 = self.tile_height as f32;
+
+		let tile_x: i32 = (world_x / tile_w).floor() as i32;
+		let tile_y: i32 = (world_y / tile_h).floor() as i32;
+
+		let layer: u32 = self.collision_layer_index() as u32;
+		let kind: TileKind = self.tile_at_layer(layer, tile_x, tile_y);
+		return kind.is_solid();
 	}
 
 	pub fn is_solid_world_i32(&self, world_x: i32, world_y: i32) -> bool {
 		let tile_x: i32 = world_x / self.tile_width as i32;
 		let tile_y: i32 = world_y / self.tile_height as i32;
 
-		let kind: TileKind = self.tile_at(tile_x, tile_y);
+		let layer: u32 = self.collision_layer_index() as u32;
+		let kind: TileKind = self.tile_at_layer(layer, tile_x, tile_y);
 		return kind.is_solid();
 	}
 
@@ -41,9 +50,38 @@ impl Level {
 		let v: u8 = self.tiles[idx];
 		return TileKind::from_u8(v);
 	}
-}
 
-impl Level {
+	pub fn collision_layer_index(&self) -> u8 {
+		if self.layer_count == 0 {
+			return 0;
+		}
+		return self.layer_count - 1;
+	}
+
+	pub fn tile_at_layer(&self, layer: u32, tx: i32, ty: i32) -> TileKind {
+		if tx < 0 || ty < 0 {
+			return TileKind::Empty;
+		}
+
+		let x: usize = tx as usize;
+		let y: usize = ty as usize;
+
+		if x >= self.width as usize || y >= self.height as usize {
+			return TileKind::Empty;
+		}
+
+		let layer_usize: usize = layer as usize;
+		let idx_in_layer: usize = y * (self.width as usize) + x;
+		let idx: usize = layer_usize * self.tiles_per_layer + idx_in_layer;
+
+		if idx >= self.tiles.len() {
+			return TileKind::Empty;
+		}
+
+		let v: u8 = self.tiles[idx];
+		return TileKind::from_u8(v);
+	}
+
 	pub fn load_binary(path: &str) -> Result<Level, String> {
 		let bytes = fs::read(path).map_err(|e| e.to_string())?;
 		if bytes.len() < 4 {
@@ -57,7 +95,7 @@ impl Level {
 		let mut offset: usize = 4;
 
 		// ---- header ----
-		let version = read_u16(&bytes, &mut offset)?;
+		let _version = read_u16(&bytes, &mut offset)?;
 		let header_size = read_u16(&bytes, &mut offset)? as usize;
 
 		let width = read_u16(&bytes, &mut offset)? as u32;
@@ -117,6 +155,11 @@ impl Level {
 
 		let tiles: Vec<u8> = bytes[offset_tiles..offset_tiles + tile_count_total].to_vec();
 
+		let expected_len: usize = (layer_count as usize) * tiles_per_layer;
+		if tiles.len() != expected_len {
+			return Err(format!("invalid tile data: expected {} bytes, got {}", expected_len, tiles.len()));
+		}
+
 		let mut level = Level {
 			tile_width,
 			tile_height,
@@ -124,6 +167,8 @@ impl Level {
 			width,
 			height,
 			floor_y: 0.0,
+			layer_count: layer_count as u8,
+			tiles_per_layer: tiles_per_layer,
 		};
 
 		level.floor_y = level.compute_floor_y();
@@ -146,15 +191,18 @@ impl Level {
 			return 0.0;
 		}
 
-		let expected = (self.width as usize) * (self.height as usize);
+		let expected: usize = (self.width as usize) * (self.height as usize) * (self.layer_count as usize);
+
 		if expected != self.tiles.len() {
 			return 0.0;
 		}
 
+		let layer: u32 = self.collision_layer_index() as u32;
+
 		for row in (0..self.height).rev() {
 			for col in 0..self.width {
-				let idx = (row * self.width + col) as usize;
-				if self.tiles[idx] != 0 {
+				let kind: TileKind = self.tile_at_layer(layer, col as i32, row as i32);
+				if kind != TileKind::Empty {
 					return row as f32 * self.tile_height as f32;
 				}
 			}

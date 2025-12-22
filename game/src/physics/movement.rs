@@ -1,7 +1,7 @@
 use crate::{
 	game::game_state::{EntityId, GameState},
 	physics::{
-		collision::resolve_floor_collision,
+		collision::{resolve_floor_collision, resolve_wall_collision},
 		constants::{ENTITY_HALF_HEIGHT, ENTITY_HALF_W, JUMP_VELOCITY},
 	},
 };
@@ -23,33 +23,34 @@ pub fn move_and_collide(world: &mut GameState) {
 		pos.y += vel.y;
 
 		// collide
+		resolve_wall_collision(&world.level, pos, vel, ENTITY_HALF_W, ENTITY_HALF_HEIGHT);
 		resolve_floor_collision(&world.level, pos, vel, ENTITY_HALF_W, ENTITY_HALF_HEIGHT);
 	}
 }
 
 pub fn try_jump(world: &mut GameState, entity_id: EntityId) -> bool {
-	let pos = match world.positions.get(&entity_id) {
-		Some(p) => *p,
-		None => return false,
-	};
+	let grounded = world.on_ground(entity_id);
+	let on_left = world.on_wall_left(entity_id);
+	let on_right = world.on_wall_right(entity_id);
 
-	let (half_w, half_h) = world.entity_half_extents(entity_id);
-
-	let foot_y = pos.y + half_h + 1.0;
-	let left_x = pos.x - half_w + 1.0;
-	let right_x = pos.x + half_w - 1.0;
-
-	let grounded = world.level.is_solid_world_f32(left_x, foot_y) || world.level.is_solid_world_f32(right_x, foot_y);
-
-	if !grounded {
+	if !grounded && !on_left && !on_right {
 		return false;
 	}
 
-	// IMPORTANT: borrow velocity ONLY at the end
 	if let Some(vel) = world.velocities.get_mut(&entity_id) {
 		vel.y = JUMP_VELOCITY;
+
+		if !grounded {
+			let wall_push: f32 = 2.5;
+			if on_left {
+				vel.x = wall_push;
+			} else if on_right {
+				vel.x = -wall_push;
+			}
+		}
+
 		return true;
 	}
 
-	return false;
+	false
 }

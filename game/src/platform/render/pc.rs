@@ -4,6 +4,7 @@
 use crate::{
 	game::game_state::GameState,
 	platform::{input::InputState, render::Renderer},
+	tile::TileKind,
 };
 
 use sdl2::{EventPump, event::Event, keyboard::Keycode, pixels::Color, rect::Rect, render::Canvas, video::Window};
@@ -17,11 +18,8 @@ impl Renderer for PcRenderer {
 	fn new() -> PcRenderer {
 		let sdl = sdl2::init().unwrap();
 		let video = sdl.video().unwrap();
-
-		let window = video.window("jumpy", 800, 600).position_centered().build().unwrap();
-
+		let window = video.window("jumpy", 1030, 500).position_centered().build().unwrap();
 		let canvas = window.into_canvas().accelerated().present_vsync().build().unwrap();
-
 		let event_pump = sdl.event_pump().unwrap();
 
 		return PcRenderer { canvas, event_pump };
@@ -64,13 +62,46 @@ impl Renderer for PcRenderer {
 	}
 
 	fn draw_world(&mut self, world: &GameState) {
+		let level = &world.level;
+		let tile_w: i32 = level.tile_width as i32;
+		let tile_h: i32 = level.tile_height as i32;
+
+		for ty in 0..(level.height as i32) {
+			for tx in 0..(level.width as i32) {
+				let layer: u32 = level.collision_layer_index() as u32;
+				let kind: TileKind = level.tile_at_layer(layer, tx, ty);
+
+				if kind == TileKind::Empty {
+					continue;
+				}
+
+				match kind {
+					TileKind::Dirt => self.canvas.set_draw_color(Color::RGB(110, 72, 36)),
+					TileKind::GrassTop => self.canvas.set_draw_color(Color::RGB(48, 160, 64)),
+					TileKind::Water => self.canvas.set_draw_color(Color::RGB(48, 96, 200)),
+					TileKind::SpikeUp | TileKind::SpikeDown | TileKind::SpikeLeft | TileKind::SpikeRight => self.canvas.set_draw_color(Color::RGB(200, 48, 48)),
+					TileKind::Empty => self.canvas.set_draw_color(Color::RGB(0, 0, 0)),
+				}
+
+				let px: i32 = tx * tile_w;
+				let py: i32 = ty * tile_h;
+				let rect = Rect::new(px, py, level.tile_width, level.tile_height);
+				let _ = self.canvas.fill_rect(rect);
+			}
+		}
+
+		// ---- entities ----
 		self.canvas.set_draw_color(Color::RGB(255, 255, 255));
+		for (id, pos) in world.positions.iter() {
+			let (half_width, half_height) = world.entity_half_extents(*id);
 
-		for (_id, pos) in world.positions.iter() {
-			let x = pos.x as i32;
-			let y = pos.y as i32;
+			let x: i32 = (pos.x - half_width).round() as i32;
+			let y: i32 = (pos.y - half_height).round() as i32;
 
-			let rect = Rect::new(x, y, 16, 16);
+			let w: u32 = (half_width * 2.0).round() as u32;
+			let h: u32 = (half_height * 2.0).round() as u32;
+
+			let rect = Rect::new(x, y, w, h);
 			let _ = self.canvas.fill_rect(rect);
 		}
 	}
