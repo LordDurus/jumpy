@@ -17,14 +17,14 @@ fn main() {
 	let input_path = match args.next() {
 		Some(p) => p,
 		None => {
-			eprintln!("usage: level_compiler <input.level> [output.llb]");
+			eprintln!("usage: level_compiler <input.level> [output.lvlb]");
 			std::process::exit(1);
 		}
 	};
 
 	let output_path = match args.next() {
 		Some(p) => p,
-		None => replace_extension(&input_path, "llb"),
+		None => replace_extension(&input_path, "lvlb"),
 	};
 
 	if input_path == output_path {

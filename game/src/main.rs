@@ -17,7 +17,7 @@ type ActiveRenderer = crate::platform::render::psp::PspRenderer;
 
 #[cfg(feature = "pc")]
 fn main() {
-	let level = match game::level::Level::load_binary("../levels/sample.lvlb") {
+	let level = match game::level::Level::load_binary("../levels/tutorial.lvlb") {
 		Ok(l) => l,
 		Err(e) => {
 			eprintln!("level load failed: {}", e);
