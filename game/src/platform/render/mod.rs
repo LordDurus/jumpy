@@ -2,9 +2,6 @@ use crate::platform::input;
 
 pub mod backend;
 pub mod common;
-pub mod render;
-
-pub use render::Renderer;
 
 #[cfg(feature = "gba")]
 pub mod gba;

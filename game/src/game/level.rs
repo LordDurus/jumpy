@@ -25,15 +25,6 @@ impl Level {
 		return kind.is_solid();
 	}
 
-	pub fn is_solid_world_i32(&self, world_x: i32, world_y: i32) -> bool {
-		let tile_x: i32 = world_x / self.tile_width as i32;
-		let tile_y: i32 = world_y / self.tile_height as i32;
-
-		let layer: u32 = self.collision_layer_index() as u32;
-		let kind: TileKind = self.tile_at_layer(layer, tile_x, tile_y);
-		return kind.is_solid();
-	}
-
 	pub fn tile_at(&self, tx: i32, ty: i32) -> TileKind {
 		if tx < 0 || ty < 0 {
 			return TileKind::Empty;

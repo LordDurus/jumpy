@@ -4,7 +4,7 @@ mod physics;
 mod platform;
 mod tile;
 
-use crate::{engine_math::Vec2, game::game_state::GameState, platform::render::Renderer};
+use crate::{engine_math::Vec2, game::game_state::GameState, platform::render::backend::RenderBackend};
 
 #[cfg(feature = "pc")]
 type ActiveRenderer = crate::platform::render::pc::PcRenderer;
@@ -27,6 +27,13 @@ fn main() {
 
 	let mut state = GameState::new(level);
 	let player_id = state.add_entity(Vec2::new(100.0, 100.0), Vec2::zero());
+	state.set_player(player_id);
+
+	if state.player_id.is_none() {
+		eprintln!("failed to create player entity");
+		return;
+	}
+
 	let mut renderer = ActiveRenderer::new();
 
 	renderer.init();
@@ -38,7 +45,7 @@ fn main() {
 		}
 
 		// left/right + jump impulse
-		if let Some(v) = state.velocities.get_mut(&player_id) {
+		if let Some(v) = state.velocities.get_mut(&state.get_player_id()) {
 			if input.left && !input.right {
 				v.set_x(-2.0);
 			} else if input.right && !input.left {

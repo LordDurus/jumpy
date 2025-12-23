@@ -9,6 +9,7 @@ pub struct GameState {
 	pub gravity: f32,
 	pub positions: HashMap<EntityId, Vec2>,
 	pub velocities: HashMap<EntityId, Vec2>,
+	pub player_id: Option<EntityId>,
 	next_entity_id: EntityId,
 }
 
@@ -19,8 +20,24 @@ impl GameState {
 			gravity: crate::physics::constants::WORLD_GRAVITY,
 			positions: HashMap::new(),
 			velocities: HashMap::new(),
+			player_id: None,
 			next_entity_id: 1,
 		};
+	}
+
+	#[inline(always)]
+	pub fn set_player(&mut self, id: EntityId) {
+		self.player_id = Some(id);
+	}
+
+	#[inline(always)]
+	pub fn get_player_id(&self) -> EntityId {
+		self.player_id.expect("player_id not set")
+	}
+
+	#[inline(always)]
+	pub fn player_pos(&self) -> Option<&Vec2> {
+		self.player_id.and_then(|id| self.positions.get(&id))
 	}
 
 	#[inline(always)]

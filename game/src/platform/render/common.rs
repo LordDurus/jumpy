@@ -8,21 +8,33 @@ impl RenderCommon {
 		return RenderCommon;
 	}
 
+	// camera is in world pixels (unscaled)
 	pub fn compute_camera<B: RenderBackend>(&self, backend: &B, world: &GameState) -> (i32, i32) {
-		let (screen_w, screen_h) = backend.screen_size();
+		let (screen_w_px, screen_h_px) = backend.screen_size();
+		let scale: f32 = backend.render_scale();
+
+		let screen_w_world: i32 = ((screen_w_px as f32) / scale).round() as i32;
+		let screen_h_world: i32 = ((screen_h_px as f32) / scale).round() as i32;
 
 		let mut focus_x: f32 = 0.0;
 		let mut focus_y: f32 = 0.0;
 
-		// follow smallest entity id (your player is created first)
-		let mut best_id: Option<u32> = None;
-		for id in world.positions.keys() {
-			if best_id.is_none() || *id < best_id.unwrap() {
-				best_id = Some(*id);
+		let mut focus_id: Option<u32> = None;
+
+		let player_id: u32 = world.get_player_id();
+		if player_id != 0 {
+			focus_id = Some(player_id);
+		} else {
+			let mut best_id: Option<u32> = None;
+			for id in world.positions.keys() {
+				if best_id.is_none() || *id < best_id.unwrap() {
+					best_id = Some(*id);
+				}
 			}
+			focus_id = best_id;
 		}
 
-		if let Some(id) = best_id {
+		if let Some(id) = focus_id {
 			if let Some(p) = world.positions.get(&id) {
 				focus_x = p.x;
 				focus_y = p.y;
@@ -35,11 +47,11 @@ impl RenderCommon {
 		let level_w_px: i32 = (world.level.width as i32) * tile_w;
 		let level_h_px: i32 = (world.level.height as i32) * tile_h;
 
-		let mut cam_x: i32 = focus_x as i32 - (screen_w / 2);
-		let mut cam_y: i32 = focus_y as i32 - (screen_h / 2);
+		let mut cam_x: i32 = focus_x as i32 - (screen_w_world / 2);
+		let mut cam_y: i32 = focus_y as i32 - (screen_h_world / 2);
 
-		let max_x: i32 = (level_w_px - screen_w).max(0);
-		let max_y: i32 = (level_h_px - screen_h).max(0);
+		let max_x: i32 = (level_w_px - screen_w_world).max(0);
+		let max_y: i32 = (level_h_px - screen_h_world).max(0);
 
 		if cam_x < 0 {
 			cam_x = 0;
@@ -58,17 +70,20 @@ impl RenderCommon {
 	}
 
 	pub fn draw_level<B: RenderBackend>(&self, backend: &mut B, world: &GameState, cam_x: i32, cam_y: i32, frame_index: u32) {
-		let (screen_w, screen_h) = backend.screen_size();
+		let (screen_w_px, screen_h_px) = backend.screen_size();
+		let scale: f32 = backend.render_scale();
 
-		let tile_w_i32: i32 = world.level.tile_width as i32;
-		let tile_h_i32: i32 = world.level.tile_height as i32;
-		let tile_w: u32 = world.level.tile_width;
-		let tile_h: u32 = world.level.tile_height;
+		let screen_w_world: i32 = ((screen_w_px as f32) / scale).round() as i32;
+		let screen_h_world: i32 = ((screen_h_px as f32) / scale).round() as i32;
 
-		let view_left: i32 = cam_x / tile_w_i32;
-		let view_top: i32 = cam_y / tile_h_i32;
-		let view_right: i32 = (cam_x + screen_w + tile_w_i32 - 1) / tile_w_i32;
-		let view_bottom: i32 = (cam_y + screen_h + tile_h_i32 - 1) / tile_h_i32;
+		let tile_w_world: i32 = world.level.tile_width as i32;
+		let tile_h_world: i32 = world.level.tile_height as i32;
+
+		// visible tiles in world space
+		let view_left: i32 = cam_x / tile_w_world;
+		let view_top: i32 = cam_y / tile_h_world;
+		let view_right: i32 = (cam_x + screen_w_world + tile_w_world - 1) / tile_w_world;
+		let view_bottom: i32 = (cam_y + screen_h_world + tile_h_world - 1) / tile_h_world;
 
 		let max_x: i32 = world.level.width as i32;
 		let max_y: i32 = world.level.height as i32;
@@ -90,10 +105,16 @@ impl RenderCommon {
 					continue;
 				}
 
-				let x = tx * tile_w_i32 - cam_x;
-				let y = ty * tile_h_i32 - cam_y;
+				//backend.draw_world(world);
+				let world_x: i32 = tx * tile_w_world;
+				let world_y: i32 = ty * tile_h_world;
 
-				backend.draw_sheet_tile(sheet_id, x, y, tile_w, tile_h);
+				let sx: i32 = (((world_x - cam_x) as f32) * scale).round() as i32;
+				let sy: i32 = (((world_y - cam_y) as f32) * scale).round() as i32;
+
+				let w_px: u32 = ((world.level.tile_width as f32) * scale).round() as u32;
+				let h_px: u32 = ((world.level.tile_height as f32) * scale).round() as u32;
+				backend.draw_tile(sheet_id, sx, sy, w_px, h_px);
 			}
 		}
 	}

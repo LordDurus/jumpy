@@ -1,28 +1,54 @@
-// use crate::platform::render::{InputState, Renderer};
-// use sdl2::{EventPump, event::Event, keyboard::Keycode, pixels::Color, rect::Rect, render::Canvas, video::Window};
-
+const RENDER_SCALE: f32 = 1.0;
+const WINDOW_WIDTH: u32 = 640;
+const WINDOW_HEIGHT: u32 = 360;
 use crate::{
 	game::game_state::GameState,
-	platform::{input::InputState, render::Renderer},
+	platform::{RenderBackend, input::InputState, render::common::RenderCommon},
 	tile::TileKind,
 };
-
 use sdl2::{EventPump, event::Event, keyboard::Keycode, pixels::Color, rect::Rect, render::Canvas, video::Window};
 
 pub struct PcRenderer {
 	canvas: Canvas<Window>,
 	event_pump: EventPump,
+	common: RenderCommon,
 }
 
-impl Renderer for PcRenderer {
+impl RenderBackend for PcRenderer {
 	fn new() -> PcRenderer {
 		let sdl = sdl2::init().unwrap();
 		let video = sdl.video().unwrap();
-		let window = video.window("jumpy", 1030, 500).position_centered().build().unwrap();
+		let window = video.window("jumpy", WINDOW_HEIGHT, WINDOW_WIDTH).position_centered().build().unwrap();
 		let canvas = window.into_canvas().accelerated().present_vsync().build().unwrap();
 		let event_pump = sdl.event_pump().unwrap();
 
-		return PcRenderer { canvas, event_pump };
+		return PcRenderer {
+			canvas,
+			event_pump,
+			common: RenderCommon::new(),
+		};
+	}
+
+	fn draw_tile(&mut self, sheet_id: u16, x: i32, y: i32, w: u32, h: u32) {
+		// temporary: colored blocks, ignore sheet_id or map it to a color
+		// if you want a simple mapping:
+		if sheet_id == 0 {
+			return;
+		}
+
+		// pick a default color (you can improve this later)
+		self.canvas.set_draw_color(Color::RGB(255, 255, 255));
+
+		let rect = Rect::new(x, y, w, h);
+		let _ = self.canvas.fill_rect(rect);
+	}
+
+	fn render_scale(&self) -> f32 {
+		return RENDER_SCALE;
+	}
+
+	fn screen_size(&self) -> (i32, i32) {
+		return (WINDOW_WIDTH as i32, WINDOW_HEIGHT as i32);
 	}
 
 	fn init(&mut self) {
@@ -63,8 +89,20 @@ impl Renderer for PcRenderer {
 
 	fn draw_world(&mut self, world: &GameState) {
 		let level = &world.level;
-		let tile_w: i32 = level.tile_width as i32;
-		let tile_h: i32 = level.tile_height as i32;
+
+		let mut cam_x: f32 = 0.0;
+		let mut cam_y: f32 = 0.0;
+
+		// follow player, not random hash map entry
+		let player_id: u32 = world.get_player_id();
+		if let Some(pos) = world.positions.get(&player_id) {
+			cam_x = pos.x * RENDER_SCALE - (WINDOW_WIDTH as f32) * 0.5;
+			cam_y = pos.y * RENDER_SCALE - (WINDOW_HEIGHT as f32) * 0.5;
+		}
+
+		// ---- tiles ----
+		let tile_w: f32 = level.tile_width as f32 * RENDER_SCALE;
+		let tile_h: f32 = level.tile_height as f32 * RENDER_SCALE;
 
 		for ty in 0..(level.height as i32) {
 			for tx in 0..(level.width as i32) {
@@ -80,12 +118,13 @@ impl Renderer for PcRenderer {
 					TileKind::GrassTop => self.canvas.set_draw_color(Color::RGB(48, 160, 64)),
 					TileKind::Water => self.canvas.set_draw_color(Color::RGB(48, 96, 200)),
 					TileKind::SpikeUp | TileKind::SpikeDown | TileKind::SpikeLeft | TileKind::SpikeRight => self.canvas.set_draw_color(Color::RGB(200, 48, 48)),
-					TileKind::Empty => self.canvas.set_draw_color(Color::RGB(0, 0, 0)),
+					TileKind::Empty => {}
 				}
 
-				let px: i32 = tx * tile_w;
-				let py: i32 = ty * tile_h;
-				let rect = Rect::new(px, py, level.tile_width, level.tile_height);
+				let sx: i32 = (tx as f32 * tile_w - cam_x).round() as i32;
+				let sy: i32 = (ty as f32 * tile_h - cam_y).round() as i32;
+
+				let rect = Rect::new(sx, sy, tile_w.round() as u32, tile_h.round() as u32);
 				let _ = self.canvas.fill_rect(rect);
 			}
 		}
@@ -95,11 +134,12 @@ impl Renderer for PcRenderer {
 		for (id, pos) in world.positions.iter() {
 			let (half_width, half_height) = world.entity_half_extents(*id);
 
-			let x: i32 = (pos.x - half_width).round() as i32;
-			let y: i32 = (pos.y - half_height).round() as i32;
+			// convert entity rect to *scaled screen coords* and subtract camera
+			let x: i32 = ((pos.x - half_width) * RENDER_SCALE - cam_x).round() as i32;
+			let y: i32 = ((pos.y - half_height) * RENDER_SCALE - cam_y).round() as i32;
 
-			let w: u32 = (half_width * 2.0).round() as u32;
-			let h: u32 = (half_height * 2.0).round() as u32;
+			let w: u32 = ((half_width * 2.0) * RENDER_SCALE).round() as u32;
+			let h: u32 = ((half_height * 2.0) * RENDER_SCALE).round() as u32;
 
 			let rect = Rect::new(x, y, w, h);
 			let _ = self.canvas.fill_rect(rect);
