@@ -9,7 +9,14 @@ pub struct GbaRenderer {
 	frame_index: u32,
 }
 
-impl Renderer for GbaRenderer {
+impl RenderBackend for GbaRenderer {
+	fn screen_size(&self) -> (i32, i32) {
+		return (240, 160);
+	}
+
+	fn render_scale(&self) -> f32 {
+		return 1.0;
+	}
 	fn new() -> Self {
 		return Self { frame_index: 0 };
 	}

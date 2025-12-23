@@ -12,9 +12,15 @@ pub struct PcRenderer {
 	canvas: Canvas<Window>,
 	event_pump: EventPump,
 	common: RenderCommon,
+	resized_from_world: bool,
 }
 
 impl RenderBackend for PcRenderer {
+	fn screen_size(&self) -> (i32, i32) {
+		let (w, h) = self.canvas.output_size().unwrap();
+		return (w as i32, h as i32);
+	}
+
 	fn new() -> PcRenderer {
 		let sdl = sdl2::init().unwrap();
 		let video = sdl.video().unwrap();
@@ -26,6 +32,7 @@ impl RenderBackend for PcRenderer {
 			canvas,
 			event_pump,
 			common: RenderCommon::new(),
+			resized_from_world: false,
 		};
 	}
 
@@ -45,10 +52,6 @@ impl RenderBackend for PcRenderer {
 
 	fn render_scale(&self) -> f32 {
 		return RENDER_SCALE;
-	}
-
-	fn screen_size(&self) -> (i32, i32) {
-		return (WINDOW_WIDTH as i32, WINDOW_HEIGHT as i32);
 	}
 
 	fn init(&mut self) {
@@ -96,8 +99,9 @@ impl RenderBackend for PcRenderer {
 		// follow player, not random hash map entry
 		let player_id: u32 = world.get_player_id();
 		if let Some(pos) = world.positions.get(&player_id) {
-			cam_x = pos.x * RENDER_SCALE - (WINDOW_WIDTH as f32) * 0.5;
-			cam_y = pos.y * RENDER_SCALE - (WINDOW_HEIGHT as f32) * 0.5;
+			let (screen_w, screen_h) = self.screen_size();
+			cam_x = pos.x * self.render_scale() - (screen_w as f32) * 0.5;
+			cam_y = pos.y * self.render_scale() - (screen_h as f32) * 0.5;
 		}
 
 		// ---- tiles ----
@@ -125,6 +129,16 @@ impl RenderBackend for PcRenderer {
 				let sy: i32 = (ty as f32 * tile_h - cam_y).round() as i32;
 
 				let rect = Rect::new(sx, sy, tile_w.round() as u32, tile_h.round() as u32);
+
+				if !self.resized_from_world {
+					let scale = self.render_scale();
+					let w = ((world.level.tile_width as f32) * (world.level.tile_width as f32) * scale).round() as u32;
+					let h = ((world.level.tile_height as f32) * (world.level.tile_height as f32) * scale).round() as u32;
+
+					let _ = self.canvas.window_mut().set_size(w, h);
+					self.resized_from_world = true;
+				}
+
 				let _ = self.canvas.fill_rect(rect);
 			}
 		}
