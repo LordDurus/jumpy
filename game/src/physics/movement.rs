@@ -1,20 +1,24 @@
 use crate::{
 	game::game_state::{EntityId, GameState},
 	physics::{
-		collision::{resolve_floor_collision, resolve_wall_collision},
+		collision::{resolve_ceiling_collision, resolve_floor_collision, resolve_wall_collision},
 		constants::{ENTITY_HALF_HEIGHT, ENTITY_HALF_W, JUMP_VELOCITY},
 	},
 };
 
 #[inline(always)]
-pub fn move_and_collide(world: &mut GameState) {
-	let ids: Vec<EntityId> = world.positions.keys().copied().collect();
+pub fn move_and_collide(game_state: &mut GameState) {
+	let ids: Vec<EntityId> = game_state.positions.keys().copied().collect();
 
 	for id in ids {
-		let Some(pos) = world.positions.get_mut(&id) else {
+		// immutable borrow FIRST
+		let (half_width, half_height) = game_state.entity_half_extents(id);
+
+		// now mutable borrows
+		let Some(pos) = game_state.positions.get_mut(&id) else {
 			continue;
 		};
-		let Some(vel) = world.velocities.get_mut(&id) else {
+		let Some(vel) = game_state.velocities.get_mut(&id) else {
 			continue;
 		};
 
@@ -23,8 +27,9 @@ pub fn move_and_collide(world: &mut GameState) {
 		pos.y += vel.y;
 
 		// collide
-		resolve_wall_collision(&world.level, pos, vel, ENTITY_HALF_W, ENTITY_HALF_HEIGHT);
-		resolve_floor_collision(&world.level, pos, vel, ENTITY_HALF_W, ENTITY_HALF_HEIGHT);
+		resolve_wall_collision(&game_state.level, pos, vel, half_width, half_height);
+		resolve_ceiling_collision(&game_state.level, pos, vel, half_width, half_height);
+		resolve_floor_collision(&game_state.level, pos, vel, half_width, half_height);
 	}
 }
 

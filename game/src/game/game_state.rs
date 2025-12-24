@@ -35,6 +35,7 @@ impl GameState {
 		self.player_id.expect("player_id not set")
 	}
 
+	#[allow(dead_code)]
 	#[inline(always)]
 	pub fn player_pos(&self) -> Option<&Vec2> {
 		self.player_id.and_then(|id| self.positions.get(&id))
@@ -115,6 +116,7 @@ impl GameState {
 		return id;
 	}
 
+	#[allow(dead_code)]
 	pub fn remove_entity(&mut self, id: EntityId) {
 		self.positions.remove(&id);
 		self.velocities.remove(&id);

@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 pub trait TimerBackend {
 	fn now_ticks(&self) -> u64;
 	fn ticks_per_second(&self) -> u64;

@@ -6,6 +6,7 @@ pub struct InputState {
 	pub jump: bool,
 }
 
+#[allow(dead_code)]
 pub trait InputBackend {
 	fn poll(&mut self) -> InputState;
 }

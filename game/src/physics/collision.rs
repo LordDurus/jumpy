@@ -1,5 +1,43 @@
 use crate::{engine_math::MyVector2 as Vec2, game::level::Level};
 
+pub fn resolve_ceiling_collision(level: &Level, pos: &mut Vec2, vel: &mut Vec2, half_w: f32, half_h: f32) {
+	if vel.y >= 0.0 {
+		return;
+	}
+
+	let layer: u32 = level.collision_layer_index() as u32;
+
+	let tile_w: f32 = level.tile_width as f32;
+	let tile_h: f32 = level.tile_height as f32;
+
+	let top_y: f32 = pos.y - half_h;
+
+	// probe slightly above head to detect ceiling reliably
+	let probe_y: f32 = top_y - 0.5;
+
+	let ty: i32 = (probe_y / tile_h).floor() as i32;
+
+	// inset so we don't catch tiles when just barely touching corners
+	let inset_x: f32 = 0.5;
+
+	let left_x: f32 = pos.x - half_w + inset_x;
+	let right_x: f32 = pos.x + half_w - inset_x;
+
+	let tx_left: i32 = (left_x / tile_w).floor() as i32;
+	let tx_right: i32 = (right_x / tile_w).floor() as i32;
+
+	let hit: bool = level.tile_at_layer(layer, tx_left, ty).is_solid() || level.tile_at_layer(layer, tx_right, ty).is_solid();
+
+	if hit {
+		// snap player just below the ceiling tile
+		let tile_bottom: f32 = ((ty + 1) as f32) * tile_h;
+		pos.y = tile_bottom + half_h;
+		vel.y = 0.0;
+	}
+
+	return;
+}
+
 pub fn resolve_floor_collision(level: &Level, pos: &mut Vec2, vel: &mut Vec2, half_w: f32, half_h: f32) {
 	if vel.y <= 0.0 {
 		return;

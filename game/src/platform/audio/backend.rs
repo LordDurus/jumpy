@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SfxId {
 	Jump,
@@ -5,6 +6,7 @@ pub enum SfxId {
 	Hit,
 }
 
+#[allow(dead_code)]
 pub trait AudioBackend {
 	fn new() -> Self
 	where

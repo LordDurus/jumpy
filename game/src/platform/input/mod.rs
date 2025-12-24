@@ -9,4 +9,4 @@ pub mod pc;
 #[cfg(feature = "psp")]
 pub mod psp;
 
-pub use backend::{InputBackend, InputState};
+pub use backend::InputState;

@@ -1,6 +1,7 @@
 #![cfg(feature = "pc")]
 use crate::platform::audio::{AudioBackend, SfxId};
 
+#[allow(dead_code)]
 pub struct PcAudio;
 
 impl AudioBackend for PcAudio {

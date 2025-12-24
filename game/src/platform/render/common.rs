@@ -19,11 +19,8 @@ impl RenderCommon {
 		let mut focus_x: f32 = 0.0;
 		let mut focus_y: f32 = 0.0;
 
-		let mut focus_id: Option<u32> = None;
-
-		let player_id: u32 = world.get_player_id();
-		if player_id != 0 {
-			focus_id = Some(player_id);
+		let focus_id: Option<u32> = if world.get_player_id() != 0 {
+			Some(world.get_player_id())
 		} else {
 			let mut best_id: Option<u32> = None;
 			for id in world.positions.keys() {
@@ -31,8 +28,8 @@ impl RenderCommon {
 					best_id = Some(*id);
 				}
 			}
-			focus_id = best_id;
-		}
+			best_id
+		};
 
 		if let Some(id) = focus_id {
 			if let Some(p) = world.positions.get(&id) {
