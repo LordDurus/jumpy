@@ -167,6 +167,3 @@ impl From<NalgebraVector2<f32>> for Vec2 {
 		return Vec2 { x: v.x, y: v.y };
 	}
 }
-
-// compatibility aliases (temporary; delete once everything is migrated)
-pub type MyVector2 = Vec2;

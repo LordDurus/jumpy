@@ -1,4 +1,4 @@
-use crate::{engine_math::MyVector2 as Vec2, game::level::Level};
+use crate::{engine_math::Vec2, game::level::Level};
 
 pub fn resolve_ceiling_collision(level: &Level, pos: &mut Vec2, vel: &mut Vec2, half_w: f32, half_h: f32) {
 	if vel.y >= 0.0 {
@@ -101,7 +101,7 @@ pub fn resolve_wall_collision(level: &Level, pos: &mut Vec2, vel: &mut Vec2, hal
 
 		if hit {
 			let tile_left: f32 = (tx as f32) * tile_w;
-			pos.x = tile_left - half_w - inset_x;
+			pos.x = tile_left - half_w;
 			vel.x = 0.0;
 		}
 
@@ -117,7 +117,7 @@ pub fn resolve_wall_collision(level: &Level, pos: &mut Vec2, vel: &mut Vec2, hal
 
 	if hit {
 		let tile_right: f32 = ((tx + 1) as f32) * tile_w;
-		pos.x = tile_right + half_w + inset_x;
+		pos.x = tile_right + half_w;
 		vel.x = 0.0;
 	}
 

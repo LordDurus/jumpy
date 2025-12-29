@@ -31,6 +31,7 @@ pub struct LayerSource {
 pub struct EntitySource {
 	pub x: i32,
 	pub y: i32,
+	pub render_style: u8,
 	pub jump_multiplier: f32,
 	pub attack_power: i32,
 	pub hit_points: i32,
@@ -45,10 +46,6 @@ pub enum EntityKindSource {
 		enemy_kind: String,
 		patrol_min: i32,
 		patrol_max: i32,
-	},
-	Pickup {
-		pickup_kind: String,
-		value: i32,
 	},
 	MovingPlatform {
 		platform_kind: String, // "horizontal" | "vertical"

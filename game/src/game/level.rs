@@ -1,6 +1,9 @@
 use crate::tile::TileKind;
 use std::fs;
 
+pub const BYTES_PER_ENTITY: usize = 20;
+
+#[derive(Debug, Clone)]
 pub struct Level {
 	pub tile_width: u32,
 	pub tile_height: u32,
@@ -10,15 +13,19 @@ pub struct Level {
 	pub floor_y: f32,
 	pub layer_count: u8,
 	pub tiles_per_layer: usize,
+	pub player_spawn_x: f32,
+	pub player_spawn_y: f32,
+	pub entities: Vec<LevelEntity>,
+	pub triggers: Vec<LevelTrigger>,
 }
 
 impl Level {
-	pub fn is_solid_world_f32(&self, world_x: f32, world_y: f32) -> bool {
+	pub fn is_solid_world_f32(&self, level_x: f32, level_y: f32) -> bool {
 		let tile_w: f32 = self.tile_width as f32;
 		let tile_h: f32 = self.tile_height as f32;
 
-		let tile_x: i32 = (world_x / tile_w).floor() as i32;
-		let tile_y: i32 = (world_y / tile_h).floor() as i32;
+		let tile_x: i32 = (level_x / tile_w).floor() as i32;
+		let tile_y: i32 = (level_y / tile_h).floor() as i32;
 
 		let layer: u32 = self.collision_layer_index() as u32;
 		let kind: TileKind = self.tile_at_layer(layer, tile_x, tile_y);
@@ -74,6 +81,8 @@ impl Level {
 	}
 
 	pub fn load_binary(path: &str) -> Result<Level, String> {
+		println!("loading file: {}", path);
+
 		let bytes = fs::read(path).map_err(|e| e.to_string())?;
 		if bytes.len() < 4 {
 			return Err("file too small".to_string());
@@ -98,8 +107,8 @@ impl Level {
 
 		let layer_count = read_u8(&bytes, &mut offset)? as u32;
 
-		let _entity_count = read_u16(&bytes, &mut offset)? as u32;
-		let _trigger_count = read_u16(&bytes, &mut offset)? as u32;
+		let entity_count = read_u16(&bytes, &mut offset)? as usize;
+		let trigger_count = read_u16(&bytes, &mut offset)? as usize;
 
 		let _gravity_fixed = read_i16(&bytes, &mut offset)?;
 		let _background_id = read_u8(&bytes, &mut offset)?;
@@ -110,8 +119,8 @@ impl Level {
 		let tile_count_total = read_u32(&bytes, &mut offset)? as usize;
 
 		let _offset_layers = read_u32(&bytes, &mut offset)? as usize;
-		let _offset_entities = read_u32(&bytes, &mut offset)? as usize;
-		let _offset_triggers = read_u32(&bytes, &mut offset)? as usize;
+		let offset_entities = read_u32(&bytes, &mut offset)? as usize;
+		let offset_triggers = read_u32(&bytes, &mut offset)? as usize;
 		let offset_tiles = read_u32(&bytes, &mut offset)? as usize;
 
 		// sanity: header_size should not point past file
@@ -151,6 +160,97 @@ impl Level {
 			return Err(format!("invalid tile data: expected {} bytes, got {}", expected_len, tiles.len()));
 		}
 
+		// ---- entities ----
+		let mut entities: Vec<LevelEntity> = Vec::new();
+
+		let expected_entities_bytes: usize = entity_count * BYTES_PER_ENTITY;
+
+		if offset_entities + expected_entities_bytes > bytes.len() {
+			return Err(format!(
+				"entity section out of range: offset_entities={} entity_count={} file_len={}",
+				offset_entities,
+				entity_count,
+				bytes.len()
+			));
+		}
+
+		entities.reserve(entity_count as usize);
+
+		let mut ent_off: usize = offset_entities;
+
+		for _ in 0..entity_count {
+			entities.push(LevelEntity {
+				kind: read_u8(&bytes, &mut ent_off)?,
+				render_style: read_u8(&bytes, &mut ent_off)?,
+				gravity_multiplier: read_u8(&bytes, &mut ent_off)?,
+				jump_multiplier: read_u8(&bytes, &mut ent_off)?,
+				attack_power: read_u8(&bytes, &mut ent_off)?,
+				hit_points: read_u16(&bytes, &mut ent_off)?,
+				x: read_u16(&bytes, &mut ent_off)?,
+				y: read_u16(&bytes, &mut ent_off)?,
+				a: read_i16(&bytes, &mut ent_off)?,
+				b: read_i16(&bytes, &mut ent_off)?,
+				width: read_u8(&bytes, &mut ent_off)?,
+				height: read_u8(&bytes, &mut ent_off)?,
+				speed: read_u8(&bytes, &mut ent_off)?,
+				strength: read_u8(&bytes, &mut ent_off)?,
+				luck: read_u8(&bytes, &mut ent_off)?,
+			});
+		}
+
+		let mut player_spawn_x: f32 = 0.0;
+		let mut player_spawn_y: f32 = 0.0;
+		let mut found_spawn: bool = false;
+
+		for e in &entities {
+			// PlayerStart = 0 (matches your compiler runtime enum)
+			if e.kind == 0 {
+				player_spawn_x = (e.x as f32 + 0.5) * tile_width as f32;
+				player_spawn_y = (e.y as f32 + 0.5) * tile_height as f32;
+				found_spawn = true;
+				break;
+			}
+		}
+
+		if !found_spawn {
+			return Err("level has no PlayerStart entity".to_string());
+		}
+
+		// entities
+		let entities_bytes: usize = entity_count * BYTES_PER_ENTITY;
+
+		if offset_entities + entities_bytes > bytes.len() {
+			return Err(format!("entity section out of range"));
+		}
+
+		// triggers
+		let bytes_per_trigger: usize = 15;
+		let triggers_bytes: usize = trigger_count * bytes_per_trigger;
+
+		if offset_triggers + triggers_bytes > bytes.len() {
+			return Err(format!(
+				"trigger section out of range: offset_triggers={} trigger_count={} file_len={}",
+				offset_triggers,
+				trigger_count,
+				bytes.len()
+			));
+		}
+
+		let mut trigger_offset: usize = offset_triggers;
+		let mut triggers: Vec<LevelTrigger> = Vec::with_capacity(trigger_count);
+
+		for _ in 0..trigger_count {
+			triggers.push(LevelTrigger {
+				kind: read_u8(&bytes, &mut trigger_offset)?,
+				x: read_u16(&bytes, &mut trigger_offset)?,
+				y: read_u16(&bytes, &mut trigger_offset)?,
+				width: read_u16(&bytes, &mut trigger_offset)?,
+				height: read_u16(&bytes, &mut trigger_offset)?,
+				target: 0,
+				text_id: 0,
+			});
+		}
+
 		let mut level = Level {
 			tile_width,
 			tile_height,
@@ -160,21 +260,15 @@ impl Level {
 			floor_y: 0.0,
 			layer_count: layer_count as u8,
 			tiles_per_layer: tiles_per_layer,
+			player_spawn_x: player_spawn_x,
+			player_spawn_y: player_spawn_y,
+			entities: entities,
+			triggers: triggers,
 		};
 
 		level.floor_y = level.compute_floor_y();
 
 		return Ok(level);
-	}
-
-	#[allow(dead_code)]
-	fn read_i16(bytes: &[u8], offset: &mut usize) -> Result<i16, String> {
-		if *offset + 2 > bytes.len() {
-			return Err("Unexpected eof reading i16".to_string());
-		}
-		let v = i16::from_le_bytes([bytes[*offset], bytes[*offset + 1]]);
-		*offset += 2;
-		return Ok(v);
 	}
 
 	fn compute_floor_y(&self) -> f32 {
@@ -237,4 +331,36 @@ fn read_i16(bytes: &[u8], offset: &mut usize) -> Result<i16, String> {
 	let v = i16::from_le_bytes([bytes[*offset], bytes[*offset + 1]]);
 	*offset += 2;
 	return Ok(v);
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct LevelEntity {
+	pub kind: u8,
+	pub render_style: u8,
+	pub gravity_multiplier: u8,
+	pub jump_multiplier: u8,
+	pub attack_power: u8,
+	pub hit_points: u16,
+	pub x: u16,
+	pub y: u16,
+	pub a: i16,
+	pub b: i16,
+	pub width: u8,
+	pub height: u8,
+	pub speed: u8,
+	pub strength: u8,
+	pub luck: u8,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct LevelTrigger {
+	pub kind: u8,
+	pub x: u16,
+	pub y: u16,
+	pub width: u16,
+	pub height: u16,
+	pub target: u16,
+	pub text_id: u16,
 }

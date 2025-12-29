@@ -42,6 +42,7 @@ pub struct LayerRuntime {
 #[derive(Clone, Copy, Debug)]
 pub struct EntityRuntime {
 	pub kind: u8,
+	pub render_style: u8,
 	pub gravity_multiplier: u8,
 	pub jump_multiplier: u8,
 	pub attack_power: u8,
@@ -50,13 +51,19 @@ pub struct EntityRuntime {
 	pub y: u16,
 	pub a: i16,
 	pub b: i16,
-	pub extra_id: u16,
+	pub width: u8,
+	pub height: u8,
+	pub speed: u8,
+	pub strength: u8,
+	pub luck: u8,
 }
 
 impl EntityRuntime {
 	// update to the actual bytes you write
 	// pub const BYTE_SIZE: u32 = 68;
-	pub const BYTE_SIZE: u32 = 16;
+	// pub const BYTE_SIZE: u32 = 14;
+	// pub const BYTE_SIZE: u32 = 17;
+	pub const BYTE_SIZE: u32 = 20;
 }
 
 #[repr(C)]
@@ -72,6 +79,10 @@ pub struct TriggerRuntime {
 	pub p1: u16,
 }
 
+impl TriggerRuntime {
+	pub const BYTE_SIZE: u32 = 14;
+}
+
 #[derive(Debug)]
 pub struct CompiledLevel {
 	pub header: FileHeader,
@@ -81,16 +92,16 @@ pub struct CompiledLevel {
 	pub tiles: Vec<u8>, // TileId = u8
 }
 
-#[repr(u8)]
 pub enum EntityKind {
 	PlayerStart = 0,
 	Enemy = 1,
-	Pickup = 2,
 	MovingPlatform = 3,
 }
 
 #[repr(u8)]
+#[allow(dead_code)]
 pub enum TriggerKind {
 	LevelExit = 0,
 	Message = 1,
+	Pickup = 2,
 }

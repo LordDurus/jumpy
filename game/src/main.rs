@@ -1,10 +1,11 @@
+mod enemy_kind;
 mod engine_math;
 mod game;
 mod physics;
 mod platform;
 mod tile;
 
-use crate::{engine_math::Vec2, game::game_state::GameState, platform::render::backend::RenderBackend};
+use crate::{game::game_state::GameState, platform::render::backend::RenderBackend};
 
 #[cfg(feature = "pc")]
 type ActiveRenderer = crate::platform::render::pc::PcRenderer;
@@ -26,13 +27,14 @@ fn main() {
 	};
 
 	let mut state = GameState::new(level);
-	let player_id = state.add_entity(Vec2::new(100.0, 100.0), Vec2::zero());
-	state.set_player(player_id);
+	let player_id = state.spawn_player();
 
 	if state.player_id.is_none() {
 		eprintln!("failed to create player entity");
 		return;
 	}
+
+	println!("player_id = {}", player_id);
 
 	let mut renderer = ActiveRenderer::new();
 

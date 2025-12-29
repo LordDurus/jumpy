@@ -2,7 +2,7 @@ use crate::{
 	game::game_state::{EntityId, GameState},
 	physics::{
 		collision::{resolve_ceiling_collision, resolve_floor_collision, resolve_wall_collision},
-		constants::{ENTITY_HALF_HEIGHT, ENTITY_HALF_W, JUMP_VELOCITY},
+		constants::JUMP_VELOCITY,
 	},
 };
 
@@ -10,39 +10,81 @@ use crate::{
 pub fn move_and_collide(game_state: &mut GameState) {
 	let ids: Vec<EntityId> = game_state.positions.keys().copied().collect();
 
+	let tile_w: f32 = game_state.level.tile_width as f32;
+	let tile_h: f32 = game_state.level.tile_height as f32;
+
+	let level_w_px: f32 = (game_state.level.width as f32) * tile_w;
+	let level_h_px: f32 = (game_state.level.height as f32) * tile_h;
+
+	let margin: f32 = 64.0;
+
+	let player_id: EntityId = game_state.get_player_id();
+
 	for id in ids {
-		// immutable borrow FIRST
-		let (half_width, half_height) = game_state.entity_half_extents(id);
+		let is_player: bool = id == player_id;
 
-		// now mutable borrows
-		let Some(pos) = game_state.positions.get_mut(&id) else {
+		// do movement + collision inside a scope so &mut borrows drop
+		{
+			let (half_w, half_h) = game_state.entity_half_extents(id);
+
+			let Some(pos) = game_state.positions.get_mut(&id) else {
+				continue;
+			};
+			let Some(vel) = game_state.velocities.get_mut(&id) else {
+				continue;
+			};
+
+			pos.x += vel.x;
+			pos.y += vel.y;
+
+			resolve_wall_collision(&game_state.level, pos, vel, half_w, half_h);
+			resolve_ceiling_collision(&game_state.level, pos, vel, half_w, half_h);
+			resolve_floor_collision(&game_state.level, pos, vel, half_w, half_h);
+		} // <- pos/vel borrows end here
+
+		// now it's legal to query game_state immutably
+		if is_player && game_state.on_ground(id) {
+			let Some(pos) = game_state.positions.get(&id) else {
+				continue;
+			};
+			game_state.last_grounded_pos = Some(*pos);
+		}
+
+		// compute out-of-bounds without holding &mut borrows
+		let (half_w, half_h) = game_state.entity_half_extents(id);
+		let Some(pos) = game_state.positions.get(&id) else {
 			continue;
 		};
-		let Some(vel) = game_state.velocities.get_mut(&id) else {
-			continue;
-		};
 
-		// integrate
-		pos.x += vel.x;
-		pos.y += vel.y;
+		let left: f32 = pos.x - half_w;
+		let right: f32 = pos.x + half_w;
+		let top: f32 = pos.y - half_h;
+		let bottom: f32 = pos.y + half_h;
 
-		// collide
-		resolve_wall_collision(&game_state.level, pos, vel, half_width, half_height);
-		resolve_ceiling_collision(&game_state.level, pos, vel, half_width, half_height);
-		resolve_floor_collision(&game_state.level, pos, vel, half_width, half_height);
+		let out: bool = right < -margin || left > level_w_px + margin || bottom < -margin || top > level_h_px + margin;
+
+		if out {
+			if is_player {
+				game_state.respawn_player();
+				continue;
+			} else {
+				game_state.remove_entity(id);
+				continue;
+			}
+		}
 	}
 }
 
-pub fn try_jump(world: &mut GameState, entity_id: EntityId) -> bool {
-	let grounded = world.on_ground(entity_id);
-	let on_left = world.on_wall_left(entity_id);
-	let on_right = world.on_wall_right(entity_id);
+pub fn try_jump(game_state: &mut GameState, entity_id: EntityId) -> bool {
+	let grounded: bool = game_state.on_ground(entity_id);
+	let on_left: bool = game_state.on_wall_left(entity_id);
+	let on_right: bool = game_state.on_wall_right(entity_id);
 
 	if !grounded && !on_left && !on_right {
 		return false;
 	}
 
-	if let Some(vel) = world.velocities.get_mut(&entity_id) {
+	if let Some(vel) = game_state.velocities.get_mut(&entity_id) {
 		vel.y = JUMP_VELOCITY;
 
 		if !grounded {
@@ -57,5 +99,5 @@ pub fn try_jump(world: &mut GameState, entity_id: EntityId) -> bool {
 		return true;
 	}
 
-	false
+	return false;
 }

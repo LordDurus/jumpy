@@ -2,6 +2,16 @@ use crate::{binary_writer::serialize_level, runtime::*, source::*};
 
 use std::collections::HashMap;
 
+fn clamp_u8(value: i32) -> u8 {
+	if value < 0 {
+		return 0;
+	}
+	if value > 255 {
+		return 255;
+	}
+	return value as u8;
+}
+
 pub fn compile_and_serialize(source: &LevelSource) -> Result<Vec<u8>, String> {
 	let compiled = compile_level(source)?;
 	let bytes = serialize_level(&compiled)?;
@@ -86,7 +96,12 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 				y,
 				a: 0,
 				b: 0,
-				extra_id: 0,
+				render_style: 0,
+				width: 1,
+				height: 1,
+				speed: 10,
+				luck: 5,
+				strength: 5,
 			},
 			EntityKindSource::MovingPlatform {
 				platform_kind,
@@ -94,57 +109,44 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 				speed,
 				min,
 				max,
-			} => {
-				let type_id = resolve_platform_type(platform_kind)?;
-				let extra_id = pack_platform_extra(type_id, *size, *speed)?;
-
-				EntityRuntime {
-					kind: EntityKind::MovingPlatform as u8,
-					gravity_multiplier: 0,
-					hit_points: 0,
-					jump_multiplier: 0,
-					attack_power: 0,
-					x,
-					y,
-					a: *min as i16,
-					b: *max as i16,
-					extra_id,
-				}
-			}
+			} => EntityRuntime {
+				kind: EntityKind::MovingPlatform as u8,
+				render_style: entity.render_style,
+				gravity_multiplier: 0,
+				hit_points: 0,
+				jump_multiplier: 0,
+				attack_power: 0,
+				x,
+				y,
+				a: *min as i16,
+				b: *max as i16,
+				width: if platform_kind == "horizontal" { clamp_u8(*size) } else { 1 },
+				height: if platform_kind == "vertical" { clamp_u8(*size) } else { 1 },
+				speed: clamp_u8(*speed),
+				strength: resolve_platform_type(platform_kind)?,
+				luck: 0,
+			},
 			EntityKindSource::Enemy {
-				enemy_kind,
+				enemy_kind: _,
 				patrol_min,
 				patrol_max,
-			} => {
-				let type_id = resolve_enemy_type(enemy_kind)?;
-				EntityRuntime {
-					kind: EntityKind::Enemy as u8,
-					gravity_multiplier: 0,
-					hit_points: 0,
-					jump_multiplier: 0,
-					attack_power: 0,
-					x,
-					y,
-					a: *patrol_min as i16,
-					b: *patrol_max as i16,
-					extra_id: type_id,
-				}
-			}
-			EntityKindSource::Pickup { pickup_kind, value } => {
-				let type_id = resolve_pickup_type(pickup_kind)?;
-				EntityRuntime {
-					kind: EntityKind::Pickup as u8,
-					gravity_multiplier: 0,
-					hit_points: 0,
-					jump_multiplier: 0,
-					attack_power: 0,
-					x,
-					y,
-					a: *value as i16,
-					b: 0,
-					extra_id: type_id,
-				}
-			}
+			} => EntityRuntime {
+				kind: EntityKind::Enemy as u8,
+				render_style: entity.render_style,
+				gravity_multiplier: 0,
+				hit_points: 0,
+				jump_multiplier: 0,
+				attack_power: 0,
+				x,
+				y,
+				a: *patrol_min as i16,
+				b: *patrol_max as i16,
+				width: 16,
+				height: 16,
+				speed: 0,
+				strength: 0,
+				luck: 0,
+			},
 		};
 
 		entities_runtime.push(runtime);
@@ -154,8 +156,8 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 	for trigger in &source.triggers {
 		let x = trigger.x as u16;
 		let y = trigger.y as u16;
-		let width_tr = trigger.width as u16;
-		let height_tr = trigger.height as u16;
+		let width = trigger.width as u16;
+		let height = trigger.height as u16;
 
 		let runtime = match &trigger.kind {
 			TriggerKindSource::LevelExit { target } => {
@@ -165,8 +167,8 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 					gravity_multiplier: 0,
 					x,
 					y,
-					width: width_tr,
-					height: height_tr,
+					width,
+					height,
 					p0: level_id,
 					p1: 0,
 				}
@@ -178,8 +180,8 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 					gravity_multiplier: 0,
 					x,
 					y,
-					width: width_tr,
-					height: height_tr,
+					width,
+					height,
 					p0: msg_id,
 					p1: 0,
 				}
@@ -188,6 +190,15 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 
 		triggers_runtime.push(runtime);
 	}
+
+	let trigger_bytes: u32 = triggers_runtime.len() as u32 * TriggerRuntime::BYTE_SIZE;
+
+	println!(
+		"trigger_count={} trigger_bytes={} per_trigger={}",
+		triggers_runtime.len(),
+		trigger_bytes,
+		TriggerRuntime::BYTE_SIZE
+	);
 
 	let background_id = resolve_background_id(&source.header.background)?;
 	let gravity_fixed = gravity_to_fixed(source.header.gravity_multiplier);
@@ -239,22 +250,6 @@ fn build_tile_palette() -> HashMap<char, u8> {
 	return map;
 }
 
-fn resolve_enemy_type(kind: &str) -> Result<u16, String> {
-	if kind.eq_ignore_ascii_case("slime") {
-		return Ok(0);
-	}
-
-	return Err(format!("unknown enemy type '{}'", kind));
-}
-
-fn resolve_pickup_type(kind: &str) -> Result<u16, String> {
-	if kind.eq_ignore_ascii_case("coin") {
-		return Ok(0);
-	}
-
-	return Err(format!("unknown pickup type '{}'", kind));
-}
-
 fn resolve_background_id(name: &str) -> Result<u8, String> {
 	if name.eq_ignore_ascii_case("sky_blue") {
 		return Ok(0);
@@ -286,33 +281,11 @@ fn gravity_to_fixed(g: f32) -> i16 {
 }
 
 fn resolve_platform_type(kind: &str) -> Result<u8, String> {
-	if kind.eq_ignore_ascii_case("horizontal") {
-		return Ok(0);
+	match kind {
+		"horizontal" => return Ok(0),
+		"vertical" => return Ok(1),
+		_ => return Err(format!("unknown platform_kind '{}'", kind)),
 	}
-
-	if kind.eq_ignore_ascii_case("vertical") {
-		return Ok(1);
-	}
-
-	return Err(format!("unknown platform type '{}'", kind));
-}
-
-fn pack_platform_extra(type_id: u8, size: i32, speed: i32) -> Result<u16, String> {
-	if size < 1 || size > 15 {
-		return Err(format!("platform size {} out of range (1..15)", size));
-	}
-
-	if speed < 0 || speed > 15 {
-		return Err(format!("platform speed {} out of range (0..15)", speed));
-	}
-
-	// pack:
-	// bits 0..7   = type_id (0..255)
-	// bits 8..11  = size (1..15)
-	// bits 12..15 = speed (0..15)
-	let extra = (type_id as u16) | ((size as u16 & 0x0f) << 8) | ((speed as u16 & 0x0f) << 12);
-
-	return Ok(extra);
 }
 
 fn gravity_multiplier_to_q4_4(v: f32) -> Result<u8, String> {

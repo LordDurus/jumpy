@@ -21,29 +21,34 @@ pub fn serialize_level(compiled: &CompiledLevel) -> Result<Vec<u8>, String> {
 	}
 
 	let offset_entities: u32 = buffer.len() as u32;
-	for e in &compiled.entities {
-		write_u8(&mut buffer, e.kind)?;
-		write_u8(&mut buffer, e.gravity_multiplier)?;
-		write_u8(&mut buffer, e.jump_multiplier)?;
-		write_u8(&mut buffer, e.attack_power)?;
-		write_u16(&mut buffer, e.hit_points)?;
-		write_u16(&mut buffer, e.x)?;
-		write_u16(&mut buffer, e.y)?;
-		write_i16(&mut buffer, e.a)?;
-		write_i16(&mut buffer, e.b)?;
-		write_u16(&mut buffer, e.extra_id)?;
+	for entity in &compiled.entities {
+		write_u8(&mut buffer, entity.kind)?;
+		write_u8(&mut buffer, entity.render_style)?;
+		write_u8(&mut buffer, entity.gravity_multiplier)?;
+		write_u8(&mut buffer, entity.jump_multiplier)?;
+		write_u8(&mut buffer, entity.attack_power)?;
+		write_u16(&mut buffer, entity.hit_points)?;
+		write_u16(&mut buffer, entity.x)?;
+		write_u16(&mut buffer, entity.y)?;
+		write_i16(&mut buffer, entity.a)?;
+		write_i16(&mut buffer, entity.b)?;
+		write_u8(&mut buffer, entity.width)?;
+		write_u8(&mut buffer, entity.height)?;
+		write_u8(&mut buffer, entity.speed)?;
+		write_u8(&mut buffer, entity.strength)?;
+		write_u8(&mut buffer, entity.luck)?;
 	}
 
 	let offset_triggers: u32 = buffer.len() as u32;
-	for t in &compiled.triggers {
-		write_u8(&mut buffer, t.kind)?;
-		write_u8(&mut buffer, t.gravity_multiplier)?;
-		write_u16(&mut buffer, t.x)?;
-		write_u16(&mut buffer, t.y)?;
-		write_u16(&mut buffer, t.width)?;
-		write_u16(&mut buffer, t.height)?;
-		write_u16(&mut buffer, t.p0)?;
-		write_u16(&mut buffer, t.p1)?;
+	for trigger in &compiled.triggers {
+		write_u8(&mut buffer, trigger.kind)?;
+		write_u8(&mut buffer, trigger.gravity_multiplier)?;
+		write_u16(&mut buffer, trigger.x)?;
+		write_u16(&mut buffer, trigger.y)?;
+		write_u16(&mut buffer, trigger.width)?;
+		write_u16(&mut buffer, trigger.height)?;
+		write_u16(&mut buffer, trigger.p0)?;
+		write_u16(&mut buffer, trigger.p1)?;
 	}
 
 	let offset_tiles: u32 = buffer.len() as u32;

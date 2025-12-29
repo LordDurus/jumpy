@@ -127,20 +127,20 @@ pub fn load_level_from_str(text: &str) -> Result<LevelSource, String> {
 				if line.starts_with("player_start") {
 					ent.kind = Some(EntityKindSource::PlayerStart);
 					section = Section::EntityBody;
-				} else if line.starts_with("enemy ") {
+				} else if line.starts_with("enemy") {
 					ent.clear();
-					let enemy_kind = parse_kind_string_after_keyword(line, "enemy", line_number)?;
+					let enemy_kind = if line.starts_with("enemy ") {
+						Some(parse_kind_string_after_keyword(line, "enemy", line_number)?)
+					} else {
+						None
+					};
 					ent.kind = Some(EntityKindSource::Enemy {
-						enemy_kind,
+						enemy_kind: enemy_kind.unwrap_or_else(|| "".to_string()),
 						patrol_min: 0,
 						patrol_max: 0,
 					});
 					section = Section::EntityBody;
-				} else if line.starts_with("pickup ") {
-					ent.clear();
-					let pickup_kind = parse_kind_string_after_keyword(line, "pickup", line_number)?;
-					ent.kind = Some(EntityKindSource::Pickup { pickup_kind, value: 0 });
-					section = Section::EntityBody;
+					continue;
 				} else if line.starts_with("platform ") {
 					ent.clear();
 					let platform_kind = parse_kind_string_after_keyword(line, "platform", line_number)?;
@@ -194,15 +194,7 @@ pub fn load_level_from_str(text: &str) -> Result<LevelSource, String> {
 						}
 					}
 				} else if line.starts_with("speed") {
-					let value = parse_i32_value(line, "speed", line_number)?;
-					match ent.kind.as_mut() {
-						Some(EntityKindSource::MovingPlatform { speed, .. }) => {
-							*speed = value;
-						}
-						_ => {
-							return Err(format!("speed not allowed for this entity at line {}", line_number));
-						}
-					}
+					ent.speed = parse_i32_value(line, "speed", line_number)?;
 				} else if line.starts_with("min") {
 					let value = parse_i32_value(line, "min", line_number)?;
 					match ent.kind.as_mut() {
@@ -223,24 +215,36 @@ pub fn load_level_from_str(text: &str) -> Result<LevelSource, String> {
 							return Err(format!("max not allowed for this entity at line {}", line_number));
 						}
 					}
-				} else if line.starts_with("value") {
-					let value = parse_i32_value(line, "value", line_number)?;
-					match ent.kind.as_mut() {
-						Some(EntityKindSource::Pickup { value: pickup, .. }) => {
-							*pickup = value;
-						}
-						_ => {
-							return Err(format!("Error: value not allowed for this entity at line {}", line_number));
-						}
-					}
 				} else if line.starts_with("gravity_multiplier") {
 					ent.gravity_multiplier = parse_f32_value(line, "gravity_multiplier", line_number)?;
 				} else if line.starts_with("jump_multiplier") {
-					ent.gravity_multiplier = parse_f32_value(line, "jump_multiplier", line_number)?;
+					ent.jump_multiplier = parse_f32_value(line, "jump_multiplier", line_number)?;
 				} else if line.starts_with("attack_power") {
-					ent.gravity_multiplier = parse_f32_value(line, "attack_power", line_number)?;
+					ent.attack_power = parse_i32_value(line, "attack_power", line_number)?;
 				} else if line.starts_with("hit_points") {
-					ent.gravity_multiplier = parse_f32_value(line, "hit_points", line_number)?;
+					ent.hit_points = parse_i32_value(line, "hit_points", line_number)?;
+				} else if line.starts_with("enemy_kind") {
+					let value = parse_string_value(line, "enemy_kind", line_number)?;
+					match ent.kind.as_mut() {
+						Some(EntityKindSource::Enemy { enemy_kind, .. }) => {
+							*enemy_kind = value;
+						}
+						_ => {
+							return Err(format!("enemy_kind not allowed for this entity at line {}", line_number));
+						}
+					}
+				} else if line.starts_with("render_style") {
+					ent.render_style = parse_u8_value(line, "render_style", line_number)?;
+				} else if line.starts_with("width") {
+					ent.width = parse_f32_value(line, "width", line_number)?;
+				} else if line.starts_with("height") {
+					ent.height = parse_f32_value(line, "height", line_number)?;
+				} else if line.starts_with("speed") {
+					ent.speed = parse_i32_value(line, "speed", line_number)?;
+				} else if line.starts_with("strength") {
+					ent.strength = parse_i32_value(line, "strength", line_number)?;
+				} else if line.starts_with("luck") {
+					ent.luck = parse_i32_value(line, "luck", line_number)?;
 				} else {
 					return Err(format!("Error: unexpected line in entity body at {}: {}", line_number, line));
 				}
@@ -437,6 +441,18 @@ fn parse_i32_value(line: &str, expected_key: &str, line_number: usize) -> Result
 	return Ok(value);
 }
 
+fn parse_u8_value(line: &str, expected_key: &str, line_number: usize) -> Result<u8, String> {
+	let (key, value_str) = split_key_value(line)?;
+	if key != expected_key {
+		return Err(format!("expected key '{}' at line {}, got '{}'", expected_key, line_number, key));
+	}
+
+	let value = value_str
+		.parse::<u8>()
+		.map_err(|e| format!("invalid integer value '{}' at line {}: {}", value_str, line_number, e))?;
+	return Ok(value);
+}
+
 fn parse_string_value(line: &str, expected_key: &str, line_number: usize) -> Result<String, String> {
 	let (key, value_str) = split_key_value(line)?;
 	if key != expected_key {
@@ -474,4 +490,13 @@ fn parse_quoted(value_str: &str) -> Result<String, String> {
 	let inner = &s[1..s.len() - 1];
 	let result = inner.to_string();
 	return Ok(result);
+}
+
+#[allow(dead_code)]
+fn parse_enemy_kind(value: &str, line_number: usize) -> Result<u8, String> {
+	match value {
+		"slime" => Ok(1),
+		"imp" => Ok(2),
+		_ => Err(format!("invalid enemy_kind '{}' at line {}", value, line_number)),
+	}
 }

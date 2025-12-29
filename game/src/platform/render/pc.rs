@@ -6,7 +6,7 @@ use crate::{
 	platform::{RenderBackend, input::InputState, render::common::RenderCommon},
 	tile::TileKind,
 };
-use sdl2::{EventPump, event::Event, keyboard::Keycode, pixels::Color, rect::Rect, render::Canvas, video::Window};
+use sdl2::{EventPump, pixels::Color, rect::Rect, render::Canvas, video::Window};
 
 pub struct PcRenderer {
 	canvas: Canvas<Window>,
@@ -14,45 +14,66 @@ pub struct PcRenderer {
 	common: RenderCommon,
 }
 
-/*
-impl PcRenderer {
-	fn poll(&mut self) -> InputState {
-		let mut input: InputState = InputState::default();
+fn draw_filled_circle(canvas: &mut Canvas<Window>, cx: i32, cy: i32, radius: i32, color: Color) {
+	if radius <= 0 {
+		return;
+	}
 
-		for event in self.event_pump.poll_iter() {
-			match event {
-				Event::Quit { .. } => {
-					input.quit = true;
-				}
-				Event::KeyDown {
-					keycode: Some(Keycode::Left),
-					repeat: false,
-					..
-				} => {
-					input.left = true;
-				}
-				Event::KeyDown {
-					keycode: Some(Keycode::Right),
-					repeat: false,
-					..
-				} => {
-					input.right = true;
-				}
-				Event::KeyDown {
-					keycode: Some(Keycode::Space),
-					repeat: false,
-					..
-				} => {
-					input.jump = true;
-				}
-				_ => {}
-			}
-		}
+	canvas.set_draw_color(color);
 
-		return input;
+	let mut y: i32 = -radius;
+	while y <= radius {
+		let dx: i32 = ((radius * radius - y * y) as f32).sqrt() as i32;
+		let x1: i32 = cx - dx;
+		let x2: i32 = cx + dx;
+		let _ = canvas.draw_line(sdl2::rect::Point::new(x1, cy + y), sdl2::rect::Point::new(x2, cy + y));
+		y += 1;
 	}
 }
-	*/
+
+fn draw_filled_triangle(canvas: &mut Canvas<Window>, p0: (i32, i32), p1: (i32, i32), p2: (i32, i32), color: Color) {
+	canvas.set_draw_color(color);
+
+	// sort by y ascending
+	let mut a = p0;
+	let mut b = p1;
+	let mut c = p2;
+
+	if a.1 > b.1 {
+		std::mem::swap(&mut a, &mut b);
+	}
+	if b.1 > c.1 {
+		std::mem::swap(&mut b, &mut c);
+	}
+	if a.1 > b.1 {
+		std::mem::swap(&mut a, &mut b);
+	}
+
+	let (x0, y0) = a;
+	let (x1, y1) = b;
+	let (x2, y2) = c;
+
+	fn interp(xa: i32, ya: i32, xb: i32, yb: i32, y: i32) -> i32 {
+		if yb == ya {
+			return xa;
+		}
+		let t: f32 = (y - ya) as f32 / (yb - ya) as f32;
+		return (xa as f32 + (xb - xa) as f32 * t).round() as i32;
+	}
+
+	let mut y: i32 = y0;
+	while y <= y2 {
+		let xa: i32 = interp(x0, y0, x2, y2, y);
+		let xb: i32 = if y < y1 { interp(x0, y0, x1, y1, y) } else { interp(x1, y1, x2, y2, y) };
+
+		let x_left: i32 = xa.min(xb);
+		let x_right: i32 = xa.max(xb);
+
+		let _ = canvas.draw_line(sdl2::rect::Point::new(x_left, y), sdl2::rect::Point::new(x_right, y));
+
+		y += 1;
+	}
+}
 
 impl RenderBackend for PcRenderer {
 	fn screen_size(&self) -> (i32, i32) {
