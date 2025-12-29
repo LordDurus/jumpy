@@ -205,6 +205,17 @@ impl GameState {
 	pub fn remove_entity(&mut self, id: EntityId) {
 		self.positions.remove(&id);
 		self.velocities.remove(&id);
+		self.entity_kind.remove(&id);
+		self.render_style.remove(&id);
+		self.width.remove(&id);
+		self.height.remove(&id);
+		self.speed.remove(&id);
+		self.strength.remove(&id);
+		self.luck.remove(&id);
+
+		if self.player_id == Some(id) {
+			self.player_id = None;
+		}
 	}
 
 	pub fn spawn_level_entities(&mut self) {
@@ -229,5 +240,25 @@ impl GameState {
 		for (kind, pos, render_style, width, height, speed, strength, luck) in spawns {
 			self.add_entity(kind, pos, Vec2::zero(), render_style, width, height, speed, strength, luck);
 		}
+	}
+
+	#[inline(always)]
+	pub fn on_ground_safe(&self, id: EntityId) -> bool {
+		let Some(pos) = self.positions.get(&id) else {
+			return false;
+		};
+
+		let (half_w, half_h) = self.entity_half_extents(id);
+
+		let inset: f32 = 2.0; // > 0.5 so we’re not on the lip
+		let foot_y: f32 = pos.y + half_h + 0.5;
+
+		let left_x: f32 = pos.x - half_w + inset;
+		let right_x: f32 = pos.x + half_w - inset;
+
+		let left_ok: bool = self.level.is_solid_world_f32(left_x, foot_y);
+		let right_ok: bool = self.level.is_solid_world_f32(right_x, foot_y);
+
+		return left_ok && right_ok;
 	}
 }

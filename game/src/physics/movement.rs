@@ -43,7 +43,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 		} // <- pos/vel borrows end here
 
 		// now it's legal to query game_state immutably
-		if is_player && game_state.on_ground(id) {
+		if is_player && game_state.on_ground(id) && game_state.on_ground_safe(id) {
 			let Some(pos) = game_state.positions.get(&id) else {
 				continue;
 			};

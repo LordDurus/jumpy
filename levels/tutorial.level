@@ -72,8 +72,8 @@ entities
 {
     player_start "player"
 	{
-		x = 20
-		y = 20
+		x = 2
+		y = 2
 		gravity_multiplier = 1.00
 		jump_multiplier = 0.5
 		attack_power = 1
