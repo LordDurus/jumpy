@@ -29,14 +29,19 @@ pub struct LayerSource {
 
 #[derive(Debug)]
 pub struct EntitySource {
-	pub x: i32,
-	pub y: i32,
+	pub top: i32,
+	pub left: i32,
 	pub render_style: u8,
 	pub jump_multiplier: f32,
 	pub attack_power: i32,
 	pub hit_points: i32,
 	pub gravity_multiplier: f32,
 	pub kind: EntityKindSource,
+	pub width: f32, // if width is in tiles (like 0.25)
+	pub height: f32,
+	pub speed: u8,
+	pub strength: u8,
+	pub luck: u8,
 }
 
 #[derive(Debug)]
@@ -58,8 +63,8 @@ pub enum EntityKindSource {
 
 #[derive(Debug)]
 pub struct TriggerSource {
-	pub x: i32,
-	pub y: i32,
+	pub top: i32,
+	pub left: i32,
 	pub width: i32,
 	pub height: i32,
 	pub kind: TriggerKindSource,

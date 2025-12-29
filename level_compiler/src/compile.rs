@@ -77,8 +77,8 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 
 	let mut entities_runtime = Vec::with_capacity(source.entities.len());
 	for entity in &source.entities {
-		let x = entity.x as u16;
-		let y = entity.y as u16;
+		let top = entity.top as u16;
+		let left = entity.left as u16;
 		let gravity = gravity_multiplier_to_q4_4(entity.gravity_multiplier)?;
 		let jump = entity.jump_multiplier.round().clamp(0.0, 15.0) as u8;
 		let attack_power = u8::try_from(entity.attack_power).map_err(|_| format!("attack_power out of range: {}", entity.attack_power))?;
@@ -92,13 +92,13 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 				hit_points: hit_points,
 				jump_multiplier: jump,
 				attack_power: attack_power,
-				x,
-				y,
+				top,
+				left,
 				a: 0,
 				b: 0,
 				render_style: 0,
-				width: 1,
-				height: 1,
+				width: 16,
+				height: 16,
 				speed: 10,
 				luck: 5,
 				strength: 5,
@@ -116,37 +116,45 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 				hit_points: 0,
 				jump_multiplier: 0,
 				attack_power: 0,
-				x,
-				y,
+				top,
+				left,
 				a: *min as i16,
 				b: *max as i16,
-				width: if platform_kind == "horizontal" { clamp_u8(*size) } else { 1 },
-				height: if platform_kind == "vertical" { clamp_u8(*size) } else { 1 },
+				width: if platform_kind == "horizontal" { clamp_u8((*size as i32) * 16).max(1) } else { 16 },
+				height: if platform_kind == "vertical" { clamp_u8((*size as i32) * 16).max(1) } else { 16 },
 				speed: clamp_u8(*speed),
 				strength: resolve_platform_type(platform_kind)?,
 				luck: 0,
 			},
 			EntityKindSource::Enemy {
-				enemy_kind: _,
+				enemy_kind,
 				patrol_min,
 				patrol_max,
-			} => EntityRuntime {
-				kind: EntityKind::Enemy as u8,
-				render_style: entity.render_style,
-				gravity_multiplier: 0,
-				hit_points: 0,
-				jump_multiplier: 0,
-				attack_power: 0,
-				x,
-				y,
-				a: *patrol_min as i16,
-				b: *patrol_max as i16,
-				width: 16,
-				height: 16,
-				speed: 0,
-				strength: 0,
-				luck: 0,
-			},
+			} => {
+				let resolved_kind: u8 = match enemy_kind.as_str() {
+					"slime" => EntityKind::Slime as u8,
+					"imp" => EntityKind::Imp as u8,
+					_ => return Err(format!("unknown enemy kind '{}'", enemy_kind)),
+				};
+
+				EntityRuntime {
+					kind: resolved_kind,
+					render_style: entity.render_style,
+					gravity_multiplier: gravity,
+					hit_points,
+					jump_multiplier: jump,
+					attack_power,
+					top,
+					left,
+					a: *patrol_min as i16,
+					b: *patrol_max as i16,
+					width: clamp_u8((entity.width * 16.0).round() as i32).max(1),
+					height: clamp_u8((entity.height * 16.0).round() as i32).max(1),
+					speed: entity.speed,
+					strength: entity.strength,
+					luck: entity.luck,
+				}
+			}
 		};
 
 		entities_runtime.push(runtime);
@@ -154,8 +162,8 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 
 	let mut triggers_runtime = Vec::with_capacity(source.triggers.len());
 	for trigger in &source.triggers {
-		let x = trigger.x as u16;
-		let y = trigger.y as u16;
+		let top = trigger.top as u16;
+		let left = trigger.left as u16;
 		let width = trigger.width as u16;
 		let height = trigger.height as u16;
 
@@ -165,8 +173,8 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 				TriggerRuntime {
 					kind: TriggerKind::LevelExit as u8,
 					gravity_multiplier: 0,
-					x,
-					y,
+					left,
+					top,
 					width,
 					height,
 					p0: level_id,
@@ -178,8 +186,8 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 				TriggerRuntime {
 					kind: TriggerKind::Message as u8,
 					gravity_multiplier: 0,
-					x,
-					y,
+					left: left,
+					top: top,
 					width,
 					height,
 					p0: msg_id,

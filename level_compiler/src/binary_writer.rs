@@ -7,7 +7,8 @@ fn build_header_bytes(h: &FileHeader) -> Result<Vec<u8>, String> {
 }
 
 pub fn serialize_level(compiled: &CompiledLevel) -> Result<Vec<u8>, String> {
-	let header_size: usize = compiled.header.header_size as usize;
+	let hdr_probe = build_header_bytes(&compiled.header)?;
+	let header_size: usize = hdr_probe.len();
 
 	let mut buffer: Vec<u8> = Vec::new();
 	buffer.resize(header_size, 0);
@@ -28,8 +29,8 @@ pub fn serialize_level(compiled: &CompiledLevel) -> Result<Vec<u8>, String> {
 		write_u8(&mut buffer, entity.jump_multiplier)?;
 		write_u8(&mut buffer, entity.attack_power)?;
 		write_u16(&mut buffer, entity.hit_points)?;
-		write_u16(&mut buffer, entity.x)?;
-		write_u16(&mut buffer, entity.y)?;
+		write_u16(&mut buffer, entity.top)?;
+		write_u16(&mut buffer, entity.left)?;
 		write_i16(&mut buffer, entity.a)?;
 		write_i16(&mut buffer, entity.b)?;
 		write_u8(&mut buffer, entity.width)?;
@@ -43,8 +44,8 @@ pub fn serialize_level(compiled: &CompiledLevel) -> Result<Vec<u8>, String> {
 	for trigger in &compiled.triggers {
 		write_u8(&mut buffer, trigger.kind)?;
 		write_u8(&mut buffer, trigger.gravity_multiplier)?;
-		write_u16(&mut buffer, trigger.x)?;
-		write_u16(&mut buffer, trigger.y)?;
+		write_u16(&mut buffer, trigger.left)?;
+		write_u16(&mut buffer, trigger.top)?;
 		write_u16(&mut buffer, trigger.width)?;
 		write_u16(&mut buffer, trigger.height)?;
 		write_u16(&mut buffer, trigger.p0)?;

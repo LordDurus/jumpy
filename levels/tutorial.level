@@ -72,8 +72,8 @@ entities
 {
     player_start "player"
 	{
-		x = 2
-		y = 2
+		top = 3
+		left = 2
 		gravity_multiplier = 1.00
 		jump_multiplier = 0.5
 		attack_power = 1
@@ -88,8 +88,8 @@ entities
 
 	enemy "slime"
 	{
-		x = 20
-		y = 13
+		top = 3
+		left = 10
 		patrol_min = 18
 		patrol_max = 24
 		gravity_multiplier = 1.00
@@ -106,8 +106,8 @@ entities
 	
 	enemy "imp"
 	{
-		x = 20
-		y = 13
+		top = 3
+		left = 5
 		patrol_min = 18
 		patrol_max = 24
 		gravity_multiplier = 1.00
@@ -124,8 +124,8 @@ entities
 
 	platform "horizontal"
 	{
-		x = 10
-		y = 12
+		top = 10
+		left = 15
 		width = 4
 		height = 1
 		speed = 1
@@ -140,8 +140,8 @@ triggers
 {
     trigger "level_exit"
     {
-        x = 60
-        y = 13
+        top = 60
+        left = 13
         width = 2
         height = 2
         target = "level_02"
@@ -149,8 +149,8 @@ triggers
 
     trigger "message"
     {
-        x = 5
-        y = 11
+        top = 5
+        left = 11
         width = 1
         height = 1
         text_id = "tutorial_press_jump"

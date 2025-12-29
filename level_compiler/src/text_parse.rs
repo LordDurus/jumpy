@@ -157,12 +157,10 @@ pub fn load_level_from_str(text: &str) -> Result<LevelSource, String> {
 				}
 			}
 			Section::EntityBody => {
-				if line.starts_with("x") {
-					let x = parse_i32_value(line, "x", line_number)?;
-					ent.x = x;
-				} else if line.starts_with("y") {
-					let y = parse_i32_value(line, "y", line_number)?;
-					ent.y = y;
+				if line.starts_with("top") {
+					ent.top = parse_i32_value(line, "top", line_number)?;
+				} else if line.starts_with("left") {
+					ent.left = parse_i32_value(line, "left", line_number)?;
 				} else if line.starts_with("patrol_min") {
 					let value = parse_i32_value(line, "patrol_min", line_number)?;
 					match ent.kind.as_mut() {
@@ -268,10 +266,10 @@ pub fn load_level_from_str(text: &str) -> Result<LevelSource, String> {
 				}
 			}
 			Section::TriggerBody => {
-				if line.starts_with("x") {
-					trigger.x = parse_i32_value(line, "x", line_number)?;
-				} else if line.starts_with("y") {
-					trigger.y = parse_i32_value(line, "y", line_number)?;
+				if line.starts_with("top") {
+					trigger.top = parse_i32_value(line, "top", line_number)?;
+				} else if line.starts_with("left") {
+					trigger.left = parse_i32_value(line, "left", line_number)?;
 				} else if line.starts_with("width") {
 					trigger.width = parse_i32_value(line, "width", line_number)?;
 				} else if line.starts_with("height") {

@@ -13,8 +13,8 @@ pub struct Level {
 	pub floor_y: f32,
 	pub layer_count: u8,
 	pub tiles_per_layer: usize,
-	pub player_spawn_x: f32,
-	pub player_spawn_y: f32,
+	pub player_spawn_top: f32,
+	pub player_spawn_left: f32,
 	pub entities: Vec<LevelEntity>,
 	pub triggers: Vec<LevelTrigger>,
 }
@@ -186,8 +186,8 @@ impl Level {
 				jump_multiplier: read_u8(&bytes, &mut ent_off)?,
 				attack_power: read_u8(&bytes, &mut ent_off)?,
 				hit_points: read_u16(&bytes, &mut ent_off)?,
-				x: read_u16(&bytes, &mut ent_off)?,
-				y: read_u16(&bytes, &mut ent_off)?,
+				top: read_u16(&bytes, &mut ent_off)?,
+				left: read_u16(&bytes, &mut ent_off)?,
 				a: read_i16(&bytes, &mut ent_off)?,
 				b: read_i16(&bytes, &mut ent_off)?,
 				width: read_u8(&bytes, &mut ent_off)?,
@@ -198,15 +198,23 @@ impl Level {
 			});
 		}
 
-		let mut player_spawn_x: f32 = 0.0;
-		let mut player_spawn_y: f32 = 0.0;
+		println!("-- entities loaded --");
+		for (i, e) in entities.iter().enumerate() {
+			println!(
+				"{}: kind={} style={} top={} left={} a={} b={} width={} height={} speed={} strength={} luck={} hit_points={}",
+				i, e.kind, e.render_style, e.top, e.left, e.a, e.b, e.width, e.height, e.speed, e.strength, e.luck, e.hit_points
+			);
+		}
+
+		let mut player_spawn_top: f32 = 0.0;
+		let mut player_spawn_left: f32 = 0.0;
 		let mut found_spawn: bool = false;
 
 		for e in &entities {
 			// PlayerStart = 0 (matches your compiler runtime enum)
 			if e.kind == 0 {
-				player_spawn_x = (e.x as f32 + 0.5) * tile_width as f32;
-				player_spawn_y = (e.y as f32 + 0.5) * tile_height as f32;
+				player_spawn_top = (e.top as f32 + 0.5) * tile_width as f32;
+				player_spawn_left = (e.left as f32 + 0.5) * tile_height as f32;
 				found_spawn = true;
 				break;
 			}
@@ -260,8 +268,8 @@ impl Level {
 			floor_y: 0.0,
 			layer_count: layer_count as u8,
 			tiles_per_layer: tiles_per_layer,
-			player_spawn_x: player_spawn_x,
-			player_spawn_y: player_spawn_y,
+			player_spawn_top,
+			player_spawn_left,
 			entities: entities,
 			triggers: triggers,
 		};
@@ -342,8 +350,8 @@ pub struct LevelEntity {
 	pub jump_multiplier: u8,
 	pub attack_power: u8,
 	pub hit_points: u16,
-	pub x: u16,
-	pub y: u16,
+	pub top: u16,
+	pub left: u16,
 	pub a: i16,
 	pub b: i16,
 	pub width: u8,

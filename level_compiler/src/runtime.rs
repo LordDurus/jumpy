@@ -47,8 +47,8 @@ pub struct EntityRuntime {
 	pub jump_multiplier: u8,
 	pub attack_power: u8,
 	pub hit_points: u16,
-	pub x: u16,
-	pub y: u16,
+	pub top: u16,
+	pub left: u16,
 	pub a: i16,
 	pub b: i16,
 	pub width: u8,
@@ -71,8 +71,8 @@ impl EntityRuntime {
 pub struct TriggerRuntime {
 	pub kind: u8,
 	pub gravity_multiplier: u8,
-	pub x: u16,
-	pub y: u16,
+	pub left: u16,
+	pub top: u16,
 	pub width: u16,
 	pub height: u16,
 	pub p0: u16,
@@ -94,8 +94,10 @@ pub struct CompiledLevel {
 
 pub enum EntityKind {
 	PlayerStart = 0,
-	Enemy = 1,
-	MovingPlatform = 3,
+	Player = 1, // optional, but useful
+	Slime = 2,
+	Imp = 3,
+	MovingPlatform = 4,
 }
 
 #[repr(u8)]

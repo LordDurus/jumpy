@@ -1,4 +1,3 @@
-mod enemy_kind;
 mod engine_math;
 mod game;
 mod physics;
@@ -34,7 +33,7 @@ fn main() {
 		return;
 	}
 
-	println!("player_id = {}", player_id);
+	state.spawn_level_entities();
 
 	let mut renderer = ActiveRenderer::new();
 

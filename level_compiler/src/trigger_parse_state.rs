@@ -2,8 +2,8 @@ use crate::source::*;
 
 pub struct TriggerParseState {
 	pub kind: Option<TriggerKindSource>,
-	pub x: i32,
-	pub y: i32,
+	pub top: i32,
+	pub left: i32,
 	pub width: i32,
 	pub height: i32,
 }
@@ -12,8 +12,8 @@ impl TriggerParseState {
 	pub fn new() -> TriggerParseState {
 		return TriggerParseState {
 			kind: None,
-			x: 0,
-			y: 0,
+			top: 0,
+			left: 0,
 			width: 1,
 			height: 1,
 		};
@@ -21,8 +21,8 @@ impl TriggerParseState {
 
 	pub fn clear(&mut self) {
 		self.kind = None;
-		self.x = 0;
-		self.y = 0;
+		self.top = 0;
+		self.left = 0;
 		self.width = 1;
 		self.height = 1;
 	}
@@ -36,8 +36,8 @@ impl TriggerParseState {
 		};
 
 		let t = TriggerSource {
-			x: self.x,
-			y: self.y,
+			top: self.top,
+			left: self.left,
 			width: self.width,
 			height: self.height,
 			kind,

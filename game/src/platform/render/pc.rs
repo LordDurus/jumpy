@@ -14,64 +14,61 @@ pub struct PcRenderer {
 	common: RenderCommon,
 }
 
-fn draw_filled_circle(canvas: &mut Canvas<Window>, cx: i32, cy: i32, radius: i32, color: Color) {
-	if radius <= 0 {
+impl PcRenderer {
+	fn draw_filled_rect(&mut self, x: i32, y: i32, w: u32, h: u32, color: Color) {
+		self.canvas.set_draw_color(color);
+		let rect = Rect::new(x, y, w, h);
+		let _ = self.canvas.fill_rect(rect);
 		return;
 	}
 
-	canvas.set_draw_color(color);
+	fn draw_filled_circle(&mut self, cx: i32, cy: i32, r: i32, color: Color) {
+		self.canvas.set_draw_color(color);
 
-	let mut y: i32 = -radius;
-	while y <= radius {
-		let dx: i32 = ((radius * radius - y * y) as f32).sqrt() as i32;
-		let x1: i32 = cx - dx;
-		let x2: i32 = cx + dx;
-		let _ = canvas.draw_line(sdl2::rect::Point::new(x1, cy + y), sdl2::rect::Point::new(x2, cy + y));
-		y += 1;
-	}
-}
+		let mut y: i32 = -r;
+		while y <= r {
+			let yy: i32 = y * y;
+			let rr: i32 = r * r;
+			let dx: f32 = ((rr - yy) as f32).sqrt();
+			let x0: i32 = cx - dx.round() as i32;
+			let x1: i32 = cx + dx.round() as i32;
 
-fn draw_filled_triangle(canvas: &mut Canvas<Window>, p0: (i32, i32), p1: (i32, i32), p2: (i32, i32), color: Color) {
-	canvas.set_draw_color(color);
-
-	// sort by y ascending
-	let mut a = p0;
-	let mut b = p1;
-	let mut c = p2;
-
-	if a.1 > b.1 {
-		std::mem::swap(&mut a, &mut b);
-	}
-	if b.1 > c.1 {
-		std::mem::swap(&mut b, &mut c);
-	}
-	if a.1 > b.1 {
-		std::mem::swap(&mut a, &mut b);
-	}
-
-	let (x0, y0) = a;
-	let (x1, y1) = b;
-	let (x2, y2) = c;
-
-	fn interp(xa: i32, ya: i32, xb: i32, yb: i32, y: i32) -> i32 {
-		if yb == ya {
-			return xa;
+			let _ = self.canvas.draw_line((x0, cy + y), (x1, cy + y));
+			y += 1;
 		}
-		let t: f32 = (y - ya) as f32 / (yb - ya) as f32;
-		return (xa as f32 + (xb - xa) as f32 * t).round() as i32;
+
+		return;
 	}
 
-	let mut y: i32 = y0;
-	while y <= y2 {
-		let xa: i32 = interp(x0, y0, x2, y2, y);
-		let xb: i32 = if y < y1 { interp(x0, y0, x1, y1, y) } else { interp(x1, y1, x2, y2, y) };
+	fn draw_filled_triangle(&mut self, x: i32, y: i32, w: u32, h: u32, color: Color) {
+		self.canvas.set_draw_color(color);
 
-		let x_left: i32 = xa.min(xb);
-		let x_right: i32 = xa.max(xb);
+		let ww: i32 = w as i32;
+		let hh: i32 = h as i32;
 
-		let _ = canvas.draw_line(sdl2::rect::Point::new(x_left, y), sdl2::rect::Point::new(x_right, y));
+		let apex_x: i32 = x + ww / 2;
+		let apex_y: i32 = y;
 
-		y += 1;
+		let base_y: i32 = y + hh;
+		let left_x: i32 = x;
+		let right_x: i32 = x + ww;
+
+		let mut row: i32 = 0;
+		while row <= hh {
+			let t: f32 = row as f32 / hh.max(1) as f32;
+
+			// interpolate half-width from 0 at apex to ww/2 at base
+			let half: i32 = ((ww as f32 * 0.5) * t).round() as i32;
+
+			let y_row: i32 = apex_y + row;
+			let x0: i32 = apex_x - half;
+			let x1: i32 = apex_x + half;
+
+			let _ = self.canvas.draw_line((x0, y_row), (x1, y_row));
+			row += 1;
+		}
+
+		return;
 	}
 }
 
@@ -155,7 +152,6 @@ impl RenderBackend for PcRenderer {
 					TileKind::Empty => {}
 				}
 
-				// world -> screen pixels
 				let world_x: i32 = tx * tile_w_world;
 				let world_y: i32 = ty * tile_h_world;
 
@@ -167,23 +163,49 @@ impl RenderBackend for PcRenderer {
 			}
 		}
 
-		// entities (same rule: (world - cam) * scale)
-		self.canvas.set_draw_color(Color::RGB(255, 255, 255));
+		// entities (single pass: kind -> color, render_style -> shape)
 		for (id, pos) in world.positions.iter() {
-			let (half_w, half_h) = world.entity_half_extents(*id);
+			let kind: u8 = *world.entity_kind.get(id).unwrap_or(&0);
+			let style: u8 = *world.render_style.get(id).unwrap_or(&0);
 
-			let world_left: f32 = pos.x - half_w;
-			let world_top: f32 = pos.y - half_h;
+			let (half_width, half_height) = world.entity_half_extents(*id);
 
-			let sx: i32 = (((world_left as i32 - cam_x_world) as f32) * scale).round() as i32;
-			let sy: i32 = (((world_top as i32 - cam_y_world) as f32) * scale).round() as i32;
+			let world_left: f32 = pos.x - half_width;
+			let world_top: f32 = pos.y - half_height;
 
-			let w: u32 = ((half_w * 2.0) * scale).round() as u32;
-			let h: u32 = ((half_h * 2.0) * scale).round() as u32;
+			let scale_top: i32 = ((world_top - cam_y_world as f32) * scale).round() as i32;
+			let scale_left: i32 = ((world_left - cam_x_world as f32) * scale).round() as i32;
 
-			let rect = Rect::new(sx, sy, w, h);
-			let _ = self.canvas.fill_rect(rect);
+			let width: u32 = ((half_width * 2.0) * scale).round() as u32;
+			let height: u32 = ((half_height * 2.0) * scale).round() as u32;
+
+			let color: Color = match kind {
+				1 => Color::RGB(255, 255, 255), // player (white)
+				2 => Color::RGB(64, 160, 255),  // slime (blue)
+				3 => Color::RGB(64, 200, 64),   // imp (green)
+				4 => Color::RGB(255, 255, 0),   // platform (yellow)
+				_ => Color::RGB(255, 0, 255),   // debug
+			};
+
+			// println!("draw entity id={} kind={} style={} color={:?}", id, kind, style, color);
+
+			match style {
+				1 => {
+					let cx: i32 = scale_left + (width as i32 / 2);
+					let cy: i32 = scale_top + (height as i32 / 2);
+					let r: i32 = (width.min(height) as i32) / 2;
+					self.draw_filled_circle(cx, cy, r, color);
+				}
+				2 => {
+					self.draw_filled_triangle(scale_left, scale_top, width, height, color);
+				}
+				_ => {
+					self.draw_filled_rect(scale_left, scale_top, width, height, color);
+				}
+			}
 		}
+
+		return;
 	}
 
 	fn commit(&mut self) {

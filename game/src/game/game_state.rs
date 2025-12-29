@@ -1,4 +1,4 @@
-use crate::{enemy_kind::EnemyKind, engine_math::Vec2, game::level::Level};
+use crate::{engine_math::Vec2, game::level::Level};
 use std::collections::HashMap;
 
 pub type EntityId = u32;
@@ -20,13 +20,14 @@ pub struct GameState {
 	pub speed: HashMap<EntityId, u8>,
 	pub strength: HashMap<EntityId, u8>,
 	pub luck: HashMap<EntityId, u8>,
+	pub gravity_multiplier: HashMap<EntityId, u8>,
 	next_entity_id: EntityId,
 }
 
 impl GameState {
 	pub fn new(current_level: Level) -> GameState {
-		let spawn_x = current_level.player_spawn_x;
-		let spawn_y = current_level.player_spawn_y;
+		let spawn_top = current_level.player_spawn_top;
+		let spawn_left = current_level.player_spawn_left;
 
 		let mut state = GameState {
 			level: current_level,
@@ -45,10 +46,10 @@ impl GameState {
 			speed: HashMap::new(),
 			strength: HashMap::new(),
 			luck: HashMap::new(),
+			gravity_multiplier: HashMap::new(),
 		};
 
-		state.set_spawn_point(spawn_x, spawn_y);
-		println!("spawn_x = {} | spawn_y = {}", spawn_x, spawn_y);
+		state.set_spawn_point(spawn_top, spawn_left);
 		state.spawn_player();
 
 		return state;
@@ -68,18 +69,7 @@ impl GameState {
 			return self.get_player_id();
 		}
 
-		let id: EntityId = self.add_entity(
-			1, // kind (player)
-			self.spawn_point,
-			Vec2::zero(),
-			0, // render_style
-			1,
-			1, // width, height
-			0,
-			0,
-			0, // speed, strength, luck
-		);
-
+		let id: EntityId = self.add_entity(1, self.spawn_point, Vec2::zero(), 0, 1, 16, 16, 0, 0, 0);
 		self.set_player(id);
 		self.last_grounded_pos = Some(self.spawn_point);
 		return id;
@@ -179,20 +169,42 @@ impl GameState {
 		return hit;
 	}
 
-	pub fn entity_half_extents(&self, _entity_id: EntityId) -> (f32, f32) {
-		// TEMPORARY: default player/block size
-		return (8.0, 8.0);
+	pub fn entity_half_extents(&self, entity_id: EntityId) -> (f32, f32) {
+		let width_sub: u8 = *self.width.get(&entity_id).unwrap_or(&16); // default 1 tile
+		let height_sub: u8 = *self.height.get(&entity_id).unwrap_or(&16); // default 1 tile
+
+		let tile_width: f32 = self.level.tile_width as f32;
+		let tile_height: f32 = self.level.tile_height as f32;
+
+		let width_tiles: f32 = (width_sub as f32) / 16.0;
+		let height_tiles: f32 = (height_sub as f32) / 16.0;
+
+		let half_width: f32 = (width_tiles * tile_width) * 0.5;
+		let half_height: f32 = (height_tiles * tile_height) * 0.5;
+
+		return (half_width, half_height);
 	}
 
-	pub fn add_entity(&mut self, kind: u8, position: Vec2, velocity: Vec2, render_style: u8, width: u8, height: u8, speed: u8, strength: u8, luck: u8) -> EntityId {
+	pub fn add_entity(
+		&mut self,
+		kind: u8,
+		position: Vec2,
+		velocity: Vec2,
+		render_style: u8,
+		gravity_multiplier: u8,
+		width: u8,
+		height: u8,
+		speed: u8,
+		strength: u8,
+		luck: u8,
+	) -> EntityId {
 		let id: EntityId = self.next_entity_id;
 		self.next_entity_id += 1;
-
 		self.positions.insert(id, position);
 		self.velocities.insert(id, velocity);
-
 		self.entity_kind.insert(id, kind);
 		self.render_style.insert(id, render_style);
+		self.gravity_multiplier.insert(id, gravity_multiplier);
 		self.width.insert(id, width);
 		self.height.insert(id, height);
 		self.speed.insert(id, speed);
@@ -212,6 +224,7 @@ impl GameState {
 		self.speed.remove(&id);
 		self.strength.remove(&id);
 		self.luck.remove(&id);
+		self.gravity_multiplier.remove(&id);
 
 		if self.player_id == Some(id) {
 			self.player_id = None;
@@ -219,26 +232,26 @@ impl GameState {
 	}
 
 	pub fn spawn_level_entities(&mut self) {
-		let tile_w: f32 = self.level.tile_width as f32;
-		let tile_h: f32 = self.level.tile_height as f32;
+		let tile_width: f32 = self.level.tile_width as f32;
+		let tile_height: f32 = self.level.tile_height as f32;
 
 		// collect first to avoid borrow issues (immutable borrow of self.level.entities vs &mut self for add_entity)
-		let spawns: Vec<(u8, Vec2, u8, u8, u8, u8, u8, u8)> = self
+		let spawns: Vec<(u8, Vec2, u8, u8, u8, u8, u8, u8, u8)> = self
 			.level
 			.entities
 			.iter()
-			.filter(|e| e.kind != 0) // 0 = PlayerStart
+			.filter(|e| e.kind != 0)
 			.map(|e| {
-				let x: f32 = (e.x as f32 + 0.5) * tile_w;
-				let y: f32 = (e.y as f32 + 0.5) * tile_h;
-				let pos: Vec2 = Vec2::new(x, y);
+				let top: f32 = (e.top as f32 + 0.5) * tile_width;
+				let left: f32 = (e.left as f32 + 0.5) * tile_height;
+				let pos: Vec2 = Vec2::new(top, left);
 
-				return (e.kind, pos, e.render_style, e.width, e.height, e.speed, e.strength, e.luck);
+				return (e.kind, pos, e.render_style, e.gravity_multiplier, e.width, e.height, e.speed, e.strength, e.luck);
 			})
 			.collect();
 
-		for (kind, pos, render_style, width, height, speed, strength, luck) in spawns {
-			self.add_entity(kind, pos, Vec2::zero(), render_style, width, height, speed, strength, luck);
+		for (kind, pos, render_style, grav, width, height, speed, strength, luck) in spawns {
+			self.add_entity(kind, pos, Vec2::zero(), render_style, grav, width, height, speed, strength, luck);
 		}
 	}
 
