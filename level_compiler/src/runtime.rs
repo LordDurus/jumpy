@@ -1,5 +1,3 @@
-// runtime.rs
-
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct FileHeader {
@@ -18,8 +16,11 @@ pub struct FileHeader {
 
 	pub gravity_fixed: i16, // Q7.8
 	pub background_id: u8,
-	pub gravity_multiplier: u8,
-	pub reserved1: u16,
+	pub gravity: u8,
+
+	pub collision_layer: u8,
+	pub render_layer: u8,
+
 	pub tiles_per_layer: u32,
 	pub tile_count_total: u32,
 
@@ -92,6 +93,7 @@ pub struct CompiledLevel {
 	pub tiles: Vec<u8>, // TileId = u8
 }
 
+#[allow(dead_code)]
 pub enum EntityKind {
 	PlayerStart = 0,
 	Player = 1, // optional, but useful

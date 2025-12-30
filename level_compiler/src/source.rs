@@ -15,7 +15,9 @@ pub struct LevelHeader {
 	pub height: u32,
 	pub tile_width: u32,
 	pub tile_height: u32,
-	pub gravity_multiplier: f32,
+	pub gravity: f32,
+	pub collision_layer: u32,
+	pub render_layer: u32,
 	pub background: String,
 }
 

@@ -64,7 +64,7 @@ fn main() {
 		physics::movement::move_and_collide(&mut state);
 
 		renderer.begin_frame();
-		renderer.draw_world(&state);
+		renderer.draw_level(&state);
 		renderer.commit();
 	}
 }

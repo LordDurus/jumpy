@@ -9,6 +9,8 @@ header
 	tile_height = 16
     gravity = 1.0
     background = "sky_blue"
+	collision_layer = 1
+	render_layer = 1
 }
 
 layers
@@ -72,7 +74,7 @@ entities
 {
     player_start "player"
 	{
-		top = 3
+		top = 2
 		left = 2
 		gravity_multiplier = 1.00
 		jump_multiplier = 0.5
@@ -88,8 +90,8 @@ entities
 
 	enemy "slime"
 	{
-		top = 3
-		left = 10
+		top = 2
+		left = 3
 		patrol_min = 18
 		patrol_max = 24
 		gravity_multiplier = 1.00

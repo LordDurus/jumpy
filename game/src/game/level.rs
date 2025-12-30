@@ -15,6 +15,8 @@ pub struct Level {
 	pub tiles_per_layer: usize,
 	pub player_spawn_top: f32,
 	pub player_spawn_left: f32,
+	pub collision_layer: u8,
+	pub render_layer: u8,
 	pub entities: Vec<LevelEntity>,
 	pub triggers: Vec<LevelTrigger>,
 }
@@ -50,10 +52,7 @@ impl Level {
 	}
 
 	pub fn collision_layer_index(&self) -> u8 {
-		if self.layer_count == 0 {
-			return 0;
-		}
-		return self.layer_count - 1;
+		return self.collision_layer;
 	}
 
 	pub fn tile_at_layer(&self, layer: u32, tx: i32, ty: i32) -> TileKind {
@@ -112,8 +111,10 @@ impl Level {
 
 		let _gravity_fixed = read_i16(&bytes, &mut offset)?;
 		let _background_id = read_u8(&bytes, &mut offset)?;
-		let _gravity_multiplier = read_u8(&bytes, &mut offset)?;
-		let _reserved1 = read_u16(&bytes, &mut offset)?;
+		let _gravity = read_u8(&bytes, &mut offset)?;
+
+		let collision_layer = read_u8(&bytes, &mut offset)?;
+		let render_layer = read_u8(&bytes, &mut offset)?;
 
 		let tiles_per_layer = read_u32(&bytes, &mut offset)? as usize;
 		let tile_count_total = read_u32(&bytes, &mut offset)? as usize;
@@ -201,7 +202,7 @@ impl Level {
 		println!("-- entities loaded --");
 		for (i, e) in entities.iter().enumerate() {
 			println!(
-				"{}: kind={} style={} top={} left={} a={} b={} width={} height={} speed={} strength={} luck={} hit_points={}",
+				" {}: kind={} style={} top={} left={} a={} b={} width={} height={} speed={} strength={} luck={} hit_points={}",
 				i, e.kind, e.render_style, e.top, e.left, e.a, e.b, e.width, e.height, e.speed, e.strength, e.luck, e.hit_points
 			);
 		}
@@ -272,6 +273,8 @@ impl Level {
 			player_spawn_left,
 			entities: entities,
 			triggers: triggers,
+			collision_layer: collision_layer,
+			render_layer: render_layer,
 		};
 
 		level.floor_y = level.compute_floor_y();

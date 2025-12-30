@@ -209,7 +209,7 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 	);
 
 	let background_id = resolve_background_id(&source.header.background)?;
-	let gravity_fixed = gravity_to_fixed(source.header.gravity_multiplier);
+	let gravity_fixed = gravity_to_fixed(source.header.gravity);
 
 	let header = FileHeader {
 		magic: *b"JLVL",
@@ -224,8 +224,9 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 		trigger_count: triggers_runtime.len() as u16,
 		gravity_fixed,
 		background_id,
-		gravity_multiplier: source.header.gravity_multiplier as u8,
-		reserved1: 0,
+		gravity: source.header.gravity as u8,
+		collision_layer: 1,
+		render_layer: 1,
 		tiles_per_layer,
 		tile_count_total,
 		offset_layers: 0,

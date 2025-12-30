@@ -332,7 +332,9 @@ fn parse_header_line(line: &str, existing: Option<LevelHeader>) -> Result<LevelH
 			height: 0,
 			tile_height: 0,
 			tile_width: 0,
-			gravity_multiplier: 0.0,
+			gravity: 0.0,
+			collision_layer: 1,
+			render_layer: 1,
 			background: String::new(),
 		},
 	};
@@ -362,7 +364,15 @@ fn parse_header_line(line: &str, existing: Option<LevelHeader>) -> Result<LevelH
 			header.tile_height = value_str.parse::<u32>().map_err(|e| format!("invalid tile_height value '{}': {}", value_str, e))?;
 		}
 		"gravity" => {
-			header.gravity_multiplier = value_str.parse::<f32>().map_err(|e| format!("invalid gravity value '{}': {}", value_str, e))?;
+			header.gravity = value_str.parse::<f32>().map_err(|e| format!("invalid gravity value '{}': {}", value_str, e))?;
+		}
+		"collision_layer" => {
+			header.collision_layer = value_str
+				.parse::<u32>()
+				.map_err(|e| format!("invalid collision_layer value '{}': {}", value_str, e))?;
+		}
+		"render_layer" => {
+			header.render_layer = value_str.parse::<u32>().map_err(|e| format!("invalid render_layer value '{}': {}", value_str, e))?;
 		}
 		"background" => {
 			header.background = parse_quoted(value_str)?;

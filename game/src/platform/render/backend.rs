@@ -13,7 +13,7 @@ pub trait RenderBackend {
 	fn begin_frame(&mut self);
 
 	// top-level: stays 1-parameter
-	fn draw_world(&mut self, world: &GameState);
+	fn draw_level(&mut self, world: &GameState);
 
 	fn commit(&mut self);
 
