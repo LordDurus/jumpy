@@ -242,8 +242,8 @@ impl GameState {
 			.iter()
 			.filter(|e| e.kind != 0)
 			.map(|e| {
-				let top: f32 = (e.top as f32 + 0.5) * tile_width;
-				let left: f32 = (e.left as f32 + 0.5) * tile_height;
+				let left: f32 = (e.top as f32 + 0.5) * tile_width;
+				let top: f32 = (e.left as f32 + 0.5) * tile_height;
 				let pos: Vec2 = Vec2::new(top, left);
 
 				return (e.kind, pos, e.render_style, e.gravity_multiplier, e.width, e.height, e.speed, e.strength, e.luck);

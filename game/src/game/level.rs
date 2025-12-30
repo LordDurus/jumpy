@@ -214,8 +214,8 @@ impl Level {
 		for e in &entities {
 			// PlayerStart = 0 (matches your compiler runtime enum)
 			if e.kind == 0 {
-				player_spawn_top = (e.top as f32 + 0.5) * tile_width as f32;
-				player_spawn_left = (e.left as f32 + 0.5) * tile_height as f32;
+				player_spawn_left = (e.left as f32 + 0.5) * tile_width as f32;
+				player_spawn_top = (e.top as f32 + 0.5) * tile_height as f32;
 				found_spawn = true;
 				break;
 			}
