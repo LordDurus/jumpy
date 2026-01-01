@@ -1,7 +1,23 @@
-use crate::{engine_math::Vec2, game::level::Level};
+use crate::{ecs::component_store::ComponentStore, engine_math::Vec2, game::level::Level, physics::collision};
 use std::collections::HashMap;
 
 pub type EntityId = u32;
+
+#[repr(u8)]
+#[allow(dead_code)]
+pub enum EntityKind {
+	Player = 1,
+	Slime = 2,
+	Imp = 3,
+	MovingPlatform = 4,
+}
+
+impl EntityKind {
+	#[inline(always)]
+	pub fn is_enemy(kind: u8) -> bool {
+		kind == EntityKind::Slime as u8 || kind == EntityKind::Imp as u8
+	}
+}
 
 /// Represents the game world, containing entities and their properties (runtime state).
 pub struct GameState {
@@ -21,6 +37,12 @@ pub struct GameState {
 	pub strength: HashMap<EntityId, u8>,
 	pub luck: HashMap<EntityId, u8>,
 	pub gravity_multiplier: HashMap<EntityId, u8>,
+
+	pub range_min: ComponentStore<f32>,
+	pub range_max: ComponentStore<f32>,
+
+	pub enemy_ids: Vec<EntityId>,
+
 	next_entity_id: EntityId,
 }
 
@@ -46,36 +68,43 @@ impl GameState {
 			speed: HashMap::new(),
 			strength: HashMap::new(),
 			luck: HashMap::new(),
+			range_max: ComponentStore::new(),
+			range_min: ComponentStore::new(),
 			gravity_multiplier: HashMap::new(),
+			enemy_ids: Vec::new(),
 		};
 
 		state.set_spawn_point(spawn_top, spawn_left);
-		state.spawn_player();
+		// state.spawn_player();
 
 		return state;
 	}
 
-	pub fn set_spawn_point(&mut self, x: f32, y: f32) {
-		self.spawn_point.x = x;
-		self.spawn_point.y = y;
-		return;
+	pub fn set_spawn_point(&mut self, top: f32, left: f32) {
+		self.spawn_point.x = left;
+		self.spawn_point.y = top;
 	}
 
-	// Create the player
-	pub fn spawn_player(&mut self) -> EntityId {
-		// if you already have a player, don't create another
-		if self.player_id.is_some() {
-			self.respawn_player();
-			return self.get_player_id();
+	/*
+		// Create the player
+		pub fn spawn_player(&mut self) -> EntityId {
+			// if you already have a player, don't create another
+			if self.player_id.is_some() {
+				self.respawn_player();
+				return self.get_player_id();
+			}
+
+			let id: EntityId = self.add_entity(1, self.spawn_point, Vec2::zero(), 0, 1, 16, 16, 0, 0, 0, 0.0, 0.0);
+			self.set_player(id);
+			let mut pos = self.spawn_point;
+			let _ = collision::scan_down_to_ground(&self.level, &mut pos, 8.0, 8.0, 64);
+			self.last_grounded_pos = Some(self.spawn_point);
+			return id;
 		}
-
-		let id: EntityId = self.add_entity(1, self.spawn_point, Vec2::zero(), 0, 1, 16, 16, 0, 0, 0);
-		self.set_player(id);
-		self.last_grounded_pos = Some(self.spawn_point);
-		return id;
-	}
+	*/
 
 	pub fn respawn_player(&mut self) {
+		// TODO: Add wait here (.25 seconds)
 		let player_id: EntityId = self.get_player_id();
 
 		let spawn_pos: Vec2 = match self.last_grounded_pos {
@@ -83,8 +112,7 @@ impl GameState {
 			None => self.spawn_point, // level default
 		};
 
-		let (_half_width, half_height) = self.entity_half_extents(player_id);
-
+		let (_half_width, half_height) = self.get_entity_half_values(player_id);
 		let spawn_pos: Vec2 = spawn_pos + Vec2::new(0.0, -half_height - 0.1);
 
 		if let Some(pos) = self.positions.get_mut(&player_id) {
@@ -118,13 +146,13 @@ impl GameState {
 			return false;
 		};
 
-		let (half_w, half_h) = self.entity_half_extents(id);
+		let (half_width, half_height) = self.get_entity_half_values(id);
 
 		let inset: f32 = 0.5;
 
-		let foot_y: f32 = pos.y + half_h + inset;
-		let left_x: f32 = pos.x - half_w + inset;
-		let right_x: f32 = pos.x + half_w - inset;
+		let foot_y: f32 = pos.y + half_height + inset;
+		let left_x: f32 = pos.x - half_width + inset;
+		let right_x: f32 = pos.x + half_width - inset;
 
 		let grounded: bool = self.level.is_solid_world_f32(left_x, foot_y) || self.level.is_solid_world_f32(right_x, foot_y);
 
@@ -136,7 +164,7 @@ impl GameState {
 			return false;
 		};
 
-		let (half_w, half_h) = self.entity_half_extents(id);
+		let (half_w, half_h) = self.get_entity_half_values(id);
 
 		let inset: f32 = 0.5;
 		let probe_x: f32 = pos.x - half_w - inset;
@@ -155,7 +183,7 @@ impl GameState {
 			return false;
 		};
 
-		let (half_w, half_h) = self.entity_half_extents(id);
+		let (half_w, half_h) = self.get_entity_half_values(id);
 
 		let inset: f32 = 0.5;
 		let probe_x: f32 = pos.x + half_w + inset;
@@ -169,21 +197,33 @@ impl GameState {
 		return hit;
 	}
 
-	pub fn entity_half_extents(&self, entity_id: EntityId) -> (f32, f32) {
-		let width_sub: u8 = *self.width.get(&entity_id).unwrap_or(&16); // default 1 tile
-		let height_sub: u8 = *self.height.get(&entity_id).unwrap_or(&16); // default 1 tile
+	pub fn get_entity_half_values(&self, id: EntityId) -> (f32, f32) {
+		let width: f32 = self.width.get(&id).copied().unwrap_or(16) as f32;
+		let height: f32 = self.height.get(&id).copied().unwrap_or(16) as f32;
 
-		let tile_width: f32 = self.level.tile_width as f32;
-		let tile_height: f32 = self.level.tile_height as f32;
-
-		let width_tiles: f32 = (width_sub as f32) / 16.0;
-		let height_tiles: f32 = (height_sub as f32) / 16.0;
-
-		let half_width: f32 = (width_tiles * tile_width) * 0.5;
-		let half_height: f32 = (height_tiles * tile_height) * 0.5;
+		let half_width: f32 = width * 0.5;
+		let half_height: f32 = height * 0.5;
 
 		return (half_width, half_height);
 	}
+
+	/*
+		pub fn get_entity_half_values(&self, entity_id: EntityId) -> (f32, f32) {
+			let width_sub: u8 = *self.width.get(&entity_id).unwrap_or(&16); // default 1 tile
+			let height_sub: u8 = *self.height.get(&entity_id).unwrap_or(&16); // default 1 tile
+
+			let tile_width: f32 = self.level.tile_width as f32;
+			let tile_height: f32 = self.level.tile_height as f32;
+
+			let width_tiles: f32 = (width_sub as f32) / 16.0;
+			let height_tiles: f32 = (height_sub as f32) / 16.0;
+
+			let half_width: f32 = (width_tiles * tile_width) * 0.5;
+			let half_height: f32 = (height_tiles * tile_height) * 0.5;
+
+			return (half_width, half_height);
+		}
+	*/
 
 	pub fn add_entity(
 		&mut self,
@@ -197,7 +237,12 @@ impl GameState {
 		speed: u8,
 		strength: u8,
 		luck: u8,
+		range_min: f32,
+		range_max: f32,
 	) -> EntityId {
+		let width: u8 = if width == 0 { 16 } else { width };
+		let height: u8 = if height == 0 { 16 } else { height };
+
 		let id: EntityId = self.next_entity_id;
 		self.next_entity_id += 1;
 		self.positions.insert(id, position);
@@ -210,6 +255,18 @@ impl GameState {
 		self.speed.insert(id, speed);
 		self.strength.insert(id, strength);
 		self.luck.insert(id, luck);
+
+		if range_min > 0.0 {
+			self.range_min.insert(id, range_min);
+		}
+
+		if range_max > 0.0 {
+			self.range_max.insert(id, range_max);
+		}
+
+		if EntityKind::is_enemy(kind) {
+			self.enemy_ids.push(id);
+		}
 
 		return id;
 	}
@@ -226,33 +283,67 @@ impl GameState {
 		self.luck.remove(&id);
 		self.gravity_multiplier.remove(&id);
 
+		// linear scan is fine. I’ll have maybe dozens of enemies, not millions.
+		self.enemy_ids.retain(|&e| e != id);
+
 		if self.player_id == Some(id) {
 			self.player_id = None;
 		}
 	}
 
 	pub fn spawn_level_entities(&mut self) {
-		let tile_width: f32 = self.level.tile_width as f32;
+		let tile_w: f32 = self.level.tile_width as f32;
 		let tile_height: f32 = self.level.tile_height as f32;
 
-		// collect first to avoid borrow issues (immutable borrow of self.level.entities vs &mut self for add_entity)
-		let spawns: Vec<(u8, Vec2, u8, u8, u8, u8, u8, u8, u8)> = self
-			.level
-			.entities
-			.iter()
-			.filter(|e| e.kind != 0)
-			.map(|e| {
-				let left: f32 = (e.top as f32 + 0.5) * tile_width;
-				let top: f32 = (e.left as f32 + 0.5) * tile_height;
-				let pos: Vec2 = Vec2::new(top, left);
+		// clone to avoid borrow conflicts: self.level.entities (immut) vs self (mut) for add_entity
+		let entities = self.level.entities.clone();
 
-				return (e.kind, pos, e.render_style, e.gravity_multiplier, e.width, e.height, e.speed, e.strength, e.luck);
-			})
-			.collect();
+		for e in entities {
+			let position: Vec2 = Vec2::new((e.left as f32 + 0.5) * tile_w, (e.top as f32 + 0.5) * tile_height);
 
-		for (kind, pos, render_style, grav, width, height, speed, strength, luck) in spawns {
-			self.add_entity(kind, pos, Vec2::zero(), render_style, grav, width, height, speed, strength, luck);
+			let range_min_x: f32 = (e.range_min as f32) * tile_w;
+			let range_max: f32 = (e.range_max as f32) * tile_w;
+
+			// let id: EntityId = self.add_entity(1, self.spawn_point, Vec2::zero(), 0, 1, 16, 16, 0, 0, 0, 0.0, 0.0);
+
+			let id: EntityId = self.add_entity(
+				e.kind,
+				position,
+				Vec2::zero(),
+				e.render_style,
+				e.gravity_multiplier,
+				e.width,
+				e.height,
+				e.speed,
+				e.strength,
+				e.luck,
+				range_min_x,
+				range_max,
+			);
+
+			if e.gravity_multiplier > 0 {
+				let (hw, hh) = self.get_entity_half_values(id);
+				if let Some(p) = self.positions.get_mut(&id) {
+					let _ = collision::scan_down_to_ground(&self.level, p, hw, hh, 64);
+				}
+			}
+
+			if e.kind == EntityKind::Player as u8 {
+				let (hw, hh) = self.get_entity_half_values(id);
+				if let Some(p) = self.positions.get_mut(&id) {
+					let _ = collision::scan_down_to_ground(&self.level, p, hw, hh, 64);
+					self.last_grounded_pos = Some(*p);
+
+					let (hw, hh) = self.get_entity_half_values(id);
+					println!("player half size = ({}, {})", hw, hh)
+				}
+				self.set_player(id);
+			}
+
+			println!("spawn id={} kind={} pos=({}, {})", id, e.kind, position.x, position.y);
 		}
+
+		return;
 	}
 
 	#[inline(always)]
@@ -261,7 +352,7 @@ impl GameState {
 			return false;
 		};
 
-		let (half_w, half_h) = self.entity_half_extents(id);
+		let (half_w, half_h) = self.get_entity_half_values(id);
 
 		let inset: f32 = 2.0; // > 0.5 so we’re not on the lip
 		let foot_y: f32 = pos.y + half_h + 0.5;

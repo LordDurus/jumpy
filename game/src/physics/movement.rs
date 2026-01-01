@@ -25,7 +25,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 
 		// do movement + collision inside a scope so &mut borrows drop
 		{
-			let (half_w, half_h) = game_state.entity_half_extents(id);
+			let (half_w, half_h) = game_state.get_entity_half_values(id);
 
 			let Some(pos) = game_state.positions.get_mut(&id) else {
 				continue;
@@ -51,7 +51,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 		}
 
 		// compute out-of-bounds without holding &mut borrows
-		let (half_w, half_h) = game_state.entity_half_extents(id);
+		let (half_w, half_h) = game_state.get_entity_half_values(id);
 		let Some(pos) = game_state.positions.get(&id) else {
 			continue;
 		};

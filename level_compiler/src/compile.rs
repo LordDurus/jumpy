@@ -87,28 +87,30 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 
 		let runtime = match &entity.kind {
 			EntityKindSource::PlayerStart => EntityRuntime {
-				kind: EntityKind::PlayerStart as u8,
+				kind: EntityKind::Player as u8,
 				gravity_multiplier: gravity,
 				hit_points: hit_points,
 				jump_multiplier: jump,
 				attack_power: attack_power,
 				top,
 				left,
-				a: 0,
-				b: 0,
+				health_regen_rate: 0,
+				invulnerability_time: 0,
 				render_style: 0,
 				width: 16,
 				height: 16,
 				speed: 10,
 				luck: 5,
 				strength: 5,
+				range_min: 0,
+				range_max: 0,
 			},
 			EntityKindSource::MovingPlatform {
 				platform_kind,
 				size,
 				speed,
-				min,
-				max,
+				range_min: _,
+				range_max: _,
 			} => EntityRuntime {
 				kind: EntityKind::MovingPlatform as u8,
 				render_style: entity.render_style,
@@ -118,24 +120,29 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 				attack_power: 0,
 				top,
 				left,
-				a: *min as i16,
-				b: *max as i16,
+				health_regen_rate: 0,
+				invulnerability_time: 0,
 				width: if platform_kind == "horizontal" { clamp_u8((*size as i32) * 16).max(1) } else { 16 },
 				height: if platform_kind == "vertical" { clamp_u8((*size as i32) * 16).max(1) } else { 16 },
 				speed: clamp_u8(*speed),
 				strength: resolve_platform_type(platform_kind)?,
 				luck: 0,
+				range_min: entity.range_min as u16,
+				range_max: entity.range_max as u16,
 			},
 			EntityKindSource::Enemy {
 				enemy_kind,
-				patrol_min,
-				patrol_max,
+				range_min,
+				range_max,
 			} => {
 				let resolved_kind: u8 = match enemy_kind.as_str() {
 					"slime" => EntityKind::Slime as u8,
 					"imp" => EntityKind::Imp as u8,
 					_ => return Err(format!("unknown enemy kind '{}'", enemy_kind)),
 				};
+
+				let rm: u16 = u16::try_from(*range_min).map_err(|_| format!("range_min out of range"))?;
+				let rx: u16 = u16::try_from(*range_max).map_err(|_| format!("range_max out of range"))?;
 
 				EntityRuntime {
 					kind: resolved_kind,
@@ -146,13 +153,19 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 					attack_power,
 					top,
 					left,
-					a: *patrol_min as i16,
-					b: *patrol_max as i16,
+					health_regen_rate: entity.health_regen_rate,
+					invulnerability_time: entity.invulnerability_time,
 					width: clamp_u8((entity.width * 16.0).round() as i32).max(1),
 					height: clamp_u8((entity.height * 16.0).round() as i32).max(1),
 					speed: entity.speed,
 					strength: entity.strength,
 					luck: entity.luck,
+					/*
+					range_min: entity.range_min as u16,
+					range_max: entity.range_max as u16,
+					*/
+					range_min: rm,
+					range_max: rx,
 				}
 			}
 		};
@@ -225,8 +238,8 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 		gravity_fixed,
 		background_id,
 		gravity: source.header.gravity as u8,
-		collision_layer: 1,
-		render_layer: 1,
+		extra0: 1,
+		extra1: 1,
 		tiles_per_layer,
 		tile_count_total,
 		offset_layers: 0,

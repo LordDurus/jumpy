@@ -24,6 +24,5 @@ pub fn poll(event_pump: &mut EventPump) -> InputState {
 	input.left = keys.is_scancode_pressed(Scancode::Left) || keys.is_scancode_pressed(Scancode::A);
 	input.right = keys.is_scancode_pressed(Scancode::Right) || keys.is_scancode_pressed(Scancode::D);
 	input.jump = keys.is_scancode_pressed(Scancode::Space);
-
 	return input;
 }

@@ -1,3 +1,5 @@
+mod ai;
+mod ecs;
 mod engine_math;
 mod game;
 mod physics;
@@ -17,7 +19,7 @@ type ActiveRenderer = crate::platform::render::psp::PspRenderer;
 
 #[cfg(feature = "pc")]
 fn main() {
-	let level = match game::level::Level::load_binary("../levels/tutorial.lvlb") {
+	let level = match game::level::Level::load_binary("../levels/debug.lvlb") {
 		Ok(l) => l,
 		Err(e) => {
 			eprintln!("level load failed: {}", e);
@@ -26,14 +28,10 @@ fn main() {
 	};
 
 	let mut state = GameState::new(level);
-	let player_id = state.spawn_player();
-
-	if state.player_id.is_none() {
-		eprintln!("failed to create player entity");
-		return;
-	}
+	// let player_id = state.spawn_player();
 
 	state.spawn_level_entities();
+	let player_id = state.get_player_id();
 
 	let mut renderer = ActiveRenderer::new();
 
@@ -46,7 +44,7 @@ fn main() {
 		}
 
 		// left/right + jump impulse
-		if let Some(v) = state.velocities.get_mut(&state.get_player_id()) {
+		if let Some(v) = state.velocities.get_mut(&player_id) {
 			if input.left && !input.right {
 				v.set_x(-2.0);
 			} else if input.right && !input.left {
@@ -60,6 +58,7 @@ fn main() {
 			}
 		}
 
+		// ai::system::update(&mut state);
 		physics::gravity::apply(&mut state);
 		physics::movement::move_and_collide(&mut state);
 

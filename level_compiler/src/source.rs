@@ -16,8 +16,8 @@ pub struct LevelHeader {
 	pub tile_width: u32,
 	pub tile_height: u32,
 	pub gravity: f32,
-	pub collision_layer: u32,
-	pub render_layer: u32,
+	pub extra0: u32,
+	pub extra1: u32,
 	pub background: String,
 }
 
@@ -29,6 +29,7 @@ pub struct LayerSource {
 	pub rows: Vec<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct EntitySource {
 	pub top: i32,
@@ -44,6 +45,10 @@ pub struct EntitySource {
 	pub speed: u8,
 	pub strength: u8,
 	pub luck: u8,
+	pub range_min: i32,
+	pub range_max: i32,
+	pub health_regen_rate: i16,
+	pub invulnerability_time: i16,
 }
 
 #[derive(Debug)]
@@ -51,15 +56,15 @@ pub enum EntityKindSource {
 	PlayerStart,
 	Enemy {
 		enemy_kind: String,
-		patrol_min: i32,
-		patrol_max: i32,
+		range_min: i32,
+		range_max: i32,
 	},
 	MovingPlatform {
 		platform_kind: String, // "horizontal" | "vertical"
-		size: i32,             // tiles (width if horizontal, height if vertical)
+		size: i32,             // tiles
 		speed: i32,            // small int for now
-		min: i32,              // bound in tiles (x or y depending on kind)
-		max: i32,              // bound in tiles (x or y depending on kind)
+		range_min: i32,        // bound in tiles
+		range_max: i32,        // bound in tiles
 	},
 }
 

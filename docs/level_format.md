@@ -109,8 +109,8 @@ enemy "slime"
 {
     x = 20
     y = 13
-    patrol_min = 18
-    patrol_max = 24
+    range_min = 18
+    range_max = 24
 }
 
 pickup "coin"

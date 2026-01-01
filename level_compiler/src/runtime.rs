@@ -18,8 +18,8 @@ pub struct FileHeader {
 	pub background_id: u8,
 	pub gravity: u8,
 
-	pub collision_layer: u8,
-	pub render_layer: u8,
+	pub extra0: u8,
+	pub extra1: u8,
 
 	pub tiles_per_layer: u32,
 	pub tile_count_total: u32,
@@ -50,13 +50,15 @@ pub struct EntityRuntime {
 	pub hit_points: u16,
 	pub top: u16,
 	pub left: u16,
-	pub a: i16,
-	pub b: i16,
+	pub health_regen_rate: i16,
+	pub invulnerability_time: i16,
 	pub width: u8,
 	pub height: u8,
 	pub speed: u8,
 	pub strength: u8,
 	pub luck: u8,
+	pub range_min: u16,
+	pub range_max: u16,
 }
 
 impl EntityRuntime {
@@ -64,7 +66,7 @@ impl EntityRuntime {
 	// pub const BYTE_SIZE: u32 = 68;
 	// pub const BYTE_SIZE: u32 = 14;
 	// pub const BYTE_SIZE: u32 = 17;
-	pub const BYTE_SIZE: u32 = 20;
+	pub const BYTE_SIZE: u32 = 24;
 }
 
 #[repr(C)]
@@ -93,10 +95,10 @@ pub struct CompiledLevel {
 	pub tiles: Vec<u8>, // TileId = u8
 }
 
+#[repr(u8)]
 #[allow(dead_code)]
 pub enum EntityKind {
-	PlayerStart = 0,
-	Player = 1, // optional, but useful
+	Player = 1,
 	Slime = 2,
 	Imp = 3,
 	MovingPlatform = 4,

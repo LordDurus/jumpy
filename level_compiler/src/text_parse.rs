@@ -136,8 +136,8 @@ pub fn load_level_from_str(text: &str) -> Result<LevelSource, String> {
 					};
 					ent.kind = Some(EntityKindSource::Enemy {
 						enemy_kind: enemy_kind.unwrap_or_else(|| "".to_string()),
-						patrol_min: 0,
-						patrol_max: 0,
+						range_min: 0,
+						range_max: 0,
 					});
 					section = Section::EntityBody;
 					continue;
@@ -148,8 +148,8 @@ pub fn load_level_from_str(text: &str) -> Result<LevelSource, String> {
 						platform_kind,
 						size: 1,
 						speed: 1,
-						min: 0,
-						max: 0,
+						range_min: 0,
+						range_max: 0,
 					});
 					section = Section::EntityBody;
 				} else {
@@ -161,25 +161,30 @@ pub fn load_level_from_str(text: &str) -> Result<LevelSource, String> {
 					ent.top = parse_i32_value(line, "top", line_number)?;
 				} else if line.starts_with("left") {
 					ent.left = parse_i32_value(line, "left", line_number)?;
-				} else if line.starts_with("patrol_min") {
-					let value = parse_i32_value(line, "patrol_min", line_number)?;
+				} else if line.starts_with("range_min") {
+					let value = parse_i32_value(line, "range_min", line_number)?;
+
 					match ent.kind.as_mut() {
-						Some(EntityKindSource::Enemy { patrol_min, .. }) => {
-							*patrol_min = value;
+						Some(EntityKindSource::Enemy { range_min, .. }) => {
+							*range_min = value;
 						}
-						_ => {
-							return Err(format!("patrol_min not allowed for this entity at line {}", line_number));
+						Some(EntityKindSource::MovingPlatform { range_min, .. }) => {
+							*range_min = value;
 						}
+
+						_ => ent.range_min = value,
 					}
-				} else if line.starts_with("patrol_max") {
-					let value = parse_i32_value(line, "patrol_max", line_number)?;
+				} else if line.starts_with("range_max") {
+					let value = parse_i32_value(line, "range_max", line_number)?;
 					match ent.kind.as_mut() {
-						Some(EntityKindSource::Enemy { patrol_max, .. }) => {
-							*patrol_max = value;
+						Some(EntityKindSource::Enemy { range_max, .. }) => {
+							*range_max = value;
 						}
-						_ => {
-							return Err(format!("patrol_max not allowed for this entity at line {}", line_number));
+						Some(EntityKindSource::MovingPlatform { range_max, .. }) => {
+							*range_max = value;
 						}
+
+						_ => ent.range_max = value,
 					}
 				} else if line.starts_with("size") {
 					let value = parse_i32_value(line, "size", line_number)?;
@@ -193,26 +198,6 @@ pub fn load_level_from_str(text: &str) -> Result<LevelSource, String> {
 					}
 				} else if line.starts_with("speed") {
 					ent.speed = parse_i32_value(line, "speed", line_number)?;
-				} else if line.starts_with("min") {
-					let value = parse_i32_value(line, "min", line_number)?;
-					match ent.kind.as_mut() {
-						Some(EntityKindSource::MovingPlatform { min, .. }) => {
-							*min = value;
-						}
-						_ => {
-							return Err(format!("min not allowed for this entity at line {}", line_number));
-						}
-					}
-				} else if line.starts_with("max") {
-					let value = parse_i32_value(line, "max", line_number)?;
-					match ent.kind.as_mut() {
-						Some(EntityKindSource::MovingPlatform { max, .. }) => {
-							*max = value;
-						}
-						_ => {
-							return Err(format!("max not allowed for this entity at line {}", line_number));
-						}
-					}
 				} else if line.starts_with("gravity_multiplier") {
 					ent.gravity_multiplier = parse_f32_value(line, "gravity_multiplier", line_number)?;
 				} else if line.starts_with("jump_multiplier") {
@@ -243,9 +228,14 @@ pub fn load_level_from_str(text: &str) -> Result<LevelSource, String> {
 					ent.strength = parse_i32_value(line, "strength", line_number)?;
 				} else if line.starts_with("luck") {
 					ent.luck = parse_i32_value(line, "luck", line_number)?;
+				} else if line.starts_with("health_regen_rate") {
+					ent.health_regen_rate = parse_i32_value(line, "health_regen_rate", line_number)?;
+				} else if line.starts_with("invulnerability_time") {
+					ent.invulnerability_time = parse_i32_value(line, "invulnerability_time", line_number)?;
 				} else {
 					return Err(format!("Error: unexpected line in entity body at {}: {}", line_number, line));
 				}
+				// println!("ent.kind={:?}, speed={}, luck={}, strength={}", ent.kind, ent.speed, ent.luck, ent.strength);
 			}
 			Section::Triggers => {
 				if line.starts_with("trigger ") {
@@ -333,8 +323,8 @@ fn parse_header_line(line: &str, existing: Option<LevelHeader>) -> Result<LevelH
 			tile_height: 0,
 			tile_width: 0,
 			gravity: 0.0,
-			collision_layer: 1,
-			render_layer: 1,
+			extra0: 1,
+			extra1: 1,
 			background: String::new(),
 		},
 	};
@@ -365,14 +355,6 @@ fn parse_header_line(line: &str, existing: Option<LevelHeader>) -> Result<LevelH
 		}
 		"gravity" => {
 			header.gravity = value_str.parse::<f32>().map_err(|e| format!("invalid gravity value '{}': {}", value_str, e))?;
-		}
-		"collision_layer" => {
-			header.collision_layer = value_str
-				.parse::<u32>()
-				.map_err(|e| format!("invalid collision_layer value '{}': {}", value_str, e))?;
-		}
-		"render_layer" => {
-			header.render_layer = value_str.parse::<u32>().map_err(|e| format!("invalid render_layer value '{}': {}", value_str, e))?;
 		}
 		"background" => {
 			header.background = parse_quoted(value_str)?;

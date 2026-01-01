@@ -31,13 +31,15 @@ pub fn serialize_level(compiled: &CompiledLevel) -> Result<Vec<u8>, String> {
 		write_u16(&mut buffer, entity.hit_points)?;
 		write_u16(&mut buffer, entity.top)?;
 		write_u16(&mut buffer, entity.left)?;
-		write_i16(&mut buffer, entity.a)?;
-		write_i16(&mut buffer, entity.b)?;
+		write_i16(&mut buffer, entity.health_regen_rate)?;
+		write_i16(&mut buffer, entity.invulnerability_time)?;
 		write_u8(&mut buffer, entity.width)?;
 		write_u8(&mut buffer, entity.height)?;
 		write_u8(&mut buffer, entity.speed)?;
 		write_u8(&mut buffer, entity.strength)?;
 		write_u8(&mut buffer, entity.luck)?;
+		write_u16(&mut buffer, entity.range_min)?;
+		write_u16(&mut buffer, entity.range_max)?;
 	}
 
 	let offset_triggers: u32 = buffer.len() as u32;
@@ -106,8 +108,8 @@ fn write_header(buffer: &mut Vec<u8>, h: &FileHeader) -> Result<(), String> {
 	write_i16(buffer, h.gravity_fixed)?;
 	write_u8(buffer, h.background_id)?;
 	write_u8(buffer, h.gravity)?;
-	write_u8(buffer, h.collision_layer)?;
-	write_u8(buffer, h.render_layer)?;
+	write_u8(buffer, h.extra0)?;
+	write_u8(buffer, h.extra1)?;
 	write_u32(buffer, h.tiles_per_layer)?;
 	write_u32(buffer, h.tile_count_total)?;
 	write_u32(buffer, h.offset_layers)?;

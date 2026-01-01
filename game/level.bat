@@ -1,7 +1,7 @@
 cd ..
 cd level_compiler
 cls
-cargo run ..\levels\tutorial.level
+cargo run ..\levels\debug.level
 @echo off
 cd ..
 cd game

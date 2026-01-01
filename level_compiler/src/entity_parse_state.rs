@@ -13,6 +13,10 @@ pub struct EntityParseState {
 	pub speed: i32,
 	pub strength: i32,
 	pub luck: i32,
+	pub range_min: i32,
+	pub range_max: i32,
+	pub health_regen_rate: i32,
+	pub invulnerability_time: i32,
 }
 
 impl EntityParseState {
@@ -31,6 +35,10 @@ impl EntityParseState {
 			speed: 0,
 			strength: 0,
 			luck: 0,
+			range_min: 0,
+			range_max: 0,
+			health_regen_rate: 0,
+			invulnerability_time: 0,
 		};
 	}
 
@@ -43,6 +51,15 @@ impl EntityParseState {
 		self.jump_multiplier = 1.0;
 		self.attack_power = 1;
 		self.hit_points = 1;
+		self.width = 1.0;
+		self.height = 1.0;
+		self.speed = 0;
+		self.strength = 0;
+		self.luck = 0;
+		self.range_min = 0;
+		self.range_max = 0;
+		self.health_regen_rate = 0;
+		self.invulnerability_time = 0;
 	}
 
 	pub fn to_entity_source(&mut self, line_number: usize) -> Result<EntitySource, String> {
@@ -62,15 +79,24 @@ impl EntityParseState {
 			hit_points: self.hit_points,
 			gravity_multiplier: self.gravity_multiplier,
 			kind,
-			// defaults (tile units)
-			width: 1.0,
-			height: 1.0,
 
-			// defaults (stats)
-			speed: 0,
-			strength: 0,
-			luck: 0,
+			// tile units
+			width: self.width,
+			height: self.height,
+
+			// stats
+			speed: self.speed as u8,
+			strength: self.strength as u8,
+			luck: self.luck as u8,
+
+			// generic min/max (tiles)
+			range_min: self.range_min,
+			range_max: self.range_max,
+
+			health_regen_rate: self.health_regen_rate as i16,
+			invulnerability_time: self.invulnerability_time as i16,
 		};
+
 		return Ok(e);
 	}
 }

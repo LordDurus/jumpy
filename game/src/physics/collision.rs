@@ -99,6 +99,13 @@ pub fn resolve_wall_collision(level: &Level, pos: &mut Vec2, vel: &mut Vec2, hal
 		let hit: bool =
 			level.tile_at_layer(layer, tx, ty_top).is_solid() || level.tile_at_layer(layer, tx, ty_mid).is_solid() || level.tile_at_layer(layer, tx, ty_bot).is_solid();
 
+		/*
+		println!(
+			"wall hit: pos=({}, {}) vel=({}, {}) half=({}, {}) tx={} ty_top={} ty_mid={} ty_bot={}",
+			pos.x, pos.y, vel.x, vel.y, half_w, half_h, tx, ty_top, ty_mid, ty_bot
+		);
+		*/
+
 		if hit {
 			let tile_left: f32 = (tx as f32) * tile_w;
 			pos.x = tile_left - half_w;
@@ -122,4 +129,42 @@ pub fn resolve_wall_collision(level: &Level, pos: &mut Vec2, vel: &mut Vec2, hal
 	}
 
 	return;
+}
+
+pub fn scan_down_to_ground(level: &Level, pos: &mut Vec2, half_width: f32, half_height: f32, max_scan_tiles: i32) -> bool {
+	let layer: u32 = level.collision_layer_index() as u32;
+
+	let tile_w: f32 = level.tile_width as f32;
+	let tile_h: f32 = level.tile_height as f32;
+
+	// start from the entity's feet (a tiny bit below so we don't miss due to float rounding)
+	let start_y: f32 = pos.y + half_height + 0.5;
+	let mut ty: i32 = (start_y / tile_h).floor() as i32;
+
+	// match your existing inset style
+	let inset_x: f32 = 0.5;
+	let tx_left: i32 = ((pos.x - half_width + inset_x) / tile_w).floor() as i32;
+	let tx_right: i32 = ((pos.x + half_width - inset_x) / tile_w).floor() as i32;
+
+	let min_ty: i32 = 0;
+	let max_ty: i32 = level.height as i32 - 1;
+
+	let mut steps: i32 = 0;
+	while steps <= max_scan_tiles && ty <= max_ty {
+		if ty >= min_ty {
+			let hit: bool = level.tile_at_layer(layer, tx_left, ty).is_solid() || level.tile_at_layer(layer, tx_right, ty).is_solid();
+
+			if hit {
+				// snap entity so its feet are on top of this tile row
+				let tile_top: f32 = (ty as f32) * tile_h;
+				pos.y = tile_top - half_height;
+				return true;
+			}
+		}
+
+		ty += 1;
+		steps += 1;
+	}
+
+	return false;
 }

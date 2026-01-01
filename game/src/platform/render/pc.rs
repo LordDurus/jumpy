@@ -209,7 +209,7 @@ impl PcRenderer {
 			let kind: u8 = *game_state.entity_kind.get(id).unwrap_or(&0);
 			let style: u8 = *game_state.render_style.get(id).unwrap_or(&0);
 
-			let (half_width, half_height) = game_state.entity_half_extents(*id);
+			let (half_width, half_height) = game_state.get_entity_half_values(*id);
 
 			let world_left: f32 = pos.x - half_width;
 			let world_top: f32 = pos.y - half_height;
@@ -217,10 +217,11 @@ impl PcRenderer {
 			let scale_top: i32 = ((world_top - cam_y_world as f32) * scale).round() as i32;
 			let scale_left: i32 = ((world_left - cam_x_world as f32) * scale).round() as i32;
 
-			let width: u32 = ((half_width * 2.0) * scale).round() as u32;
+			let width: u32 = ((half_width * 2.0) * scale).round() as u32; // TODO: get the entiy widht
 			let height: u32 = ((half_height * 2.0) * scale).round() as u32;
 
 			let color: Color = match kind {
+				0 => Color::RGB(0, 0, 0),       // not set (black)
 				1 => Color::RGB(255, 255, 255), // player (white)
 				2 => Color::RGB(64, 160, 255),  // slime (blue)
 				3 => Color::RGB(64, 200, 64),   // imp (green)
@@ -231,13 +232,13 @@ impl PcRenderer {
 			// println!("draw entity id={} kind={} style={} color={:?}", id, kind, style, color);
 
 			match style {
-				1 => {
+				2 => {
 					let cx: i32 = scale_left + (width as i32 / 2);
 					let cy: i32 = scale_top + (height as i32 / 2);
 					let r: i32 = (width.min(height) as i32) / 2;
 					self.draw_filled_circle(cx, cy, r, color);
 				}
-				2 => {
+				3 => {
 					self.draw_filled_triangle(scale_left, scale_top, width, height, color);
 				}
 				_ => {
@@ -268,7 +269,7 @@ impl RenderBackend for PcRenderer {
 		let texture_creator: &'static sdl2::render::TextureCreator<sdl2::video::WindowContext> = Box::leak(creator_box);
 
 		// TODO: use world/level image
-		let bg_path: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../assets/gfx/pc/bg_parallax.png");
+		let bg_path: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../assets/gfx/pc/bg_parallax1.png");
 		let bg_texture = texture_creator.load_texture(bg_path).ok();
 		if bg_texture.is_none() {
 			println!("manifest_dir={}", env!("CARGO_MANIFEST_DIR"));

@@ -1,7 +1,8 @@
 use crate::tile::TileKind;
 use std::fs;
 
-pub const BYTES_PER_ENTITY: usize = 20;
+pub const BYTES_PER_ENTITY: usize = 24;
+pub const PLAYER_HALF_HEIGHT: f32 = 8.0;
 
 #[derive(Debug, Clone)]
 pub struct Level {
@@ -15,10 +16,16 @@ pub struct Level {
 	pub tiles_per_layer: usize,
 	pub player_spawn_top: f32,
 	pub player_spawn_left: f32,
-	pub collision_layer: u8,
-	pub render_layer: u8,
 	pub entities: Vec<LevelEntity>,
 	pub triggers: Vec<LevelTrigger>,
+}
+
+#[inline(always)]
+fn get_gravity_from_file(v: u8) -> u8 {
+	if v == 0 {
+		return 0;
+	}
+	return v / 16;
 }
 
 impl Level {
@@ -52,7 +59,7 @@ impl Level {
 	}
 
 	pub fn collision_layer_index(&self) -> u8 {
-		return self.collision_layer;
+		return 1;
 	}
 
 	pub fn tile_at_layer(&self, layer: u32, tx: i32, ty: i32) -> TileKind {
@@ -100,7 +107,6 @@ impl Level {
 		let width = read_u16(&bytes, &mut offset)? as u32;
 		let height = read_u16(&bytes, &mut offset)? as u32;
 
-		// new format: tile_width + tile_height are both u16
 		let tile_width = read_u16(&bytes, &mut offset)? as u32;
 		let tile_height = read_u16(&bytes, &mut offset)? as u32;
 
@@ -113,8 +119,8 @@ impl Level {
 		let _background_id = read_u8(&bytes, &mut offset)?;
 		let _gravity = read_u8(&bytes, &mut offset)?;
 
-		let collision_layer = read_u8(&bytes, &mut offset)?;
-		let render_layer = read_u8(&bytes, &mut offset)?;
+		let _reserved0 = read_u8(&bytes, &mut offset)?;
+		let _reserved1 = read_u8(&bytes, &mut offset)?;
 
 		let tiles_per_layer = read_u32(&bytes, &mut offset)? as usize;
 		let tile_count_total = read_u32(&bytes, &mut offset)? as usize;
@@ -183,27 +189,44 @@ impl Level {
 			entities.push(LevelEntity {
 				kind: read_u8(&bytes, &mut ent_off)?,
 				render_style: read_u8(&bytes, &mut ent_off)?,
-				gravity_multiplier: read_u8(&bytes, &mut ent_off)?,
+				gravity_multiplier: get_gravity_from_file(read_u8(&bytes, &mut ent_off)?),
 				jump_multiplier: read_u8(&bytes, &mut ent_off)?,
 				attack_power: read_u8(&bytes, &mut ent_off)?,
 				hit_points: read_u16(&bytes, &mut ent_off)?,
 				top: read_u16(&bytes, &mut ent_off)?,
 				left: read_u16(&bytes, &mut ent_off)?,
-				a: read_i16(&bytes, &mut ent_off)?,
-				b: read_i16(&bytes, &mut ent_off)?,
+				health_regen_rate: read_i16(&bytes, &mut ent_off)?,
+				invulnerability_time: read_i16(&bytes, &mut ent_off)?,
 				width: read_u8(&bytes, &mut ent_off)?,
 				height: read_u8(&bytes, &mut ent_off)?,
 				speed: read_u8(&bytes, &mut ent_off)?,
 				strength: read_u8(&bytes, &mut ent_off)?,
 				luck: read_u8(&bytes, &mut ent_off)?,
+				range_min: read_u16(&bytes, &mut ent_off)?,
+				range_max: read_u16(&bytes, &mut ent_off)?,
 			});
 		}
 
 		println!("-- entities loaded --");
 		for (i, e) in entities.iter().enumerate() {
 			println!(
-				" {}: kind={} style={} top={} left={} a={} b={} width={} height={} speed={} strength={} luck={} hit_points={}",
-				i, e.kind, e.render_style, e.top, e.left, e.a, e.b, e.width, e.height, e.speed, e.strength, e.luck, e.hit_points
+				" {}: kind={} style={} top={} left={} a={} b={} width={} height={} speed={} strength={} luck={} hit_points={}, range_min={}, range_max={}, gravity={}",
+				i,
+				e.kind,
+				e.render_style,
+				e.top,
+				e.left,
+				e.health_regen_rate,
+				e.invulnerability_time,
+				e.width,
+				e.height,
+				e.speed,
+				e.strength,
+				e.luck,
+				e.hit_points,
+				e.range_min,
+				e.range_max,
+				e.gravity_multiplier
 			);
 		}
 
@@ -212,17 +235,17 @@ impl Level {
 		let mut found_spawn: bool = false;
 
 		for e in &entities {
-			// PlayerStart = 0 (matches your compiler runtime enum)
-			if e.kind == 0 {
+			if e.kind == 1 {
 				player_spawn_left = (e.left as f32 + 0.5) * tile_width as f32;
-				player_spawn_top = (e.top as f32 + 0.5) * tile_height as f32;
+				player_spawn_top = (e.top as f32 + 1.0) * tile_height as f32 - PLAYER_HALF_HEIGHT;
+
 				found_spawn = true;
 				break;
 			}
 		}
 
 		if !found_spawn {
-			return Err("level has no PlayerStart entity".to_string());
+			return Err("level has no player entity".to_string());
 		}
 
 		// entities
@@ -273,8 +296,6 @@ impl Level {
 			player_spawn_left,
 			entities: entities,
 			triggers: triggers,
-			collision_layer: collision_layer,
-			render_layer: render_layer,
 		};
 
 		level.floor_y = level.compute_floor_y();
@@ -317,6 +338,18 @@ fn read_u32(bytes: &[u8], offset: &mut usize) -> Result<u32, String> {
 	return Ok(v);
 }
 
+/*
+fn read_u16(bytes: &[u8], offset: &mut usize) -> Result<u16, String> {
+	if *offset + 2 > bytes.len() {
+		return Err("Unexpected eof reading u16".to_string());
+	}
+	let v = u16::from_le_bytes([bytes[*offset], bytes[*offset + 1]]);
+	*offset += 2;
+	return Ok(v);
+}
+*/
+
+#[inline(always)]
 fn read_u16(bytes: &[u8], offset: &mut usize) -> Result<u16, String> {
 	if *offset + 2 > bytes.len() {
 		return Err("Unexpected eof reading u16".to_string());
@@ -355,13 +388,15 @@ pub struct LevelEntity {
 	pub hit_points: u16,
 	pub top: u16,
 	pub left: u16,
-	pub a: i16,
-	pub b: i16,
+	pub health_regen_rate: i16,
+	pub invulnerability_time: i16,
 	pub width: u8,
 	pub height: u8,
 	pub speed: u8,
 	pub strength: u8,
 	pub luck: u8,
+	pub range_min: u16,
+	pub range_max: u16,
 }
 
 #[allow(dead_code)]
