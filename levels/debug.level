@@ -89,7 +89,7 @@ entities
 		top = 2
 		left = 2
 		gravity_multiplier = 1.00
-		jump_multiplier = 1.0
+		jump_multiplier =  1.0
 		attack_power = 1
 		hit_points = 5
 		render_style = 1

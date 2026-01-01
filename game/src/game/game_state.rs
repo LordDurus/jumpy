@@ -29,17 +29,18 @@ pub struct GameState {
 	pub spawn_point: Vec2,
 	pub last_grounded_pos: Option<Vec2>,
 
-	pub entity_kind: HashMap<EntityId, u8>,
-	pub render_style: HashMap<EntityId, u8>,
-	pub width: HashMap<EntityId, u8>,
-	pub height: HashMap<EntityId, u8>,
-	pub speed: HashMap<EntityId, u8>,
-	pub strength: HashMap<EntityId, u8>,
+	pub entity_kinds: HashMap<EntityId, u8>,
+	pub render_styles: HashMap<EntityId, u8>,
+	pub widths: HashMap<EntityId, u8>,
+	pub heights: HashMap<EntityId, u8>,
+	pub speeds: HashMap<EntityId, u8>,
+	pub strengths: HashMap<EntityId, u8>,
 	pub luck: HashMap<EntityId, u8>,
 	pub gravity_multiplier: HashMap<EntityId, u8>,
 
-	pub range_min: ComponentStore<f32>,
-	pub range_max: ComponentStore<f32>,
+	pub range_mins: ComponentStore<f32>,
+	pub range_maxes: ComponentStore<f32>,
+	pub jump_multipliers: ComponentStore<u8>,
 
 	pub enemy_ids: Vec<EntityId>,
 
@@ -61,15 +62,16 @@ impl GameState {
 			next_entity_id: 1,
 			last_grounded_pos: None,
 
-			entity_kind: HashMap::new(),
-			render_style: HashMap::new(),
-			width: HashMap::new(),
-			height: HashMap::new(),
-			speed: HashMap::new(),
-			strength: HashMap::new(),
+			entity_kinds: HashMap::new(),
+			render_styles: HashMap::new(),
+			widths: HashMap::new(),
+			heights: HashMap::new(),
+			speeds: HashMap::new(),
+			strengths: HashMap::new(),
 			luck: HashMap::new(),
-			range_max: ComponentStore::new(),
-			range_min: ComponentStore::new(),
+			range_maxes: ComponentStore::new(),
+			range_mins: ComponentStore::new(),
+			jump_multipliers: ComponentStore::new(),
 			gravity_multiplier: HashMap::new(),
 			enemy_ids: Vec::new(),
 		};
@@ -198,8 +200,8 @@ impl GameState {
 	}
 
 	pub fn get_entity_half_values(&self, id: EntityId) -> (f32, f32) {
-		let width: f32 = self.width.get(&id).copied().unwrap_or(16) as f32;
-		let height: f32 = self.height.get(&id).copied().unwrap_or(16) as f32;
+		let width: f32 = self.widths.get(&id).copied().unwrap_or(16) as f32;
+		let height: f32 = self.heights.get(&id).copied().unwrap_or(16) as f32;
 
 		let half_width: f32 = width * 0.5;
 		let half_height: f32 = height * 0.5;
@@ -232,6 +234,7 @@ impl GameState {
 		velocity: Vec2,
 		render_style: u8,
 		gravity_multiplier: u8,
+		jump_multiplier: u8,
 		width: u8,
 		height: u8,
 		speed: u8,
@@ -247,21 +250,23 @@ impl GameState {
 		self.next_entity_id += 1;
 		self.positions.insert(id, position);
 		self.velocities.insert(id, velocity);
-		self.entity_kind.insert(id, kind);
-		self.render_style.insert(id, render_style);
+		self.entity_kinds.insert(id, kind);
+		self.render_styles.insert(id, render_style);
 		self.gravity_multiplier.insert(id, gravity_multiplier);
-		self.width.insert(id, width);
-		self.height.insert(id, height);
-		self.speed.insert(id, speed);
-		self.strength.insert(id, strength);
+		self.widths.insert(id, width);
+		self.heights.insert(id, height);
+		self.speeds.insert(id, speed);
+		self.strengths.insert(id, strength);
 		self.luck.insert(id, luck);
 
+		self.jump_multipliers.insert(id, jump_multiplier);
+
 		if range_min > 0.0 {
-			self.range_min.insert(id, range_min);
+			self.range_mins.insert(id, range_min);
 		}
 
 		if range_max > 0.0 {
-			self.range_max.insert(id, range_max);
+			self.range_maxes.insert(id, range_max);
 		}
 
 		if EntityKind::is_enemy(kind) {
@@ -274,14 +279,15 @@ impl GameState {
 	pub fn remove_entity(&mut self, id: EntityId) {
 		self.positions.remove(&id);
 		self.velocities.remove(&id);
-		self.entity_kind.remove(&id);
-		self.render_style.remove(&id);
-		self.width.remove(&id);
-		self.height.remove(&id);
-		self.speed.remove(&id);
-		self.strength.remove(&id);
+		self.entity_kinds.remove(&id);
+		self.render_styles.remove(&id);
+		self.widths.remove(&id);
+		self.heights.remove(&id);
+		self.speeds.remove(&id);
+		self.strengths.remove(&id);
 		self.luck.remove(&id);
 		self.gravity_multiplier.remove(&id);
+		self.jump_multipliers.remove(id);
 
 		// linear scan is fine. I’ll have maybe dozens of enemies, not millions.
 		self.enemy_ids.retain(|&e| e != id);
@@ -312,6 +318,7 @@ impl GameState {
 				Vec2::zero(),
 				e.render_style,
 				e.gravity_multiplier,
+				e.jump_multiplier,
 				e.width,
 				e.height,
 				e.speed,

@@ -206,8 +206,8 @@ impl PcRenderer {
 
 		// entities (single pass: kind -> color, render_style -> shape)
 		for (id, pos) in game_state.positions.iter() {
-			let kind: u8 = *game_state.entity_kind.get(id).unwrap_or(&0);
-			let style: u8 = *game_state.render_style.get(id).unwrap_or(&0);
+			let kind: u8 = *game_state.entity_kinds.get(id).unwrap_or(&0);
+			let style: u8 = *game_state.render_styles.get(id).unwrap_or(&0);
 
 			let (half_width, half_height) = game_state.get_entity_half_values(*id);
 

@@ -85,7 +85,9 @@ pub fn try_jump(game_state: &mut GameState, entity_id: EntityId) -> bool {
 	}
 
 	if let Some(vel) = game_state.velocities.get_mut(&entity_id) {
-		vel.y = JUMP_VELOCITY;
+		let jump_multiplier: f32 = *game_state.jump_multipliers.get(entity_id).unwrap_or(&1) as f32;
+
+		vel.y = JUMP_VELOCITY * jump_multiplier;
 
 		if !grounded {
 			let wall_push: f32 = 2.5;
