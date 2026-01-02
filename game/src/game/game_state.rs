@@ -17,6 +17,11 @@ impl EntityKind {
 	pub fn is_enemy(kind: u8) -> bool {
 		kind == EntityKind::Slime as u8 || kind == EntityKind::Imp as u8
 	}
+
+	#[inline(always)]
+	pub fn is_player(kind: u8) -> bool {
+		kind == EntityKind::Player as u8
+	}
 }
 
 /// Represents the game world, containing entities and their properties (runtime state).
@@ -335,16 +340,11 @@ impl GameState {
 			if e.gravity_multiplier > 0 {
 				let (hw, hh) = self.get_entity_half_values(id);
 				if let Some(p) = self.positions.get_mut(&id) {
-					let _ = collision::scan_down_to_ground(&self.level, p, hw, hh, 64);
+					let _ = collision::scan_down_to_ground(&self.level, p, hw, hh, 8);
 				}
 			}
 
-			if e.kind == EntityKind::Player as u8 {
-				let (hw, hh) = self.get_entity_half_values(id);
-				if let Some(p) = self.positions.get_mut(&id) {
-					let _ = collision::scan_down_to_ground(&self.level, p, hw, hh, 64);
-					self.last_grounded_pos = Some(*p);
-				}
+			if EntityKind::is_player(e.kind) {
 				self.set_player(id);
 			}
 		}

@@ -160,10 +160,12 @@ pub fn scan_down_to_ground(level: &Level, pos: &mut Vec2, half_width: f32, half_
 				pos.y = tile_top - half_height;
 				return true;
 			}
+			ty += 1;
+			steps += 1;
 		}
 
-		ty += 1;
-		steps += 1;
+		// ty += 1;
+		// steps += 1;
 	}
 
 	return false;
