@@ -343,9 +343,6 @@ impl GameState {
 				if let Some(p) = self.positions.get_mut(&id) {
 					let _ = collision::scan_down_to_ground(&self.level, p, hw, hh, 64);
 					self.last_grounded_pos = Some(*p);
-
-					let (hw, hh) = self.get_entity_half_values(id);
-					println!("player half size = ({}, {})", hw, hh)
 				}
 				self.set_player(id);
 			}
