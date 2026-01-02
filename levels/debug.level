@@ -140,8 +140,8 @@ entities
 	{
 		top = 2
 		left = 60
-		range_min = 5
-		range_max = 10
+		range_min = 55
+		range_max = 65
 		gravity_multiplier = 1.00
 		jump_multiplier = 0.25
 		attack_power = 1
