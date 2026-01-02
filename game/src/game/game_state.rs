@@ -36,7 +36,7 @@ pub struct GameState {
 	pub speeds: HashMap<EntityId, u8>,
 	pub strengths: HashMap<EntityId, u8>,
 	pub luck: HashMap<EntityId, u8>,
-	// pub gravity_multiplier: HashMap<EntityId, u8>,
+
 	pub gravity_multipliers: ComponentStore<u8>,
 	pub range_mins: ComponentStore<f32>,
 	pub range_maxes: ComponentStore<f32>,
