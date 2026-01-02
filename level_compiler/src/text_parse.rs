@@ -323,8 +323,6 @@ fn parse_header_line(line: &str, existing: Option<LevelHeader>) -> Result<LevelH
 			tile_height: 0,
 			tile_width: 0,
 			gravity: 0.0,
-			extra0: 1,
-			extra1: 1,
 			background: String::new(),
 		},
 	};

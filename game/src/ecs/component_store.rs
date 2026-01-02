@@ -8,7 +8,7 @@ impl<T> ComponentStore<T> {
 	}
 
 	#[inline(always)]
-	pub fn insert(&mut self, id: u32, value: T) {
+	pub fn push(&mut self, id: u32, value: T) {
 		let idx: usize = id as usize;
 		if idx >= self.data.len() {
 			self.data.resize_with(idx + 1, || None);
@@ -27,6 +27,7 @@ impl<T> ComponentStore<T> {
 	}
 
 	#[inline(always)]
+	#[allow(dead_code)]
 	pub fn get_mut(&mut self, id: u32) -> Option<&mut T> {
 		let idx: usize = id as usize;
 		if idx >= self.data.len() {

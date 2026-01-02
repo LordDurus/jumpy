@@ -39,7 +39,7 @@ pub fn resolve_ceiling_collision(level: &Level, pos: &mut Vec2, vel: &mut Vec2, 
 }
 
 pub fn resolve_floor_collision(level: &Level, pos: &mut Vec2, vel: &mut Vec2, half_w: f32, half_h: f32) {
-	if vel.y <= 0.0 {
+	if vel.y < 0.0 {
 		return;
 	}
 

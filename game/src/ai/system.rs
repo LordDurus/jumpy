@@ -33,6 +33,16 @@ pub fn update(game_state: &mut GameState) {
 			continue;
 		}
 
+		// clamp position to range
+		if let Some(p) = game_state.positions.get_mut(&id) {
+			if p.x < min_x {
+				p.x = min_x;
+			}
+			if p.x > max_x {
+				p.x = max_x;
+			}
+		}
+
 		// keep last direction (from vel) unless we hit an end
 		let mut dir: f32 = if vel.x < 0.0 { -1.0 } else { 1.0 };
 

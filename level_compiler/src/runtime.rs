@@ -18,8 +18,8 @@ pub struct FileHeader {
 	pub background_id: u8,
 	pub gravity: u8,
 
-	pub extra0: u8,
-	pub extra1: u8,
+	pub health_regen_rate: u8,
+	pub invulnerability_time: u8,
 
 	pub tiles_per_layer: u32,
 	pub tile_count_total: u32,

@@ -42,6 +42,7 @@ pub struct GameState {
 	pub range_maxes: ComponentStore<f32>,
 	pub jump_multipliers: ComponentStore<u8>,
 
+	// pub enemy_ids: ComponentStore<EntityId>,
 	pub enemy_ids: Vec<EntityId>,
 
 	next_entity_id: EntityId,
@@ -252,21 +253,21 @@ impl GameState {
 		self.velocities.insert(id, velocity);
 		self.entity_kinds.insert(id, kind);
 		self.render_styles.insert(id, render_style);
-		self.gravity_multipliers.insert(id, gravity_multiplier);
+		self.gravity_multipliers.push(id, gravity_multiplier);
 		self.widths.insert(id, width);
 		self.heights.insert(id, height);
 		self.speeds.insert(id, speed);
 		self.strengths.insert(id, strength);
 		self.luck.insert(id, luck);
 
-		self.jump_multipliers.insert(id, jump_multiplier);
+		self.jump_multipliers.push(id, jump_multiplier);
 
 		if range_min > 0.0 {
-			self.range_mins.insert(id, range_min);
+			self.range_mins.push(id, range_min);
 		}
 
 		if range_max > 0.0 {
-			self.range_maxes.insert(id, range_max);
+			self.range_maxes.push(id, range_max);
 		}
 
 		if EntityKind::is_enemy(kind) {
