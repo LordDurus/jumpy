@@ -340,7 +340,7 @@ impl GameState {
 			if e.gravity_multiplier > 0 {
 				let (hw, hh) = self.get_entity_half_values(id);
 				if let Some(p) = self.positions.get_mut(&id) {
-					let _ = collision::scan_down_to_ground(&self.level, p, hw, hh, 30ru);
+					let _ = collision::scan_down_to_ground(&self.level, p, hw, hh, 30);
 				}
 			}
 
