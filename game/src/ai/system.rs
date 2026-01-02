@@ -16,7 +16,8 @@ pub fn update(game_state: &mut GameState) {
 		};
 
 		let speed_u8: u8 = game_state.speeds.get(&id).copied().unwrap_or(0);
-		let speed: f32 = (speed_u8 as f32) * game_state.level.tile_width as f32;
+		// let speed: f32 = (speed_u8 as f32) * game_state.level.tile_width as f32;
+		let speed = speed_u8 as f32;
 
 		let min_x: f32 = game_state.range_mins.get(id).copied().unwrap_or(pos.x);
 		let max_x: f32 = game_state.range_maxes.get(id).copied().unwrap_or(pos.x);

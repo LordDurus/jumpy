@@ -36,8 +36,8 @@ pub struct GameState {
 	pub speeds: HashMap<EntityId, u8>,
 	pub strengths: HashMap<EntityId, u8>,
 	pub luck: HashMap<EntityId, u8>,
-	pub gravity_multiplier: HashMap<EntityId, u8>,
-
+	// pub gravity_multiplier: HashMap<EntityId, u8>,
+	pub gravity_multipliers: ComponentStore<u8>,
 	pub range_mins: ComponentStore<f32>,
 	pub range_maxes: ComponentStore<f32>,
 	pub jump_multipliers: ComponentStore<u8>,
@@ -72,7 +72,7 @@ impl GameState {
 			range_maxes: ComponentStore::new(),
 			range_mins: ComponentStore::new(),
 			jump_multipliers: ComponentStore::new(),
-			gravity_multiplier: HashMap::new(),
+			gravity_multipliers: ComponentStore::new(),
 			enemy_ids: Vec::new(),
 		};
 
@@ -252,7 +252,7 @@ impl GameState {
 		self.velocities.insert(id, velocity);
 		self.entity_kinds.insert(id, kind);
 		self.render_styles.insert(id, render_style);
-		self.gravity_multiplier.insert(id, gravity_multiplier);
+		self.gravity_multipliers.insert(id, gravity_multiplier);
 		self.widths.insert(id, width);
 		self.heights.insert(id, height);
 		self.speeds.insert(id, speed);
@@ -286,7 +286,10 @@ impl GameState {
 		self.speeds.remove(&id);
 		self.strengths.remove(&id);
 		self.luck.remove(&id);
-		self.gravity_multiplier.remove(&id);
+
+		self.range_mins.remove(id);
+		self.range_maxes.remove(id);
+		self.gravity_multipliers.remove(id);
 		self.jump_multipliers.remove(id);
 
 		// linear scan is fine. I’ll have maybe dozens of enemies, not millions.
@@ -346,8 +349,6 @@ impl GameState {
 				}
 				self.set_player(id);
 			}
-
-			println!("spawn id={} kind={} pos=({}, {})", id, e.kind, position.x, position.y);
 		}
 
 		return;

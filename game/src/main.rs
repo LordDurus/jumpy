@@ -58,7 +58,7 @@ fn main() {
 			}
 		}
 
-		// ai::system::update(&mut state);
+		ai::system::update(&mut state);
 		physics::gravity::apply(&mut state);
 		physics::movement::move_and_collide(&mut state);
 
