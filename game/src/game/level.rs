@@ -36,54 +36,58 @@ impl Level {
 		let tile_x: i32 = (level_x / tile_w).floor() as i32;
 		let tile_y: i32 = (level_y / tile_h).floor() as i32;
 
-		let layer: u32 = self.collision_layer_index() as u32;
-		let kind: TileKind = self.tile_at_layer(layer, tile_x, tile_y);
+		let layer: u32 = self.get_world_layer_index() as u32;
+		let kind: TileKind = self.get_tile_at_layer(layer, tile_x, tile_y);
 		return kind.is_solid();
 	}
 
-	pub fn tile_at(&self, tx: i32, ty: i32) -> TileKind {
-		if tx < 0 || ty < 0 {
-			return TileKind::Empty;
+	pub fn get_world_layer_index(&self) -> u8 {
+		if self.layer_count == 1 {
+			return 0;
 		}
-
-		let x: usize = tx as usize;
-		let y: usize = ty as usize;
-
-		if x >= self.width as usize || y >= self.height as usize {
-			return TileKind::Empty;
-		}
-
-		let idx: usize = y * (self.width as usize) + x;
-		let v: u8 = self.tiles[idx];
-		return TileKind::from_u8(v);
-	}
-
-	pub fn collision_layer_index(&self) -> u8 {
 		return 1;
 	}
 
-	pub fn tile_at_layer(&self, layer: u32, tx: i32, ty: i32) -> TileKind {
+	#[allow(dead_code)]
+	pub fn get_background_layer_index() -> u8 {
+		return 0;
+	}
+
+	#[allow(dead_code)]
+	pub fn get_foreground_layer_index() -> u8 {
+		return 2;
+	}
+
+	pub fn get_tile_at_layer(&self, layer: u32, tx: i32, ty: i32) -> TileKind {
+		let id: u8 = self.get_tile_id_at_layer(layer, tx, ty);
+		let kind: TileKind = TileKind::from_u8(id);
+		return kind;
+	}
+
+	pub fn get_tile_id_at_layer(&self, layer: u32, tx: i32, ty: i32) -> u8 {
 		if tx < 0 || ty < 0 {
-			return TileKind::Empty;
+			return 0;
 		}
 
 		let x: usize = tx as usize;
 		let y: usize = ty as usize;
 
 		if x >= self.width as usize || y >= self.height as usize {
-			return TileKind::Empty;
+			return 0;
 		}
 
-		let layer_usize: usize = layer as usize;
+		if layer as u8 >= self.layer_count {
+			return 0;
+		}
+
 		let idx_in_layer: usize = y * (self.width as usize) + x;
-		let idx: usize = layer_usize * self.tiles_per_layer + idx_in_layer;
+		let idx: usize = (layer as usize) * self.tiles_per_layer + idx_in_layer;
 
 		if idx >= self.tiles.len() {
-			return TileKind::Empty;
+			return 0;
 		}
 
-		let v: u8 = self.tiles[idx];
-		return TileKind::from_u8(v);
+		return self.tiles[idx];
 	}
 
 	pub fn load_binary(path: &str) -> Result<Level, String> {
@@ -314,11 +318,11 @@ impl Level {
 			return 0.0;
 		}
 
-		let layer: u32 = self.collision_layer_index() as u32;
+		let layer: u32 = self.get_world_layer_index() as u32;
 
 		for row in (0..self.height).rev() {
 			for col in 0..self.width {
-				let kind: TileKind = self.tile_at_layer(layer, col as i32, row as i32);
+				let kind: TileKind = self.get_tile_at_layer(layer, col as i32, row as i32);
 				if kind != TileKind::Empty {
 					return row as f32 * self.tile_height as f32;
 				}

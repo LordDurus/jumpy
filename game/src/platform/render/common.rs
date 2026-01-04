@@ -1,5 +1,8 @@
 use super::backend::RenderBackend;
-use crate::{game::game_state::GameState, tile::resolve_sheet_tile_id};
+use crate::{
+	game::{game_state::GameState, level},
+	tile::TileKind,
+};
 
 pub struct RenderCommon;
 
@@ -66,15 +69,15 @@ impl RenderCommon {
 		return (cam_x, cam_y);
 	}
 
-	pub fn draw_level<B: RenderBackend>(&self, backend: &mut B, world: &GameState, cam_x: i32, cam_y: i32, frame_index: u32) {
+	pub fn draw_level<B: RenderBackend>(&self, backend: &mut B, game_state: &GameState, cam_x: i32, cam_y: i32, frame_index: u32, layer: u32) {
 		let (screen_w_px, screen_h_px) = backend.screen_size();
 		let scale: f32 = backend.render_scale();
 
 		let screen_w_world: i32 = ((screen_w_px as f32) / scale).round() as i32;
 		let screen_h_world: i32 = ((screen_h_px as f32) / scale).round() as i32;
 
-		let tile_w_world: i32 = world.level.tile_width as i32;
-		let tile_h_world: i32 = world.level.tile_height as i32;
+		let tile_w_world: i32 = game_state.level.tile_width as i32;
+		let tile_h_world: i32 = game_state.level.tile_height as i32;
 
 		// visible tiles in world space
 		let view_left: i32 = cam_x / tile_w_world;
@@ -82,8 +85,8 @@ impl RenderCommon {
 		let view_right: i32 = (cam_x + screen_w_world + tile_w_world - 1) / tile_w_world;
 		let view_bottom: i32 = (cam_y + screen_h_world + tile_h_world - 1) / tile_h_world;
 
-		let max_x: i32 = world.level.width as i32;
-		let max_y: i32 = world.level.height as i32;
+		let max_x: i32 = game_state.level.width as i32;
+		let max_y: i32 = game_state.level.height as i32;
 
 		let x0: i32 = view_left.max(0);
 		let y0: i32 = view_top.max(0);
@@ -92,7 +95,8 @@ impl RenderCommon {
 
 		for ty in y0..y1 {
 			for tx in x0..x1 {
-				let kind = world.level.tile_at(tx, ty);
+				let kind = game_state.level.get_tile_at_layer(layer, tx, ty);
+
 				if kind == crate::tile::TileKind::Empty {
 					continue;
 				}
@@ -109,10 +113,34 @@ impl RenderCommon {
 				let sx: i32 = (((world_x - cam_x) as f32) * scale).round() as i32;
 				let sy: i32 = (((world_y - cam_y) as f32) * scale).round() as i32;
 
-				let w_px: u32 = ((world.level.tile_width as f32) * scale).round() as u32;
-				let h_px: u32 = ((world.level.tile_height as f32) * scale).round() as u32;
+				let w_px: u32 = ((game_state.level.tile_width as f32) * scale).round() as u32;
+				let h_px: u32 = ((game_state.level.tile_height as f32) * scale).round() as u32;
 				backend.draw_tile(sheet_id, sx, sy, w_px, h_px);
 			}
 		}
+	}
+}
+
+pub fn resolve_sheet_tile_id(kind: TileKind, frame_index: u32, tile_x: i32, tile_y: i32) -> u16 {
+	match kind {
+		TileKind::Empty => return 0,
+		TileKind::Dirt => return 24,
+
+		TileKind::GrassTop => {
+			let ids: [u16; 3] = [0, 1, 2];
+			let idx: usize = ((tile_x + tile_y) as usize) % 3;
+			return ids[idx];
+		}
+
+		TileKind::Water => {
+			let ids: [u16; 4] = [14, 17, 38, 40];
+			let idx: usize = (frame_index as usize) & 3;
+			return ids[idx];
+		}
+
+		TileKind::SpikeUp => return 78,
+		TileKind::SpikeDown => return 6,
+		TileKind::SpikeLeft => return 30,
+		TileKind::SpikeRight => return 54,
 	}
 }

@@ -1,29 +1,31 @@
 const RENDER_SCALE: f32 = 1.0;
 const WINDOW_WIDTH: u32 = 640;
 const WINDOW_HEIGHT: u32 = 360;
+const TILE_PIXELS: u32 = 16;
 
 use crate::{
-	game::game_state::GameState,
+	game::{game_state::GameState, level::Level},
 	platform::{RenderBackend, input::InputState, render::common::RenderCommon},
 	tile::TileKind,
 };
 
 use sdl2::{
 	EventPump,
-	image::{InitFlag, LoadTexture},
+	image::{LoadSurface, LoadTexture},
 	pixels::Color,
 	rect::Rect,
 	render::{Canvas, Texture, TextureCreator},
 	video::{Window, WindowContext},
 };
+use std::path::{Path, PathBuf};
 
 pub struct PcRenderer {
 	canvas: Canvas<Window>,
 	event_pump: EventPump,
 	common: RenderCommon,
+	frame_index: u32,
 
 	// bg parallax
-	texture_creator: &'static TextureCreator<WindowContext>,
 	bg_texture: Option<Texture<'static>>,
 	bg_parallax_x: f32,
 	bg_parallax_y: f32,
@@ -163,90 +165,141 @@ impl PcRenderer {
 		return;
 	}
 
-	fn draw_level(&mut self, game_state: &GameState) {
-		let level = &game_state.level;
-		let (cam_x_world, cam_y_world) = self.common.compute_camera(self, game_state);
+	fn draw_tiles_layer_atlas(
+		&mut self,
+		tile_tex: &sdl2::render::Texture,
+		tile_pixel: u32,
+		level: &Level,
+		layer: u32,
+		cam_x_world: f32,
+		cam_y_world: f32,
+		scale: f32,
+		_frame_index: u32,
+	) {
+		let tile_width_pixels: i32 = ((level.tile_width as f32) * scale).round() as i32;
+		let tile_height_pixels: i32 = ((level.tile_height as f32) * scale).round() as i32;
+
+		let cam_x_pixels: i32 = (cam_x_world * scale).round() as i32;
+		let cam_y_pixels: i32 = (cam_y_world * scale).round() as i32;
+
+		let view_width: i32 = WINDOW_WIDTH as i32;
+		let view_height: i32 = WINDOW_HEIGHT as i32;
+
+		let start_tile_left: i32 = ((cam_x_pixels / tile_width_pixels) - 1).max(0);
+		let start_tile_top: i32 = ((cam_y_pixels / tile_height_pixels) - 1).max(0);
+		let end_tile_left: i32 = (((cam_x_pixels + view_width) / tile_width_pixels) + 2).min(level.width as i32);
+		let end_tile_top: i32 = (((cam_y_pixels + view_height) / tile_height_pixels) + 2).min(level.height as i32);
+
+		let q = tile_tex.query();
+		let tile_cols: u32 = q.width / tile_pixel;
+
+		if let Err(e) = self.canvas.copy(
+			tile_tex,
+			sdl2::rect::Rect::new(0, 0, tile_pixel, tile_pixel),
+			sdl2::rect::Rect::new(0, 0, tile_width_pixels as u32, tile_height_pixels as u32),
+		) {
+			println!("test copy failed: {}", e);
+		}
+
+		static mut PRINTED_LAYER: [bool; 16] = [false; 16]; // bump 16 if you ever exceed it
+
+		let layer_usize: usize = layer as usize;
+		if layer_usize < 16 && !unsafe { PRINTED_LAYER[layer_usize] } {
+			let mut min_id: u8 = 255;
+			let mut max_id: u8 = 0;
+			let mut non_zero: u32 = 0;
+
+			for ty in start_tile_top..end_tile_top {
+				for tx in start_tile_left..end_tile_left {
+					// let tile_id: u8 = level.get_tile_id_at_layer(layer, tx, ty);
+					let tile_id: u8 = 1;
+
+					if tile_id != 0 {
+						non_zero += 1;
+					}
+					if tile_id < min_id {
+						min_id = tile_id;
+					}
+					if tile_id > max_id {
+						max_id = tile_id;
+					}
+				}
+			}
+
+			println!(
+				"layer={} visible tiles: left={} top={} right={} bottom={} min_id={} max_id={} non_zero={}",
+				layer, start_tile_left, start_tile_top, end_tile_left, end_tile_top, min_id, max_id, non_zero
+			);
+
+			unsafe {
+				PRINTED_LAYER[layer_usize] = true;
+			}
+		}
+
+		for ty in start_tile_top..end_tile_top {
+			for tx in start_tile_left..end_tile_left {
+				let tile_id: u8 = level.get_tile_id_at_layer(layer, tx, ty);
+				// let tile_id: u8 = 1;
+				if tile_id == 0 {
+					continue; // empty
+				}
+				let id = tile_id as u32;
+
+				let source_left: i32 = ((id % tile_cols) * tile_pixel) as i32;
+				let source_top: i32 = ((id / tile_cols) * tile_pixel) as i32;
+				let source = sdl2::rect::Rect::new(source_left, source_top, tile_pixel, tile_pixel);
+
+				let destination_left: i32 = (tx * tile_width_pixels) - cam_x_pixels;
+				let destination_top: i32 = (ty * tile_height_pixels) - cam_y_pixels;
+				let destination = sdl2::rect::Rect::new(destination_left, destination_top, tile_width_pixels as u32, tile_height_pixels as u32);
+
+				let _ = self.canvas.copy(tile_tex, source, destination).unwrap();
+
+				/*
+				let test_src = sdl2::rect::Rect::new(48, 20, 16, 16); // tile #2 in row if tile_px=16
+				let test_dst = sdl2::rect::Rect::new(0, 0, (16.0 * scale) as u32, (16.0 * scale) as u32);
+				let _ = self.canvas.copy(tile_tex, test_src, test_dst);
+				*/
+			}
+		}
+
+		return;
+	}
+
+	fn draw_level_internal(&mut self, game_state: &GameState) {
+		let common: super::common::RenderCommon = super::common::RenderCommon::new();
+
+		let (cam_x_world, cam_y_world) = common.compute_camera(self, game_state);
 		let scale: f32 = self.render_scale();
 
+		// background first, tiles on top
 		self.draw_background(cam_x_world, cam_y_world, scale);
 
-		let tile_width_world: i32 = level.tile_width as i32;
-		let tile_height_world: i32 = level.tile_height as i32;
+		// Old way: quick and dirty tile drawing for testing
+		// common.draw_level(self, game_state, cam_x_world, cam_y_world, self.frame_index);
 
-		let tile_width_scale: u32 = (level.tile_width as f32 * scale).round() as u32;
-		let tile_height_scale: u32 = (level.tile_height as f32 * scale).round() as u32;
+		let texture_creator = self.canvas.texture_creator();
 
-		// tiles
-		for ty in 0..(level.height as i32) {
-			for tx in 0..(level.width as i32) {
-				let layer: u32 = level.collision_layer_index() as u32;
-				let kind: TileKind = level.tile_at_layer(layer, tx, ty);
-				if kind == TileKind::Empty {
-					continue;
-				}
+		let tile_path: PathBuf = get_asset_root().join("pc").join("tiles.png");
 
-				match kind {
-					TileKind::Dirt => self.canvas.set_draw_color(Color::RGB(110, 72, 36)),
-					TileKind::GrassTop => self.canvas.set_draw_color(Color::RGB(48, 160, 64)),
-					TileKind::Water => self.canvas.set_draw_color(Color::RGB(48, 96, 200)),
-					TileKind::SpikeUp | TileKind::SpikeDown | TileKind::SpikeLeft | TileKind::SpikeRight => self.canvas.set_draw_color(Color::RGB(200, 48, 48)),
-					TileKind::Empty => {}
-				}
+		let tile_tex: sdl2::render::Texture = texture_creator.load_texture(&tile_path).unwrap();
+		let texture_query: sdl2::render::TextureQuery = tile_tex.query();
 
-				let world_x: i32 = tx * tile_width_world;
-				let world_y: i32 = ty * tile_height_world;
-
-				let sx: i32 = (((world_x - cam_x_world) as f32) * scale).round() as i32;
-				let sy: i32 = (((world_y - cam_y_world) as f32) * scale).round() as i32;
-
-				let rect = Rect::new(sx, sy, tile_width_scale, tile_height_scale);
-				let _ = self.canvas.fill_rect(rect);
-			}
+		for layer in 0..(game_state.level.layer_count as u32) {
+			// println!("Drawing layer {}", layer);
+			self.draw_tiles_layer_atlas(
+				&tile_tex,
+				TILE_PIXELS,
+				&game_state.level,
+				layer,
+				cam_x_world as f32,
+				cam_y_world as f32,
+				scale,
+				self.frame_index,
+			);
 		}
 
-		// entities (single pass: kind -> color, render_style -> shape)
-		for (id, pos) in game_state.positions.iter() {
-			let kind: u8 = *game_state.entity_kinds.get(id).unwrap_or(&0);
-			let style: u8 = *game_state.render_styles.get(id).unwrap_or(&0);
-
-			let (half_width, half_height) = game_state.get_entity_half_values(*id);
-
-			let world_left: f32 = pos.x - half_width;
-			let world_top: f32 = pos.y - half_height;
-
-			let scale_top: i32 = ((world_top - cam_y_world as f32) * scale).round() as i32;
-			let scale_left: i32 = ((world_left - cam_x_world as f32) * scale).round() as i32;
-
-			let width: u32 = ((half_width * 2.0) * scale).round() as u32; // TODO: get the entiy widht
-			let height: u32 = ((half_height * 2.0) * scale).round() as u32;
-
-			let color: Color = match kind {
-				0 => Color::RGB(0, 0, 0),       // not set (black)
-				1 => Color::RGB(255, 255, 255), // player (white)
-				2 => Color::RGB(64, 160, 255),  // slime (blue)
-				3 => Color::RGB(64, 200, 64),   // imp (green)
-				4 => Color::RGB(255, 255, 0),   // platform (yellow)
-				_ => Color::RGB(255, 0, 255),   // debug
-			};
-
-			// println!("draw entity id={} kind={} style={} color={:?}", id, kind, style, color);
-
-			match style {
-				2 => {
-					let cx: i32 = scale_left + (width as i32 / 2);
-					let cy: i32 = scale_top + (height as i32 / 2);
-					let r: i32 = (width.min(height) as i32) / 2;
-					self.draw_filled_circle(cx, cy, r, color);
-				}
-				3 => {
-					self.draw_filled_triangle(scale_left, scale_top, width, height, color);
-				}
-				_ => {
-					self.draw_filled_rect(scale_left, scale_top, width, height, color);
-				}
-			}
-		}
-
+		self.frame_index = self.frame_index.wrapping_add(1);
 		return;
 	}
 }
@@ -268,19 +321,17 @@ impl RenderBackend for PcRenderer {
 		let creator_box = Box::new(canvas.texture_creator());
 		let texture_creator: &'static sdl2::render::TextureCreator<sdl2::video::WindowContext> = Box::leak(creator_box);
 
-		// TODO: use world/level image
-		let bg_path: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../assets/gfx/pc/bg_parallax1.png");
+		let bg_path: PathBuf = get_asset_root().join("pc").join("bg_parallax_forest.png");
 		let bg_texture = texture_creator.load_texture(bg_path).ok();
 		if bg_texture.is_none() {
 			println!("manifest_dir={}", env!("CARGO_MANIFEST_DIR"));
-			println!("bg texture failed to load: {}", bg_path);
 		}
 
 		return PcRenderer {
 			canvas,
 			event_pump,
 			common: RenderCommon::new(),
-			texture_creator,
+			frame_index: 0,
 			bg_texture,
 			bg_parallax_x: 0.35,
 			bg_parallax_y: 0.15,
@@ -292,18 +343,28 @@ impl RenderBackend for PcRenderer {
 		return (w as i32, h as i32);
 	}
 
-	fn draw_tile(&mut self, sheet_id: u16, x: i32, y: i32, w: u32, h: u32) {
-		// temporary: colored blocks, ignore sheet_id or map it to a color
-		// if you want a simple mapping:
+	fn draw_tile(&mut self, sheet_id: u16, x: i32, y: i32, width: u32, height: u32) {
+		panic!("old draw_tile path was called (RenderCommon or old renderer still in use)");
+
 		if sheet_id == 0 {
 			return;
 		}
 
-		// pick a default color (you can improve this later)
-		self.canvas.set_draw_color(Color::RGB(255, 255, 255));
+		// tile.rs resolve_sheet_tile_id() returns a handful of known ids.
+		// map those to the same debug colors we used before.
+		let color: Color = match sheet_id {
+			0 | 1 | 2 => Color::RGB(48, 160, 64),
+			24 => Color::RGB(110, 72, 36),
+			14 | 17 | 38 | 40 => Color::RGB(48, 96, 200),
+			78 | 6 | 30 | 54 => Color::RGB(200, 48, 48),
+			_ => Color::RGB(255, 0, 255),
+		};
 
-		let rect = Rect::new(x, y, w, h);
+		self.canvas.set_draw_color(color);
+
+		let rect = Rect::new(x, y, width, height);
 		let _ = self.canvas.fill_rect(rect);
+		panic!("pc draw_tile debug path called; tiles should be drawn via tilesheet blit");
 	}
 
 	fn render_scale(&self) -> f32 {
@@ -320,11 +381,15 @@ impl RenderBackend for PcRenderer {
 	}
 
 	fn draw_level(&mut self, game_state: &GameState) {
-		// println!("RenderBackend: draw_world");
-		self.draw_level(game_state);
+		self.draw_level_internal(game_state);
 	}
 
 	fn commit(&mut self) {
 		self.canvas.present();
 	}
+}
+
+fn get_asset_root() -> PathBuf {
+	let root: PathBuf = Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("assets").join("gfx");
+	return root;
 }

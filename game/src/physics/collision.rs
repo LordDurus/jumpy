@@ -5,7 +5,7 @@ pub fn resolve_ceiling_collision(level: &Level, pos: &mut Vec2, vel: &mut Vec2, 
 		return;
 	}
 
-	let layer: u32 = level.collision_layer_index() as u32;
+	let layer: u32 = level.get_world_layer_index() as u32;
 
 	let tile_w: f32 = level.tile_width as f32;
 	let tile_h: f32 = level.tile_height as f32;
@@ -26,7 +26,7 @@ pub fn resolve_ceiling_collision(level: &Level, pos: &mut Vec2, vel: &mut Vec2, 
 	let tx_left: i32 = (left_x / tile_w).floor() as i32;
 	let tx_right: i32 = (right_x / tile_w).floor() as i32;
 
-	let hit: bool = level.tile_at_layer(layer, tx_left, ty).is_solid() || level.tile_at_layer(layer, tx_right, ty).is_solid();
+	let hit: bool = level.get_tile_at_layer(layer, tx_left, ty).is_solid() || level.get_tile_at_layer(layer, tx_right, ty).is_solid();
 
 	if hit {
 		// snap player just below the ceiling tile
@@ -43,7 +43,7 @@ pub fn resolve_floor_collision(level: &Level, pos: &mut Vec2, vel: &mut Vec2, ha
 		return;
 	}
 
-	let layer: u32 = level.collision_layer_index() as u32;
+	let layer: u32 = level.get_world_layer_index() as u32;
 
 	let tile_w: f32 = level.tile_width as f32;
 	let tile_h: f32 = level.tile_height as f32;
@@ -58,7 +58,7 @@ pub fn resolve_floor_collision(level: &Level, pos: &mut Vec2, vel: &mut Vec2, ha
 	let test_left: i32 = ((pos.x - half_w + inset) / tile_w).floor() as i32;
 	let test_right: i32 = ((pos.x + half_w - inset) / tile_w).floor() as i32;
 
-	let hit: bool = level.tile_at_layer(layer, test_left, ty).is_solid() || level.tile_at_layer(layer, test_right, ty).is_solid();
+	let hit: bool = level.get_tile_at_layer(layer, test_left, ty).is_solid() || level.get_tile_at_layer(layer, test_right, ty).is_solid();
 
 	if !hit {
 		return;
@@ -74,7 +74,7 @@ pub fn resolve_wall_collision(level: &Level, pos: &mut Vec2, vel: &mut Vec2, hal
 		return;
 	}
 
-	let layer: u32 = level.collision_layer_index() as u32;
+	let layer: u32 = level.get_world_layer_index() as u32;
 
 	let tile_w: f32 = level.tile_width as f32;
 	let tile_h: f32 = level.tile_height as f32;
@@ -96,8 +96,9 @@ pub fn resolve_wall_collision(level: &Level, pos: &mut Vec2, vel: &mut Vec2, hal
 		let probe_x: f32 = pos.x + half_w + inset_x;
 		let tx: i32 = (probe_x / tile_w).floor() as i32;
 
-		let hit: bool =
-			level.tile_at_layer(layer, tx, ty_top).is_solid() || level.tile_at_layer(layer, tx, ty_mid).is_solid() || level.tile_at_layer(layer, tx, ty_bot).is_solid();
+		let hit: bool = level.get_tile_at_layer(layer, tx, ty_top).is_solid()
+			|| level.get_tile_at_layer(layer, tx, ty_mid).is_solid()
+			|| level.get_tile_at_layer(layer, tx, ty_bot).is_solid();
 
 		/*
 		println!(
@@ -119,8 +120,9 @@ pub fn resolve_wall_collision(level: &Level, pos: &mut Vec2, vel: &mut Vec2, hal
 	let probe_x: f32 = pos.x - half_w - inset_x;
 	let tx: i32 = (probe_x / tile_w).floor() as i32;
 
-	let hit: bool =
-		level.tile_at_layer(layer, tx, ty_top).is_solid() || level.tile_at_layer(layer, tx, ty_mid).is_solid() || level.tile_at_layer(layer, tx, ty_bot).is_solid();
+	let hit: bool = level.get_tile_at_layer(layer, tx, ty_top).is_solid()
+		|| level.get_tile_at_layer(layer, tx, ty_mid).is_solid()
+		|| level.get_tile_at_layer(layer, tx, ty_bot).is_solid();
 
 	if hit {
 		let tile_right: f32 = ((tx + 1) as f32) * tile_w;
@@ -132,7 +134,7 @@ pub fn resolve_wall_collision(level: &Level, pos: &mut Vec2, vel: &mut Vec2, hal
 }
 
 pub fn scan_down_to_ground(level: &Level, pos: &mut Vec2, half_width: f32, half_height: f32, max_scan_tiles: i32) -> bool {
-	let layer: u32 = level.collision_layer_index() as u32;
+	let layer: u32 = level.get_world_layer_index() as u32;
 
 	let tile_w: f32 = level.tile_width as f32;
 	let tile_h: f32 = level.tile_height as f32;
@@ -152,7 +154,7 @@ pub fn scan_down_to_ground(level: &Level, pos: &mut Vec2, half_width: f32, half_
 	let mut steps: i32 = 0;
 	while steps <= max_scan_tiles && ty <= max_ty {
 		if ty >= min_ty {
-			let hit: bool = level.tile_at_layer(layer, tx_left, ty).is_solid() || level.tile_at_layer(layer, tx_right, ty).is_solid();
+			let hit: bool = level.get_tile_at_layer(layer, tx_left, ty).is_solid() || level.get_tile_at_layer(layer, tx_right, ty).is_solid();
 
 			if hit {
 				// snap entity so its feet are on top of this tile row

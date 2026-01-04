@@ -46,27 +46,3 @@ impl TileKind {
 		}
 	}
 }
-
-pub fn resolve_sheet_tile_id(kind: TileKind, frame_index: u32, tile_x: i32, tile_y: i32) -> u16 {
-	match kind {
-		TileKind::Empty => return 0,
-		TileKind::Dirt => return 24,
-
-		TileKind::GrassTop => {
-			let ids: [u16; 3] = [0, 1, 2];
-			let idx: usize = ((tile_x + tile_y) as usize) % 3;
-			return ids[idx];
-		}
-
-		TileKind::Water => {
-			let ids: [u16; 4] = [14, 17, 38, 40];
-			let idx: usize = (frame_index as usize) & 3;
-			return ids[idx];
-		}
-
-		TileKind::SpikeUp => return 78,
-		TileKind::SpikeDown => return 6,
-		TileKind::SpikeLeft => return 30,
-		TileKind::SpikeRight => return 54,
-	}
-}
