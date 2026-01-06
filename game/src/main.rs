@@ -6,7 +6,7 @@ mod physics;
 mod platform;
 mod tile;
 
-use crate::{game::game_state::GameState, platform::render::backend::RenderBackend};
+use crate::{engine_math::Vec2, game::game_state::GameState, platform::render::backend::RenderBackend};
 
 #[cfg(feature = "pc")]
 type ActiveRenderer = crate::platform::render::pc::PcRenderer;
@@ -28,7 +28,6 @@ fn main() {
 	};
 
 	let mut state = GameState::new(level);
-	// let player_id = state.spawn_player();
 
 	state.spawn_level_entities();
 	let player_id = state.get_player_id();
@@ -58,6 +57,8 @@ fn main() {
 			}
 		}
 
+		state.tick = state.tick.wrapping_add(1);
+
 		ai::system::update(&mut state);
 		physics::gravity::apply(&mut state);
 		physics::movement::move_and_collide(&mut state);
@@ -65,6 +66,17 @@ fn main() {
 		renderer.begin_frame();
 		renderer.draw_level(&state);
 		renderer.commit();
+
+		if (renderer.frame_index % 60) == 0 {
+			for (id, pos) in state.positions.iter() {
+				let kind: u8 = *state.entity_kinds.get(id).unwrap_or(&0);
+				if kind == 2 {
+					// slime
+					let vel = state.velocities.get(id).copied().unwrap_or(Vec2::zero());
+					println!("slime id={} pos=({}, {}) vel=({}, {})", id, pos.x, pos.y, vel.x, vel.y);
+				}
+			}
+		}
 	}
 }
 

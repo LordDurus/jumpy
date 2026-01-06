@@ -73,10 +73,6 @@ Binary level files use:
 ### Tile Queries
 The `Level` API exposes **semantic queries**, not raw bytes.
 
-```rust
-pub fn tile_at(&self, tx: i32, ty: i32) -> TileKind
-```
-
 ---
 
 ## 5. Movement & Jump Architecture

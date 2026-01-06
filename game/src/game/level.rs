@@ -30,18 +30,18 @@ fn get_gravity_from_file(v: u8) -> u8 {
 
 impl Level {
 	pub fn is_solid_world_f32(&self, level_x: f32, level_y: f32) -> bool {
-		let tile_w: f32 = self.tile_width as f32;
-		let tile_h: f32 = self.tile_height as f32;
+		let tile_width: f32 = self.tile_width as f32;
+		let tile_height: f32 = self.tile_height as f32;
 
-		let tile_x: i32 = (level_x / tile_w).floor() as i32;
-		let tile_y: i32 = (level_y / tile_h).floor() as i32;
+		let tile_x: i32 = (level_x / tile_width).floor() as i32;
+		let tile_y: i32 = (level_y / tile_height).floor() as i32;
 
-		let layer: u32 = self.get_world_layer_index() as u32;
+		let layer: u32 = self.get_action_layer_index() as u32;
 		let kind: TileKind = self.get_tile_at_layer(layer, tile_x, tile_y);
 		return kind.is_solid();
 	}
 
-	pub fn get_world_layer_index(&self) -> u8 {
+	pub fn get_action_layer_index(&self) -> u8 {
 		if self.layer_count == 1 {
 			return 0;
 		}
@@ -87,6 +87,7 @@ impl Level {
 			return 0;
 		}
 
+		// println!("get_tile_id_at_layer: layer={} tx={} ty={} idx={},kind_id={}", layer, tx, ty, idx, self.tiles[idx]);
 		return self.tiles[idx];
 	}
 
@@ -318,7 +319,7 @@ impl Level {
 			return 0.0;
 		}
 
-		let layer: u32 = self.get_world_layer_index() as u32;
+		let layer: u32 = self.get_action_layer_index() as u32;
 
 		for row in (0..self.height).rev() {
 			for col in 0..self.width {

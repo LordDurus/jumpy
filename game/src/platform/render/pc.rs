@@ -6,16 +6,15 @@ const TILE_PIXELS: u32 = 16;
 use crate::{
 	game::{game_state::GameState, level::Level},
 	platform::{RenderBackend, input::InputState, render::common::RenderCommon},
-	tile::TileKind,
 };
 
 use sdl2::{
 	EventPump,
-	image::{LoadSurface, LoadTexture},
+	image::LoadTexture,
 	pixels::Color,
 	rect::Rect,
-	render::{Canvas, Texture, TextureCreator},
-	video::{Window, WindowContext},
+	render::{Canvas, Texture},
+	video::Window,
 };
 use std::path::{Path, PathBuf};
 
@@ -23,7 +22,7 @@ pub struct PcRenderer {
 	canvas: Canvas<Window>,
 	event_pump: EventPump,
 	common: RenderCommon,
-	frame_index: u32,
+	pub frame_index: u32,
 
 	// bg parallax
 	bg_texture: Option<Texture<'static>>,
@@ -136,11 +135,6 @@ impl PcRenderer {
 			return;
 		}
 
-		/*
-		let cam_x_px: f32 = cam_x_world as f32 * scale;
-		let cam_y_px: f32 = cam_y_world as f32 * scale;
-		*/
-
 		let bg_cam_x: f32 = cam_x_world as f32 * self.bg_parallax_x * self.bg_parallax_x;
 		let bg_cam_y: f32 = cam_y_world as f32 * self.bg_parallax_y * self.bg_parallax_y;
 
@@ -171,35 +165,26 @@ impl PcRenderer {
 		tile_pixel: u32,
 		level: &Level,
 		layer: u32,
-		cam_x_world: f32,
-		cam_y_world: f32,
+		cam_left_world: f32,
+		cam_top_world: f32,
 		scale: f32,
 		_frame_index: u32,
 	) {
-		let tile_width_pixels: i32 = ((level.tile_width as f32) * scale).round() as i32;
-		let tile_height_pixels: i32 = ((level.tile_height as f32) * scale).round() as i32;
+		let tile_width_world: f32 = level.tile_width as f32;
+		let tile_height_world: f32 = level.tile_height as f32;
 
-		let cam_x_pixels: i32 = (cam_x_world * scale).round() as i32;
-		let cam_y_pixels: i32 = (cam_y_world * scale).round() as i32;
+		let view_width_world: f32 = (WINDOW_WIDTH as f32) / scale;
+		let view_height_world: f32 = (WINDOW_HEIGHT as f32) / scale;
 
-		let view_width: i32 = WINDOW_WIDTH as i32;
-		let view_height: i32 = WINDOW_HEIGHT as i32;
+		let start_tile_left: i32 = ((cam_left_world / tile_width_world).floor() as i32 - 1).max(0);
+		let start_tile_top: i32 = ((cam_top_world / tile_height_world).floor() as i32 - 1).max(0);
 
-		let start_tile_left: i32 = ((cam_x_pixels / tile_width_pixels) - 1).max(0);
-		let start_tile_top: i32 = ((cam_y_pixels / tile_height_pixels) - 1).max(0);
-		let end_tile_left: i32 = (((cam_x_pixels + view_width) / tile_width_pixels) + 2).min(level.width as i32);
-		let end_tile_top: i32 = (((cam_y_pixels + view_height) / tile_height_pixels) + 2).min(level.height as i32);
+		let end_tile_left: i32 = (((cam_left_world + view_width_world) / tile_width_world).ceil() as i32 + 2).min(level.width as i32);
+
+		let end_tile_top: i32 = (((cam_top_world + view_height_world) / tile_height_world).ceil() as i32 + 2).min(level.height as i32);
 
 		let q = tile_tex.query();
 		let tile_cols: u32 = q.width / tile_pixel;
-
-		if let Err(e) = self.canvas.copy(
-			tile_tex,
-			sdl2::rect::Rect::new(0, 0, tile_pixel, tile_pixel),
-			sdl2::rect::Rect::new(0, 0, tile_width_pixels as u32, tile_height_pixels as u32),
-		) {
-			println!("test copy failed: {}", e);
-		}
 
 		static mut PRINTED_LAYER: [bool; 16] = [false; 16]; // bump 16 if you ever exceed it
 
@@ -211,8 +196,7 @@ impl PcRenderer {
 
 			for ty in start_tile_top..end_tile_top {
 				for tx in start_tile_left..end_tile_left {
-					// let tile_id: u8 = level.get_tile_id_at_layer(layer, tx, ty);
-					let tile_id: u8 = 1;
+					let tile_id: u8 = level.get_tile_id_at_layer(layer, tx, ty);
 
 					if tile_id != 0 {
 						non_zero += 1;
@@ -236,10 +220,26 @@ impl PcRenderer {
 			}
 		}
 
+		/*
+		let mut count_0: u32 = 0;
+		let mut count_1: u32 = 0;
 		for ty in start_tile_top..end_tile_top {
 			for tx in start_tile_left..end_tile_left {
 				let tile_id: u8 = level.get_tile_id_at_layer(layer, tx, ty);
-				// let tile_id: u8 = 1;
+				if tile_id == 0 {
+					count_0 += 1;
+				}
+				if tile_id == 1 {
+					count_1 += 1;
+				}
+			}
+		}
+		println!("layer={} count_0={} count_1={}", layer, count_0, count_1);
+		*/
+
+		for ty in start_tile_top..end_tile_top {
+			for tx in start_tile_left..end_tile_left {
+				let tile_id: u8 = level.get_tile_id_at_layer(layer, tx, ty);
 				if tile_id == 0 {
 					continue; // empty
 				}
@@ -249,17 +249,25 @@ impl PcRenderer {
 				let source_top: i32 = ((id / tile_cols) * tile_pixel) as i32;
 				let source = sdl2::rect::Rect::new(source_left, source_top, tile_pixel, tile_pixel);
 
-				let destination_left: i32 = (tx * tile_width_pixels) - cam_x_pixels;
-				let destination_top: i32 = (ty * tile_height_pixels) - cam_y_pixels;
-				let destination = sdl2::rect::Rect::new(destination_left, destination_top, tile_width_pixels as u32, tile_height_pixels as u32);
+				// let destination_left: i32 = (tx * tile_width_pixels) - cam_x_pixels;
+				// let destination_top: i32 = (ty * tile_height_pixels) - cam_y_pixels;
+
+				let world_left: f32 = (tx as f32) * tile_width_world;
+				let world_top: f32 = (ty as f32) * tile_height_world;
+
+				let destination_left: i32 = ((world_left - cam_left_world) * scale).round() as i32;
+				let destination_top: i32 = ((world_top - cam_top_world) * scale).round() as i32;
+
+				// let destination = sdl2::rect::Rect::new(destination_left, destination_top, tile_width_pixels as u32, tile_height_pixels as u32);
+
+				let destination = Rect::new(
+					destination_left,
+					destination_top,
+					(tile_width_world * scale).round() as u32,
+					(tile_height_world * scale).round() as u32,
+				);
 
 				let _ = self.canvas.copy(tile_tex, source, destination).unwrap();
-
-				/*
-				let test_src = sdl2::rect::Rect::new(48, 20, 16, 16); // tile #2 in row if tile_px=16
-				let test_dst = sdl2::rect::Rect::new(0, 0, (16.0 * scale) as u32, (16.0 * scale) as u32);
-				let _ = self.canvas.copy(tile_tex, test_src, test_dst);
-				*/
 			}
 		}
 
@@ -267,23 +275,20 @@ impl PcRenderer {
 	}
 
 	fn draw_level_internal(&mut self, game_state: &GameState) {
-		let common: super::common::RenderCommon = super::common::RenderCommon::new();
+		//let common: super::common::RenderCommon = super::common::RenderCommon::new();
 
-		let (cam_x_world, cam_y_world) = common.compute_camera(self, game_state);
+		let (cam_left_world, cam_top_world) = self.common.compute_camera(self, game_state);
 		let scale: f32 = self.render_scale();
 
 		// background first, tiles on top
-		self.draw_background(cam_x_world, cam_y_world, scale);
+		self.draw_background(cam_left_world, cam_top_world, scale);
 
 		// Old way: quick and dirty tile drawing for testing
 		// common.draw_level(self, game_state, cam_x_world, cam_y_world, self.frame_index);
 
 		let texture_creator = self.canvas.texture_creator();
-
 		let tile_path: PathBuf = get_asset_root().join("pc").join("tiles.png");
-
 		let tile_tex: sdl2::render::Texture = texture_creator.load_texture(&tile_path).unwrap();
-		let texture_query: sdl2::render::TextureQuery = tile_tex.query();
 
 		for layer in 0..(game_state.level.layer_count as u32) {
 			// println!("Drawing layer {}", layer);
@@ -292,14 +297,69 @@ impl PcRenderer {
 				TILE_PIXELS,
 				&game_state.level,
 				layer,
-				cam_x_world as f32,
-				cam_y_world as f32,
+				cam_left_world as f32,
+				cam_top_world as f32,
 				scale,
 				self.frame_index,
 			);
 		}
 
 		self.frame_index = self.frame_index.wrapping_add(1);
+		// self.draw_entities(game_state, scale, self.frame_index);
+
+		self.draw_entities(game_state, cam_left_world as f32, cam_top_world as f32, scale, self.frame_index);
+
+		return;
+	}
+
+	fn draw_entities(&mut self, game_state: &GameState, cam_left_world: f32, cam_top_world: f32, scale: f32, _frame_index: u32) {
+		let cam_left_pixels: i32 = (cam_left_world * scale).round() as i32;
+		let cam_top_pixels: i32 = (cam_top_world * scale).round() as i32;
+
+		if self.frame_index == 0 {
+			println!("cam world = {}, {}", cam_left_world, cam_top_world);
+		}
+
+		for (id, pos) in game_state.positions.iter() {
+			let kind: u8 = *game_state.entity_kinds.get(id).unwrap_or(&0);
+			let style: u8 = *game_state.render_styles.get(id).unwrap_or(&0);
+
+			let (half_width, half_height) = game_state.get_entity_half_values(*id);
+
+			let world_left: f32 = pos.x - half_width;
+			let world_top: f32 = pos.y - half_height;
+
+			let scale_left: i32 = ((world_left - cam_left_world) * scale).round() as i32;
+			let scale_top: i32 = ((world_top - cam_top_world) * scale).round() as i32;
+
+			let width: u32 = ((half_width * 2.0) * scale).round() as u32;
+			let height: u32 = ((half_height * 2.0) * scale).round() as u32;
+
+			let color: Color = match kind {
+				0 => Color::RGB(0, 0, 0),       // not set (black)
+				1 => Color::RGB(255, 255, 255), // player (white)
+				2 => Color::RGB(64, 160, 255),  // slime (blue)
+				3 => Color::RGB(64, 200, 64),   // imp (green)
+				4 => Color::RGB(255, 255, 0),   // platform (yellow)
+				_ => Color::RGB(255, 0, 255),   // debug
+			};
+
+			match style {
+				2 => {
+					let cx: i32 = scale_left + (width as i32 / 2);
+					let cy: i32 = scale_top + (height as i32 / 2);
+					let r: i32 = (width.min(height) as i32) / 2;
+					self.draw_filled_circle(cx, cy, r, color);
+				}
+				3 => {
+					self.draw_filled_triangle(scale_left, scale_top, width, height, color);
+				}
+				_ => {
+					self.draw_filled_rect(scale_left, scale_top, width, height, color);
+				}
+			}
+		}
+
 		return;
 	}
 }
@@ -344,8 +404,6 @@ impl RenderBackend for PcRenderer {
 	}
 
 	fn draw_tile(&mut self, sheet_id: u16, x: i32, y: i32, width: u32, height: u32) {
-		panic!("old draw_tile path was called (RenderCommon or old renderer still in use)");
-
 		if sheet_id == 0 {
 			return;
 		}

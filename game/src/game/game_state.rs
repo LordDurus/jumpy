@@ -50,13 +50,14 @@ pub struct GameState {
 	// pub enemy_ids: ComponentStore<EntityId>,
 	pub enemy_ids: Vec<EntityId>,
 
+	pub tick: u32,
 	next_entity_id: EntityId,
 }
 
 impl GameState {
 	pub fn new(current_level: Level) -> GameState {
-		let spawn_top = current_level.player_spawn_top;
-		let spawn_left = current_level.player_spawn_left;
+		let spawn_top_tiles: u16 = current_level.player_spawn_top as u16;
+		let spawn_left_tiles: u16 = current_level.player_spawn_left as u16;
 
 		let mut state = GameState {
 			level: current_level,
@@ -80,36 +81,30 @@ impl GameState {
 			jump_multipliers: ComponentStore::new(),
 			gravity_multipliers: ComponentStore::new(),
 			enemy_ids: Vec::new(),
+			tick: 0,
 		};
 
-		state.set_spawn_point(spawn_top, spawn_left);
-		// state.spawn_player();
+		state.set_spawn_point_tiles(spawn_top_tiles, spawn_left_tiles);
 
 		return state;
 	}
 
-	pub fn set_spawn_point(&mut self, top: f32, left: f32) {
-		self.spawn_point.x = left;
-		self.spawn_point.y = top;
+	pub fn set_spawn_point_tiles(&mut self, top_tiles: u16, left_tiles: u16) {
+		let tile_width: f32 = self.level.tile_width as f32;
+		let tile_height: f32 = self.level.tile_height as f32;
+
+		// player is 16x16 right now (or pull from game_state.width/height for player id if available)
+		let player_width_world: f32 = 16.0;
+		let player_height_world: f32 = 16.0;
+
+		let left_world: f32 = (left_tiles as f32) * tile_width;
+		let top_world: f32 = (top_tiles as f32) * tile_height;
+
+		self.spawn_point.x = left_world + (player_width_world * 0.5);
+		self.spawn_point.y = top_world + (player_height_world * 0.5);
+
+		return;
 	}
-
-	/*
-		// Create the player
-		pub fn spawn_player(&mut self) -> EntityId {
-			// if you already have a player, don't create another
-			if self.player_id.is_some() {
-				self.respawn_player();
-				return self.get_player_id();
-			}
-
-			let id: EntityId = self.add_entity(1, self.spawn_point, Vec2::zero(), 0, 1, 16, 16, 0, 0, 0, 0.0, 0.0);
-			self.set_player(id);
-			let mut pos = self.spawn_point;
-			let _ = collision::scan_down_to_ground(&self.level, &mut pos, 8.0, 8.0, 64);
-			self.last_grounded_pos = Some(self.spawn_point);
-			return id;
-		}
-	*/
 
 	pub fn respawn_player(&mut self) {
 		// TODO: Add wait here (.25 seconds)
@@ -316,6 +311,7 @@ impl GameState {
 		for e in entities {
 			let position: Vec2 = Vec2::new((e.left as f32 + 0.5) * tile_w, (e.top as f32 + 0.5) * tile_height);
 
+			//let position: Vec2 = Vec2::new((e.top as f32 + 0.5) * tile_height, (e.left as f32 + 0.5) * tile_w);
 			let range_min_x: f32 = (e.range_min as f32) * tile_w;
 			let range_max: f32 = (e.range_max as f32) * tile_w;
 
