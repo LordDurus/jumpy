@@ -1,4 +1,4 @@
-use crate::tile::TileKind;
+use crate::{game::game_state::EntityKind, tile::TileKind};
 use std::fs;
 
 pub const BYTES_PER_ENTITY: usize = 24;
@@ -64,6 +64,33 @@ impl Level {
 		return kind;
 	}
 
+	pub fn set_tile_id_at_layer(&mut self, layer: u32, tx: i32, ty: i32, tile_id: u8) -> bool {
+		if tx < 0 || ty < 0 {
+			return false;
+		}
+
+		let x: usize = tx as usize;
+		let y: usize = ty as usize;
+
+		if x >= self.width as usize || y >= self.height as usize {
+			return false;
+		}
+
+		if layer as u8 >= self.layer_count {
+			return false;
+		}
+
+		let index_in_layer: usize = y * (self.width as usize) + x;
+		let index: usize = (layer as usize) * self.tiles_per_layer + index_in_layer;
+
+		if index >= self.tiles.len() {
+			return false;
+		}
+
+		self.tiles[index] = tile_id;
+		return true;
+	}
+
 	pub fn get_tile_id_at_layer(&self, layer: u32, tx: i32, ty: i32) -> u8 {
 		if tx < 0 || ty < 0 {
 			return 0;
@@ -86,8 +113,6 @@ impl Level {
 		if idx >= self.tiles.len() {
 			return 0;
 		}
-
-		// println!("get_tile_id_at_layer: layer={} tx={} ty={} idx={},kind_id={}", layer, tx, ty, idx, self.tiles[idx]);
 		return self.tiles[idx];
 	}
 
@@ -305,6 +330,56 @@ impl Level {
 
 		level.floor_y = level.compute_floor_y();
 
+		let action_layer: u32 = level.get_action_layer_index() as u32;
+		let mut platform_stamps: Vec<(i32, i32, i32)> = Vec::new();
+
+		for e in level.entities.iter() {
+			if EntityKind::from_u8(e.kind) == EntityKind::MovingPlatform {
+				println!("found moving platform");
+				let left_tile: i32 = e.left as i32;
+				let top_tile: i32 = e.top as i32;
+
+				let tile_width: i32 = level.tile_width as i32;
+				let width_tiles: i32 = ((e.width as i32) + (tile_width - 1)) / tile_width;
+
+				platform_stamps.push((left_tile, top_tile, width_tiles));
+			}
+		}
+
+		for (left_tile, top_tile, width_tiles) in platform_stamps {
+			let written_a = stamp_platform_tiles(&mut level, action_layer, left_tile, top_tile, width_tiles);
+			println!(
+				"platform stamp left_tile={} top_tile={} width_tiles={} action_written={}",
+				left_tile, top_tile, width_tiles, written_a
+			);
+		}
+
+		/*
+		let world_layer: u32 = level.get_action_layer_index() as u32;
+		let collision_layer: u32 = level.get_action_layer_index() as u32;
+
+		let tile_width: i32 = level.tile_width as i32;
+		let tile_height: i32 = level.tile_height as i32;
+
+		let mut platform_stamps: Vec<(i32, i32, i32)> = Vec::new();
+
+		for e in level.entities.iter() {
+			if EntityKind::from_u8(e.kind) == EntityKind::MovingPlatform {
+				let left_tile: i32 = (e.left as i32) / tile_width;
+				let top_tile: i32 = (e.top as i32) / tile_height;
+
+				let width_tiles: i32 = ((e.width as i32) + (tile_width - 1)) / tile_width;
+
+				platform_stamps.push((left_tile, top_tile, width_tiles));
+			}
+		}
+
+		for (left_tile, top_tile, width_tiles) in platform_stamps {
+			stamp_platform_tiles(&mut level, world_layer, left_tile, top_tile, width_tiles);
+			stamp_platform_tiles(&mut level, collision_layer, left_tile, top_tile, width_tiles);
+		}
+		*/
+
 		return Ok(level);
 	}
 
@@ -342,17 +417,6 @@ fn read_u32(bytes: &[u8], offset: &mut usize) -> Result<u32, String> {
 	*offset += 4;
 	return Ok(v);
 }
-
-/*
-fn read_u16(bytes: &[u8], offset: &mut usize) -> Result<u16, String> {
-	if *offset + 2 > bytes.len() {
-		return Err("Unexpected eof reading u16".to_string());
-	}
-	let v = u16::from_le_bytes([bytes[*offset], bytes[*offset + 1]]);
-	*offset += 2;
-	return Ok(v);
-}
-*/
 
 #[inline(always)]
 fn read_u16(bytes: &[u8], offset: &mut usize) -> Result<u16, String> {
@@ -414,4 +478,32 @@ pub struct LevelTrigger {
 	pub height: u16,
 	pub target: u16,
 	pub text_id: u16,
+}
+
+pub fn stamp_platform_tiles(level: &mut Level, layer: u32, left_tile: i32, top_tile: i32, width_tiles: i32) -> i32 {
+	if width_tiles <= 0 {
+		return 0;
+	}
+
+	let mut written: i32 = 0;
+
+	for i in 0..width_tiles {
+		let tile_kind: TileKind = if width_tiles == 1 {
+			TileKind::PlatformMiddle
+		} else if i == 0 {
+			TileKind::PlatformLeft
+		} else if i == width_tiles - 1 {
+			TileKind::PlatformRight
+		} else {
+			TileKind::PlatformMiddle
+		};
+
+		let tile_id: u8 = tile_kind as u8;
+
+		if level.set_tile_id_at_layer(layer, left_tile + i, top_tile, tile_id) {
+			written += 1;
+		}
+	}
+
+	return written;
 }

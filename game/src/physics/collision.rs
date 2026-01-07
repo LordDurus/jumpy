@@ -1,4 +1,4 @@
-use crate::{engine_math::Vec2, game::level::Level};
+use crate::{engine_math::Vec2, game::level::Level, tile::TileCollision};
 
 pub fn resolve_ceiling_collision(level: &Level, pos: &mut Vec2, vel: &mut Vec2, half_w: f32, half_h: f32) {
 	if vel.y >= 0.0 {
@@ -38,35 +38,61 @@ pub fn resolve_ceiling_collision(level: &Level, pos: &mut Vec2, vel: &mut Vec2, 
 	return;
 }
 
-pub fn resolve_floor_collision(level: &Level, pos: &mut Vec2, vel: &mut Vec2, half_width: f32, half_height: f32) {
-	if vel.y < 0.0 {
+pub fn resolve_floor_collision(level: &Level, pos: &mut Vec2, vel: &mut Vec2, half_width: f32, half_height: f32, prev_bottom_world: f32) {
+	if vel.y <= 0.0 {
 		return;
 	}
 
 	let layer: u32 = level.get_action_layer_index() as u32;
 
-	let tile_w: f32 = level.tile_width as f32;
-	let tile_h: f32 = level.tile_height as f32;
+	let tile_width_world: f32 = level.tile_width as f32;
+	let tile_height_world: f32 = level.tile_height as f32;
 
-	let bottom_y: f32 = pos.y + half_height;
+	let bottom_world: f32 = pos.y + half_height;
+	let probe_world: f32 = bottom_world + 0.5;
 
-	// probe slightly below feet to detect ground reliably
-	let probe_y: f32 = bottom_y + 0.5;
+	let tile_top: i32 = (probe_world / tile_height_world).floor() as i32;
 
-	let ty: i32 = (probe_y / tile_h).floor() as i32;
 	let inset: f32 = 0.5;
-	let test_left: i32 = ((pos.x - half_width + inset) / tile_w).floor() as i32;
-	let test_right: i32 = ((pos.x + half_width - inset) / tile_w).floor() as i32;
+	let tile_left: i32 = ((pos.x - half_width + inset) / tile_width_world).floor() as i32;
+	let tile_right: i32 = ((pos.x + half_width - inset) / tile_width_world).floor() as i32;
 
-	let hit: bool = level.get_tile_at_layer(layer, test_left, ty).is_solid() || level.get_tile_at_layer(layer, test_right, ty).is_solid();
+	let mut hit_ground: bool = false;
+	let mut ground_top_world: f32 = 0.0;
 
-	if !hit {
+	for tx in tile_left..=tile_right {
+		let tile = level.get_tile_at_layer(layer, tx, tile_top);
+
+		let kind: TileCollision = tile.get_collision_kind();
+		if kind == TileCollision::None {
+			continue;
+		}
+
+		let tile_surface_world: f32 = (tile_top as f32) * tile_height_world;
+
+		if kind == TileCollision::Solid {
+			hit_ground = true;
+			ground_top_world = tile_surface_world;
+			break;
+		}
+
+		if kind == TileCollision::OneWay {
+			// only land if we crossed the platform surface this frame
+			if prev_bottom_world <= tile_surface_world && bottom_world >= tile_surface_world {
+				hit_ground = true;
+				ground_top_world = tile_surface_world;
+				break;
+			}
+		}
+	}
+
+	if hit_ground {
+		pos.y = ground_top_world - half_height;
+		vel.y = 0.0;
 		return;
 	}
 
-	let tile_top: f32 = (ty as f32) * tile_h;
-	pos.y = tile_top - half_height;
-	vel.y = 0.0;
+	return;
 }
 
 pub fn resolve_wall_collision(level: &Level, postion: &mut Vec2, velocity: &mut Vec2, half_width: f32, half_h: f32, _is_player: bool) {

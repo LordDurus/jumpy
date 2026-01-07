@@ -46,6 +46,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 				continue;
 			};
 
+			let prev_bottom_world: f32 = postion.y + half_height;
 			postion.x += velocity.x;
 			postion.y += velocity.y;
 
@@ -75,7 +76,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 			}
 
 			resolve_ceiling_collision(&game_state.level, postion, velocity, half_width, half_height);
-			resolve_floor_collision(&game_state.level, postion, velocity, half_width, half_height);
+			resolve_floor_collision(&game_state.level, postion, velocity, half_width, half_height, prev_bottom_world);
 		} // <- pos/vel borrows end here
 
 		// ai response: flip slimes on wall hit

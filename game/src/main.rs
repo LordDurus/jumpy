@@ -7,7 +7,7 @@ mod physics;
 mod platform;
 mod tile;
 
-use crate::{engine_math::Vec2, game::game_state::GameState, platform::render::backend::RenderBackend};
+use crate::{game::game_state::GameState, platform::render::backend::RenderBackend};
 
 #[cfg(feature = "pc")]
 type ActiveRenderer = crate::platform::render::pc::PcRenderer;

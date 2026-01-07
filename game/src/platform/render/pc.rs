@@ -5,7 +5,10 @@ const TILE_PIXELS: u32 = 16;
 
 use crate::{
 	common::coords::{PixelSize, WorldPoint, WorldSize, clamp_camera_to_level_world, visible_tile_bounds, world_to_screen},
-	game::{game_state::GameState, level::Level},
+	game::{
+		game_state::{EntityKind, GameState},
+		level::Level,
+	},
 	platform::{RenderBackend, input::InputState, render::common::RenderCommon},
 };
 use sdl2::{
@@ -321,7 +324,13 @@ impl PcRenderer {
 		}
 
 		for (id, pos) in game_state.positions.iter() {
-			let kind: u8 = *game_state.entity_kinds.get(id).unwrap_or(&0);
+			let kind = *game_state.entity_kinds.get(id).unwrap_or(&0);
+			let entiy_kind = EntityKind::from_u8(kind);
+
+			if entiy_kind == EntityKind::Emnpty || entiy_kind == EntityKind::MovingPlatform {
+				continue;
+			}
+
 			let style: u8 = *game_state.render_styles.get(id).unwrap_or(&0);
 
 			let (half_width, half_height) = game_state.get_entity_half_values(id);
@@ -346,13 +355,13 @@ impl PcRenderer {
 			let width: u32 = ((half_width * 2.0) * scale).round() as u32;
 			let height: u32 = ((half_height * 2.0) * scale).round() as u32;
 
-			let color: Color = match kind {
-				0 => Color::RGB(0, 0, 0),       // not set (black)
-				1 => Color::RGB(255, 255, 255), // player (white)
-				2 => Color::RGB(64, 160, 255),  // slime (blue)
-				3 => Color::RGB(64, 200, 64),   // imp (green)
-				4 => Color::RGB(255, 255, 0),   // platform (yellow)
-				_ => Color::RGB(255, 0, 255),   // debug
+			let color: Color = match entiy_kind {
+				EntityKind::Emnpty => Color::RGB(0, 0, 0),             // not set (black)
+				EntityKind::Player => Color::RGB(255, 255, 255),       // player (white)
+				EntityKind::Slime => Color::RGB(64, 160, 255),         // slime (blue)
+				EntityKind::Imp => Color::RGB(64, 200, 64),            // imp (green)
+				EntityKind::MovingPlatform => Color::RGB(255, 255, 0), // platform (yellow)
+				_ => Color::RGB(255, 0, 255),                          // debug
 			};
 
 			match style {

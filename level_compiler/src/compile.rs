@@ -277,6 +277,9 @@ fn build_tile_palette() -> HashMap<char, u8> {
 	map.insert('<', 6); // SpikeLeft
 	map.insert('>', 7); // SpikeRight
 	map.insert('b', 8); // Water Body
+	map.insert('[', 9); // platform left
+	map.insert('0', 10); // platform middle
+	map.insert(']', 11); // platform right
 	return map;
 }
 

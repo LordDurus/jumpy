@@ -5,7 +5,9 @@ pub type EntityId = u32;
 
 #[repr(u8)]
 #[allow(dead_code)]
+#[derive(PartialEq)]
 pub enum EntityKind {
+	Emnpty = 0,
 	Player = 1,
 	Slime = 2,
 	Imp = 3,
@@ -21,6 +23,16 @@ impl EntityKind {
 	#[inline(always)]
 	pub fn is_player(kind: u8) -> bool {
 		kind == EntityKind::Player as u8
+	}
+
+	pub fn from_u8(v: u8) -> EntityKind {
+		match v {
+			1 => EntityKind::Player,
+			2 => EntityKind::Slime,
+			3 => EntityKind::Imp,
+			4 => EntityKind::MovingPlatform,
+			_ => EntityKind::Emnpty,
+		}
 	}
 }
 

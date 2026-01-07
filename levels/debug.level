@@ -138,7 +138,7 @@ entities
 	
 	enemy "imp"
 	{
-		top = 2
+		top = 20
 		left = 60
 		range_min = 55
 		range_max = 65
@@ -156,7 +156,7 @@ entities
 
 	platform "horizontal"
 	{
-		top = 10
+		top = 20
 		left = 15
 		width = 4
 		height = 1
