@@ -335,50 +335,17 @@ impl Level {
 
 		for e in level.entities.iter() {
 			if EntityKind::from_u8(e.kind) == EntityKind::MovingPlatform {
-				println!("found moving platform");
 				let left_tile: i32 = e.left as i32;
 				let top_tile: i32 = e.top as i32;
-
-				let tile_width: i32 = level.tile_width as i32;
-				let width_tiles: i32 = ((e.width as i32) + (tile_width - 1)) / tile_width;
+				let width_tiles: i32 = e.width as i32;
 
 				platform_stamps.push((left_tile, top_tile, width_tiles));
 			}
 		}
 
 		for (left_tile, top_tile, width_tiles) in platform_stamps {
-			let written_a = stamp_platform_tiles(&mut level, action_layer, left_tile, top_tile, width_tiles);
-			println!(
-				"platform stamp left_tile={} top_tile={} width_tiles={} action_written={}",
-				left_tile, top_tile, width_tiles, written_a
-			);
+			let _ = stamp_platform_tiles(&mut level, action_layer, left_tile, top_tile, width_tiles);
 		}
-
-		/*
-		let world_layer: u32 = level.get_action_layer_index() as u32;
-		let collision_layer: u32 = level.get_action_layer_index() as u32;
-
-		let tile_width: i32 = level.tile_width as i32;
-		let tile_height: i32 = level.tile_height as i32;
-
-		let mut platform_stamps: Vec<(i32, i32, i32)> = Vec::new();
-
-		for e in level.entities.iter() {
-			if EntityKind::from_u8(e.kind) == EntityKind::MovingPlatform {
-				let left_tile: i32 = (e.left as i32) / tile_width;
-				let top_tile: i32 = (e.top as i32) / tile_height;
-
-				let width_tiles: i32 = ((e.width as i32) + (tile_width - 1)) / tile_width;
-
-				platform_stamps.push((left_tile, top_tile, width_tiles));
-			}
-		}
-
-		for (left_tile, top_tile, width_tiles) in platform_stamps {
-			stamp_platform_tiles(&mut level, world_layer, left_tile, top_tile, width_tiles);
-			stamp_platform_tiles(&mut level, collision_layer, left_tile, top_tile, width_tiles);
-		}
-		*/
 
 		return Ok(level);
 	}
