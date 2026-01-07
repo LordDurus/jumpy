@@ -271,11 +271,12 @@ fn build_tile_palette() -> HashMap<char, u8> {
 	map.insert('.', 0); // Empty
 	map.insert('#', 1); // Stone
 	map.insert('^', 2); // SpikeUp
-	map.insert('~', 3); // Water
+	map.insert('~', 3); // Water Surface
 	map.insert('=', 4); // GrassTop
 	map.insert('v', 5); // SpikeDown
 	map.insert('<', 6); // SpikeLeft
 	map.insert('>', 7); // SpikeRight
+	map.insert('b', 8); // Water Body
 	return map;
 }
 

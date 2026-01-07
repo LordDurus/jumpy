@@ -8,6 +8,7 @@ pub enum TileKind {
 	SpikeDown = 5,
 	SpikeLeft = 6,
 	SpikeRight = 7,
+	WaterBody = 8,
 }
 
 impl TileKind {
@@ -20,6 +21,7 @@ impl TileKind {
 			5 => TileKind::SpikeDown,
 			6 => TileKind::SpikeLeft,
 			7 => TileKind::SpikeRight,
+			8 => TileKind::WaterBody,
 			_ => TileKind::Empty,
 		}
 	}

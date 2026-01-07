@@ -4,7 +4,7 @@ const WINDOW_HEIGHT: u32 = 360;
 const TILE_PIXELS: u32 = 16;
 
 use crate::{
-	common::coords::{PixelSize, TilePoint, WorldPoint, WorldSize, visible_tile_bounds, world_to_screen},
+	common::coords::{PixelSize, WorldPoint, WorldSize, clamp_camera_to_level_world, visible_tile_bounds, world_to_screen},
 	game::{game_state::GameState, level::Level},
 	platform::{RenderBackend, input::InputState, render::common::RenderCommon},
 };
@@ -167,42 +167,28 @@ impl PcRenderer {
 	) {
 		let tile_width_world: f32 = level.tile_width as f32;
 		let tile_height_world: f32 = level.tile_height as f32;
+		let cam = WorldPoint::new(cam_left_world, cam_top_world);
+		let tile_size = WorldSize::new(level.tile_width as f32, level.tile_height as f32);
+		let view_pixels = PixelSize::new(WINDOW_WIDTH as i32, WINDOW_HEIGHT as i32);
 
-		let cam = WorldPoint {
-			left: cam_left_world,
-			top: cam_top_world,
-		};
-
-		let tile_size = WorldSize {
-			width: level.tile_width as f32,
-			height: level.tile_height as f32,
-		};
-
-		let view_pixels = PixelSize {
-			width: WINDOW_WIDTH as i32,
-			height: WINDOW_HEIGHT as i32,
-		};
-
+		let cam = clamp_camera_to_level_world(cam, view_pixels, scale, tile_size, level.width as i32, level.height as i32);
 		let bounds = visible_tile_bounds(cam, view_pixels, scale, tile_size, level.width as i32, level.height as i32);
+
+		// let bounds = visible_tile_bounds(cam, view_pixels, scale, tile_size, level.width as i32, level.height as i32);
 
 		let start_tile_left: i32 = bounds.start_left;
 		let start_tile_top: i32 = bounds.start_top;
 		let end_tile_left: i32 = bounds.end_left;
 		let end_tile_top: i32 = bounds.end_top;
 
-		/*
-				let view_width_world: f32 = (WINDOW_WIDTH as f32) / scale;
-				let view_height_world: f32 = (WINDOW_HEIGHT as f32) / scale;
-
-				let start_tile_left: i32 = ((cam_left_world / tile_width_world).floor() as i32 - 1).max(0);
-				let start_tile_top: i32 = ((cam_top_world / tile_height_world).floor() as i32 - 1).max(0);
-
-				let end_tile_left: i32 = (((cam_left_world + view_width_world) / tile_width_world).ceil() as i32 + 2).min(level.width as i32);
-
-				let end_tile_top: i32 = (((cam_top_world + view_height_world) / tile_height_world).ceil() as i32 + 2).min(level.height as i32);
-		*/
 		let q = tile_tex.query();
 		let tile_cols: u32 = q.width / tile_pixel;
+
+		let scale_i32: i32 = scale as i32;
+		let tile_pixel_scaled: i32 = tile_pixel as i32 * scale_i32;
+
+		let cam_left_pixels: i32 = (cam.left * scale).floor() as i32;
+		let cam_top_pixels: i32 = (cam.top * scale).floor() as i32;
 
 		/*
 		static mut PRINTED_LAYER: [bool; 16] = [false; 16]; // bump 16 if you ever exceed it
@@ -253,6 +239,7 @@ impl PcRenderer {
 				let source_top: i32 = ((id / tile_cols) * tile_pixel) as i32;
 				let source = sdl2::rect::Rect::new(source_left, source_top, tile_pixel, tile_pixel);
 
+				/*
 				let world_left: f32 = (tx as f32) * tile_width_world;
 				let world_top: f32 = (ty as f32) * tile_height_world;
 
@@ -265,9 +252,15 @@ impl PcRenderer {
 					top: world_top,
 				};
 				let screen = world_to_screen(world, cam, scale);
+				*/
 
+				/*
 				let destination_left: i32 = screen.left;
 				let destination_top: i32 = screen.top;
+				*/
+
+				let destination_left: i32 = tx * tile_pixel_scaled - cam_left_pixels;
+				let destination_top: i32 = ty * tile_pixel_scaled - cam_top_pixels;
 
 				let destination = Rect::new(
 					destination_left,
@@ -298,6 +291,7 @@ impl PcRenderer {
 		let texture_creator = self.canvas.texture_creator();
 		let tile_path: PathBuf = get_asset_root().join("pc").join("tiles.png");
 		let tile_tex: sdl2::render::Texture = texture_creator.load_texture(&tile_path).unwrap();
+		// tile_tex.set_scale_mode(sdl2::render::ScaleMode::Nearest);
 
 		for layer in 0..(game_state.level.layer_count as u32) {
 			// println!("Drawing layer {}", layer);
@@ -388,6 +382,7 @@ impl RenderBackend for PcRenderer {
 
 	fn new() -> Self {
 		let sdl = sdl2::init().unwrap();
+		let _ = sdl2::hint::set("SDL_RENDER_SCALE_QUALITY", "0"); // nearest
 
 		let _image = sdl2::image::init(sdl2::image::InitFlag::PNG).unwrap();
 		let video = sdl.video().unwrap();
@@ -401,7 +396,7 @@ impl RenderBackend for PcRenderer {
 		let bg_path: PathBuf = get_asset_root().join("pc").join("bg_parallax_forest.png");
 		let bg_texture = texture_creator.load_texture(bg_path).ok();
 		if bg_texture.is_none() {
-			println!("manifest_dir={}", env!("CARGO_MANIFEST_DIR"));
+			panic!("manifest_dir={}", env!("CARGO_MANIFEST_DIR"));
 		}
 
 		return PcRenderer {
