@@ -4,7 +4,7 @@ const WINDOW_HEIGHT: u32 = 360;
 const TILE_PIXELS: u32 = 16;
 
 use crate::{
-	common::coords::{WorldPoint, world_to_screen},
+	common::coords::{PixelSize, TilePoint, WorldPoint, WorldSize, visible_tile_bounds, world_to_screen},
 	game::{game_state::GameState, level::Level},
 	platform::{RenderBackend, input::InputState, render::common::RenderCommon},
 };
@@ -168,16 +168,39 @@ impl PcRenderer {
 		let tile_width_world: f32 = level.tile_width as f32;
 		let tile_height_world: f32 = level.tile_height as f32;
 
-		let view_width_world: f32 = (WINDOW_WIDTH as f32) / scale;
-		let view_height_world: f32 = (WINDOW_HEIGHT as f32) / scale;
+		let cam = WorldPoint {
+			left: cam_left_world,
+			top: cam_top_world,
+		};
 
-		let start_tile_left: i32 = ((cam_left_world / tile_width_world).floor() as i32 - 1).max(0);
-		let start_tile_top: i32 = ((cam_top_world / tile_height_world).floor() as i32 - 1).max(0);
+		let tile_size = WorldSize {
+			width: level.tile_width as f32,
+			height: level.tile_height as f32,
+		};
 
-		let end_tile_left: i32 = (((cam_left_world + view_width_world) / tile_width_world).ceil() as i32 + 2).min(level.width as i32);
+		let view_pixels = PixelSize {
+			width: WINDOW_WIDTH as i32,
+			height: WINDOW_HEIGHT as i32,
+		};
 
-		let end_tile_top: i32 = (((cam_top_world + view_height_world) / tile_height_world).ceil() as i32 + 2).min(level.height as i32);
+		let bounds = visible_tile_bounds(cam, view_pixels, scale, tile_size, level.width as i32, level.height as i32);
 
+		let start_tile_left: i32 = bounds.start_left;
+		let start_tile_top: i32 = bounds.start_top;
+		let end_tile_left: i32 = bounds.end_left;
+		let end_tile_top: i32 = bounds.end_top;
+
+		/*
+				let view_width_world: f32 = (WINDOW_WIDTH as f32) / scale;
+				let view_height_world: f32 = (WINDOW_HEIGHT as f32) / scale;
+
+				let start_tile_left: i32 = ((cam_left_world / tile_width_world).floor() as i32 - 1).max(0);
+				let start_tile_top: i32 = ((cam_top_world / tile_height_world).floor() as i32 - 1).max(0);
+
+				let end_tile_left: i32 = (((cam_left_world + view_width_world) / tile_width_world).ceil() as i32 + 2).min(level.width as i32);
+
+				let end_tile_top: i32 = (((cam_top_world + view_height_world) / tile_height_world).ceil() as i32 + 2).min(level.height as i32);
+		*/
 		let q = tile_tex.query();
 		let tile_cols: u32 = q.width / tile_pixel;
 
