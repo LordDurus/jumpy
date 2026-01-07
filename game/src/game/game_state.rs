@@ -28,8 +28,11 @@ impl EntityKind {
 pub struct GameState {
 	pub level: Level,
 	pub gravity: f32,
-	pub positions: HashMap<EntityId, Vec2>,
-	pub velocities: HashMap<EntityId, Vec2>,
+	pub positions: ComponentStore<Vec2>,
+
+	// pub velocities: HashMap<EntityId, Vec2>,
+	pub velocities: ComponentStore<Vec2>,
+
 	pub player_id: Option<EntityId>,
 	pub spawn_point: Vec2,
 	pub last_grounded_pos: Option<Vec2>,
@@ -62,8 +65,12 @@ impl GameState {
 		let mut state = GameState {
 			level: current_level,
 			gravity: crate::physics::constants::LEVEL_GRAVITY,
-			positions: HashMap::new(),
-			velocities: HashMap::new(),
+			//positions: HashMap::new(),
+			positions: ComponentStore::new(),
+
+			// velocities: HashMap::new(),
+			velocities: ComponentStore::new(),
+
 			player_id: None,
 			spawn_point: Vec2::zero(),
 			next_entity_id: 1,
@@ -118,11 +125,11 @@ impl GameState {
 		let (_half_width, half_height) = self.get_entity_half_values(player_id);
 		let spawn_pos: Vec2 = spawn_pos + Vec2::new(0.0, -half_height - 0.1);
 
-		if let Some(pos) = self.positions.get_mut(&player_id) {
+		if let Some(pos) = self.positions.get_mut(player_id) {
 			*pos = spawn_pos;
 		}
 
-		if let Some(vel) = self.velocities.get_mut(&player_id) {
+		if let Some(vel) = self.velocities.get_mut(player_id) {
 			*vel = Vec2::zero();
 		}
 	}
@@ -140,12 +147,12 @@ impl GameState {
 	#[allow(dead_code)]
 	#[inline(always)]
 	pub fn player_pos(&self) -> Option<&Vec2> {
-		self.player_id.and_then(|id| self.positions.get(&id))
+		self.player_id.and_then(|id| self.positions.get(id))
 	}
 
 	#[inline(always)]
 	pub fn on_ground(&self, id: EntityId) -> bool {
-		let Some(pos) = self.positions.get(&id) else {
+		let Some(pos) = self.positions.get(id) else {
 			return false;
 		};
 
@@ -163,7 +170,7 @@ impl GameState {
 	}
 
 	pub fn on_wall_left(&self, id: EntityId) -> bool {
-		let Some(pos) = self.positions.get(&id) else {
+		let Some(pos) = self.positions.get(id) else {
 			return false;
 		};
 
@@ -182,7 +189,7 @@ impl GameState {
 	}
 
 	pub fn on_wall_right(&self, id: EntityId) -> bool {
-		let Some(pos) = self.positions.get(&id) else {
+		let Some(pos) = self.positions.get(id) else {
 			return false;
 		};
 
@@ -249,7 +256,8 @@ impl GameState {
 
 		let id: EntityId = self.next_entity_id;
 		self.next_entity_id += 1;
-		self.positions.insert(id, position);
+		self.positions.push(id, position);
+
 		self.velocities.insert(id, velocity);
 		self.entity_kinds.insert(id, kind);
 		self.render_styles.insert(id, render_style);
@@ -278,8 +286,8 @@ impl GameState {
 	}
 
 	pub fn remove_entity(&mut self, id: EntityId) {
-		self.positions.remove(&id);
-		self.velocities.remove(&id);
+		self.positions.remove(id);
+		self.velocities.remove(id);
 		self.entity_kinds.remove(&id);
 		self.render_styles.remove(&id);
 		self.widths.remove(&id);
@@ -335,7 +343,7 @@ impl GameState {
 
 			if e.gravity_multiplier > 0 {
 				let (hw, hh) = self.get_entity_half_values(id);
-				if let Some(p) = self.positions.get_mut(&id) {
+				if let Some(p) = self.positions.get_mut(id) {
 					let _ = collision::scan_down_to_ground(&self.level, p, hw, hh, 30);
 				}
 			}
@@ -350,7 +358,7 @@ impl GameState {
 
 	#[inline(always)]
 	pub fn on_ground_safe(&self, id: EntityId) -> bool {
-		let Some(pos) = self.positions.get(&id) else {
+		let Some(pos) = self.positions.get(id) else {
 			return false;
 		};
 

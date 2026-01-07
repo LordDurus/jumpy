@@ -42,11 +42,6 @@ impl PcRenderer {
 		return RENDER_SCALE;
 	}
 
-	fn get_window_size(&self) -> (i32, i32) {
-		let (w, h) = self.canvas.output_size().unwrap();
-		return (w as i32, h as i32);
-	}
-
 	fn draw_filled_circle(&mut self, cx: i32, cy: i32, r: i32, color: Color) {
 		self.canvas.set_draw_color(color);
 
@@ -313,18 +308,15 @@ impl PcRenderer {
 	}
 
 	fn draw_entities(&mut self, game_state: &GameState, cam_left_world: f32, cam_top_world: f32, scale: f32, _frame_index: u32) {
-		let cam_left_pixels: i32 = (cam_left_world * scale).round() as i32;
-		let cam_top_pixels: i32 = (cam_top_world * scale).round() as i32;
-
 		if self.frame_index == 0 {
 			println!("cam world = {}, {}", cam_left_world, cam_top_world);
 		}
 
 		for (id, pos) in game_state.positions.iter() {
-			let kind: u8 = *game_state.entity_kinds.get(id).unwrap_or(&0);
-			let style: u8 = *game_state.render_styles.get(id).unwrap_or(&0);
+			let kind: u8 = *game_state.entity_kinds.get(&id).unwrap_or(&0);
+			let style: u8 = *game_state.render_styles.get(&id).unwrap_or(&0);
 
-			let (half_width, half_height) = game_state.get_entity_half_values(*id);
+			let (half_width, half_height) = game_state.get_entity_half_values(id);
 
 			let world_left: f32 = pos.x - half_width;
 			let world_top: f32 = pos.y - half_height;

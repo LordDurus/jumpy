@@ -10,7 +10,10 @@ use crate::{
 pub fn move_and_collide(game_state: &mut GameState) {
 	let do_debug: bool = (game_state.tick % 60) == 0;
 
-	let ids: Vec<EntityId> = game_state.positions.keys().copied().collect();
+	// let ids: Vec<EntityId> = game_state.positions.keys().copied().collect();
+
+	// let ids: Vec<EntityId> = game_state.positions.keys();
+	let max_id: usize = game_state.positions.len();
 
 	let tile_width: f32 = game_state.level.tile_width as f32;
 	let tile_height: f32 = game_state.level.tile_height as f32;
@@ -21,18 +24,25 @@ pub fn move_and_collide(game_state: &mut GameState) {
 	let margin: f32 = 64.0;
 	let player_id: EntityId = game_state.get_player_id();
 
-	for id in ids {
+	for idx in 0..max_id {
+		let id: EntityId = idx as EntityId;
+
+		if !game_state.positions.has(id) {
+			continue;
+		}
+
 		let is_player: bool = id == player_id;
+
 		let mut hit_wall: bool = false;
 		let old_vx: f32;
 		// do movement + collision inside a scope so &mut borrows drop
 		{
 			let (half_width, half_height) = game_state.get_entity_half_values(id);
 
-			let Some(postion) = game_state.positions.get_mut(&id) else {
+			let Some(postion) = game_state.positions.get_mut(id) else {
 				continue;
 			};
-			let Some(velocity) = game_state.velocities.get_mut(&id) else {
+			let Some(velocity) = game_state.velocities.get_mut(id) else {
 				continue;
 			};
 
@@ -71,7 +81,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 
 			// kind==2 is slime in your data
 			if kind == 2 {
-				if let Some(vel) = game_state.velocities.get_mut(&id) {
+				if let Some(vel) = game_state.velocities.get_mut(id) {
 					vel.x = -old_vx;
 				}
 			}
@@ -79,7 +89,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 
 		// now it's legal to query game_state immutably
 		if is_player && game_state.on_ground(id) && game_state.on_ground_safe(id) {
-			let Some(pos) = game_state.positions.get(&id) else {
+			let Some(pos) = game_state.positions.get(id) else {
 				continue;
 			};
 			game_state.last_grounded_pos = Some(*pos);
@@ -88,10 +98,10 @@ pub fn move_and_collide(game_state: &mut GameState) {
 		let (half_width, half_height) = game_state.get_entity_half_values(id);
 		// clamp to world bounds (x only for now)
 		{
-			let Some(pos) = game_state.positions.get_mut(&id) else {
+			let Some(pos) = game_state.positions.get_mut(id) else {
 				continue;
 			};
-			let Some(vel) = game_state.velocities.get_mut(&id) else {
+			let Some(vel) = game_state.velocities.get_mut(id) else {
 				continue;
 			};
 
@@ -118,7 +128,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 		}
 
 		// compute out-of-bounds without holding &mut borrows
-		let Some(pos) = game_state.positions.get(&id) else {
+		let Some(pos) = game_state.positions.get(id) else {
 			continue;
 		};
 
@@ -150,7 +160,7 @@ pub fn try_jump(game_state: &mut GameState, entity_id: EntityId) -> bool {
 		return false;
 	}
 
-	if let Some(vel) = game_state.velocities.get_mut(&entity_id) {
+	if let Some(vel) = game_state.velocities.get_mut(entity_id) {
 		let jump_multiplier: f32 = *game_state.jump_multipliers.get(entity_id).unwrap_or(&1) as f32;
 
 		vel.y = JUMP_VELOCITY * jump_multiplier;

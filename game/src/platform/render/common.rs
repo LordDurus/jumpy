@@ -24,15 +24,15 @@ impl RenderCommon {
 		} else {
 			let mut best_id: Option<u32> = None;
 			for id in world.positions.keys() {
-				if best_id.is_none() || *id < best_id.unwrap() {
-					best_id = Some(*id);
+				if best_id.is_none() || id < best_id.unwrap() {
+					best_id = Some(id);
 				}
 			}
 			best_id
 		};
 
 		if let Some(id) = focus_id {
-			if let Some(p) = world.positions.get(&id) {
+			if let Some(p) = world.positions.get(id) {
 				focus_x = p.x;
 				focus_y = p.y;
 			}

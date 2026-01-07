@@ -43,7 +43,7 @@ fn main() {
 		}
 
 		// left/right + jump impulse
-		if let Some(v) = state.velocities.get_mut(&player_id) {
+		if let Some(v) = state.velocities.get_mut(player_id) {
 			if input.left && !input.right {
 				v.set_x(-2.0);
 			} else if input.right && !input.left {
@@ -69,7 +69,7 @@ fn main() {
 
 		if (renderer.frame_index % 60) == 0 {
 			for (id, pos) in state.positions.iter() {
-				let kind: u8 = *state.entity_kinds.get(id).unwrap_or(&0);
+				let kind: u8 = *state.entity_kinds.get(&id).unwrap_or(&0);
 				if kind == 2 {
 					// slime
 					let vel = state.velocities.get(id).copied().unwrap_or(Vec2::zero());

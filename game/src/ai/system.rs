@@ -4,12 +4,12 @@ pub fn update(game_state: &mut GameState) {
 	let ids: Vec<EntityId> = game_state.enemy_ids.clone();
 
 	for id in ids {
-		let pos = match game_state.positions.get(&id) {
+		let pos = match game_state.positions.get(id) {
 			Some(p) => *p,
 			None => continue,
 		};
 
-		let vel = match game_state.velocities.get_mut(&id) {
+		let vel = match game_state.velocities.get_mut(id) {
 			Some(v) => v,
 			None => continue,
 		};
@@ -34,7 +34,7 @@ pub fn update(game_state: &mut GameState) {
 		}
 
 		// clamp position to range
-		if let Some(p) = game_state.positions.get_mut(&id) {
+		if let Some(p) = game_state.positions.get_mut(id) {
 			if p.x < min_x {
 				p.x = min_x;
 			}
