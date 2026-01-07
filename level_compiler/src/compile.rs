@@ -269,7 +269,7 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 fn build_tile_palette() -> HashMap<char, u8> {
 	let mut map = HashMap::new();
 	map.insert('.', 0); // Empty
-	map.insert('#', 1); // Dirt
+	map.insert('#', 1); // Stone
 	map.insert('^', 2); // SpikeUp
 	map.insert('~', 3); // Water
 	map.insert('=', 4); // GrassTop

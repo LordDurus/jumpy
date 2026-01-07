@@ -183,6 +183,8 @@ impl PcRenderer {
 
 		static mut PRINTED_LAYER: [bool; 16] = [false; 16]; // bump 16 if you ever exceed it
 
+		/*
+		// debug: print layer info once
 		let layer_usize: usize = layer as usize;
 		if layer_usize < 16 && !unsafe { PRINTED_LAYER[layer_usize] } {
 			let mut min_id: u8 = 255;
@@ -214,22 +216,6 @@ impl PcRenderer {
 				PRINTED_LAYER[layer_usize] = true;
 			}
 		}
-
-		/*
-		let mut count_0: u32 = 0;
-		let mut count_1: u32 = 0;
-		for ty in start_tile_top..end_tile_top {
-			for tx in start_tile_left..end_tile_left {
-				let tile_id: u8 = level.get_tile_id_at_layer(layer, tx, ty);
-				if tile_id == 0 {
-					count_0 += 1;
-				}
-				if tile_id == 1 {
-					count_1 += 1;
-				}
-			}
-		}
-		println!("layer={} count_0={} count_1={}", layer, count_0, count_1);
 		*/
 
 		for ty in start_tile_top..end_tile_top {
