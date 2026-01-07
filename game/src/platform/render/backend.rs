@@ -16,7 +16,4 @@ pub trait RenderBackend {
 	fn draw_level(&mut self, world: &GameState);
 
 	fn commit(&mut self);
-
-	// primitive: used by RenderCommon
-	fn draw_tile(&mut self, sheet_id: u16, x: i32, y: i32, w: u32, h: u32);
 }

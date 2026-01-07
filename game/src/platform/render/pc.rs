@@ -4,10 +4,10 @@ const WINDOW_HEIGHT: u32 = 360;
 const TILE_PIXELS: u32 = 16;
 
 use crate::{
+	common::coords::{WorldPoint, world_to_screen},
 	game::{game_state::GameState, level::Level},
 	platform::{RenderBackend, input::InputState, render::common::RenderCommon},
 };
-
 use sdl2::{
 	EventPump,
 	image::LoadTexture,
@@ -181,9 +181,9 @@ impl PcRenderer {
 		let q = tile_tex.query();
 		let tile_cols: u32 = q.width / tile_pixel;
 
+		/*
 		static mut PRINTED_LAYER: [bool; 16] = [false; 16]; // bump 16 if you ever exceed it
 
-		/*
 		// debug: print layer info once
 		let layer_usize: usize = layer as usize;
 		if layer_usize < 16 && !unsafe { PRINTED_LAYER[layer_usize] } {
@@ -230,16 +230,21 @@ impl PcRenderer {
 				let source_top: i32 = ((id / tile_cols) * tile_pixel) as i32;
 				let source = sdl2::rect::Rect::new(source_left, source_top, tile_pixel, tile_pixel);
 
-				// let destination_left: i32 = (tx * tile_width_pixels) - cam_x_pixels;
-				// let destination_top: i32 = (ty * tile_height_pixels) - cam_y_pixels;
-
 				let world_left: f32 = (tx as f32) * tile_width_world;
 				let world_top: f32 = (ty as f32) * tile_height_world;
 
-				let destination_left: i32 = ((world_left - cam_left_world) * scale).round() as i32;
-				let destination_top: i32 = ((world_top - cam_top_world) * scale).round() as i32;
+				let cam: WorldPoint = WorldPoint {
+					left: cam_left_world,
+					top: cam_top_world,
+				};
+				let world: WorldPoint = WorldPoint {
+					left: world_left,
+					top: world_top,
+				};
+				let screen = world_to_screen(world, cam, scale);
 
-				// let destination = sdl2::rect::Rect::new(destination_left, destination_top, tile_width_pixels as u32, tile_height_pixels as u32);
+				let destination_left: i32 = screen.left;
+				let destination_top: i32 = screen.top;
 
 				let destination = Rect::new(
 					destination_left,
@@ -307,8 +312,19 @@ impl PcRenderer {
 			let world_left: f32 = pos.x - half_width;
 			let world_top: f32 = pos.y - half_height;
 
-			let scale_left: i32 = ((world_left - cam_left_world) * scale).round() as i32;
-			let scale_top: i32 = ((world_top - cam_top_world) * scale).round() as i32;
+			let cam: WorldPoint = WorldPoint {
+				left: cam_left_world,
+				top: cam_top_world,
+			};
+
+			let world: WorldPoint = WorldPoint {
+				left: world_left,
+				top: world_top,
+			};
+			let screen = world_to_screen(world, cam, scale);
+
+			let scale_left: i32 = screen.left;
+			let scale_top: i32 = screen.top;
 
 			let width: u32 = ((half_width * 2.0) * scale).round() as u32;
 			let height: u32 = ((half_height * 2.0) * scale).round() as u32;
@@ -379,28 +395,6 @@ impl RenderBackend for PcRenderer {
 	fn screen_size(&self) -> (i32, i32) {
 		let (w, h) = self.canvas.output_size().unwrap();
 		return (w as i32, h as i32);
-	}
-
-	fn draw_tile(&mut self, sheet_id: u16, x: i32, y: i32, width: u32, height: u32) {
-		if sheet_id == 0 {
-			return;
-		}
-
-		// tile.rs resolve_sheet_tile_id() returns a handful of known ids.
-		// map those to the same debug colors we used before.
-		let color: Color = match sheet_id {
-			0 | 1 | 2 => Color::RGB(48, 160, 64),
-			24 => Color::RGB(110, 72, 36),
-			14 | 17 | 38 | 40 => Color::RGB(48, 96, 200),
-			78 | 6 | 30 | 54 => Color::RGB(200, 48, 48),
-			_ => Color::RGB(255, 0, 255),
-		};
-
-		self.canvas.set_draw_color(color);
-
-		let rect = Rect::new(x, y, width, height);
-		let _ = self.canvas.fill_rect(rect);
-		panic!("pc draw_tile debug path called; tiles should be drawn via tilesheet blit");
 	}
 
 	fn render_scale(&self) -> f32 {

@@ -1,4 +1,5 @@
 mod ai;
+mod common;
 mod ecs;
 mod engine_math;
 mod game;
