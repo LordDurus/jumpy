@@ -14,7 +14,7 @@ pub fn update(game_state: &mut GameState) {
 			None => continue,
 		};
 
-		let speed_u8: u8 = game_state.speeds.get(&id).copied().unwrap_or(0);
+		let speed_u8: u8 = game_state.speeds.get(id).copied().unwrap_or(0);
 		let speed: f32 = (speed_u8 as f32) * 0.25; // 10 -> 2.5 px/frame
 
 		let mut min_x: f32 = game_state.range_mins.get(id).copied().unwrap_or(pos.x);

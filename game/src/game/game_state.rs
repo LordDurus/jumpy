@@ -29,30 +29,23 @@ pub struct GameState {
 	pub level: Level,
 	pub gravity: f32,
 	pub positions: ComponentStore<Vec2>,
-
-	// pub velocities: HashMap<EntityId, Vec2>,
 	pub velocities: ComponentStore<Vec2>,
-
 	pub player_id: Option<EntityId>,
 	pub spawn_point: Vec2,
 	pub last_grounded_pos: Option<Vec2>,
-
-	pub entity_kinds: HashMap<EntityId, u8>,
-	pub render_styles: HashMap<EntityId, u8>,
-	pub widths: HashMap<EntityId, u8>,
-	pub heights: HashMap<EntityId, u8>,
-	pub speeds: HashMap<EntityId, u8>,
-	pub strengths: HashMap<EntityId, u8>,
-	pub luck: HashMap<EntityId, u8>,
-
+	pub entity_kinds: ComponentStore<u8>,
+	pub render_styles: ComponentStore<u8>,
+	pub widths: ComponentStore<u8>,
+	pub heights: ComponentStore<u8>,
+	pub speeds: ComponentStore<u8>,
+	pub strengths: ComponentStore<u8>,
+	pub luck: ComponentStore<u8>,
 	pub gravity_multipliers: ComponentStore<u8>,
 	pub range_mins: ComponentStore<f32>,
 	pub range_maxes: ComponentStore<f32>,
 	pub jump_multipliers: ComponentStore<u8>,
 
-	// pub enemy_ids: ComponentStore<EntityId>,
 	pub enemy_ids: Vec<EntityId>,
-
 	pub tick: u32,
 	next_entity_id: EntityId,
 }
@@ -65,24 +58,21 @@ impl GameState {
 		let mut state = GameState {
 			level: current_level,
 			gravity: crate::physics::constants::LEVEL_GRAVITY,
-			//positions: HashMap::new(),
 			positions: ComponentStore::new(),
-
-			// velocities: HashMap::new(),
 			velocities: ComponentStore::new(),
 
 			player_id: None,
 			spawn_point: Vec2::zero(),
 			next_entity_id: 1,
 			last_grounded_pos: None,
+			entity_kinds: ComponentStore::new(),
 
-			entity_kinds: HashMap::new(),
-			render_styles: HashMap::new(),
-			widths: HashMap::new(),
-			heights: HashMap::new(),
-			speeds: HashMap::new(),
-			strengths: HashMap::new(),
-			luck: HashMap::new(),
+			render_styles: ComponentStore::new(),
+			widths: ComponentStore::new(),
+			heights: ComponentStore::new(),
+			speeds: ComponentStore::new(),
+			strengths: ComponentStore::new(),
+			luck: ComponentStore::new(),
 			range_maxes: ComponentStore::new(),
 			range_mins: ComponentStore::new(),
 			jump_multipliers: ComponentStore::new(),
@@ -208,32 +198,14 @@ impl GameState {
 	}
 
 	pub fn get_entity_half_values(&self, id: EntityId) -> (f32, f32) {
-		let width: f32 = self.widths.get(&id).copied().unwrap_or(16) as f32;
-		let height: f32 = self.heights.get(&id).copied().unwrap_or(16) as f32;
+		let width: f32 = self.widths.get(id).copied().unwrap_or(16) as f32;
+		let height: f32 = self.heights.get(id).copied().unwrap_or(16) as f32;
 
 		let half_width: f32 = width * 0.5;
 		let half_height: f32 = height * 0.5;
 
 		return (half_width, half_height);
 	}
-
-	/*
-		pub fn get_entity_half_values(&self, entity_id: EntityId) -> (f32, f32) {
-			let width_sub: u8 = *self.width.get(&entity_id).unwrap_or(&16); // default 1 tile
-			let height_sub: u8 = *self.height.get(&entity_id).unwrap_or(&16); // default 1 tile
-
-			let tile_width: f32 = self.level.tile_width as f32;
-			let tile_height: f32 = self.level.tile_height as f32;
-
-			let width_tiles: f32 = (width_sub as f32) / 16.0;
-			let height_tiles: f32 = (height_sub as f32) / 16.0;
-
-			let half_width: f32 = (width_tiles * tile_width) * 0.5;
-			let half_height: f32 = (height_tiles * tile_height) * 0.5;
-
-			return (half_width, half_height);
-		}
-	*/
 
 	pub fn add_entity(
 		&mut self,
@@ -288,13 +260,13 @@ impl GameState {
 	pub fn remove_entity(&mut self, id: EntityId) {
 		self.positions.remove(id);
 		self.velocities.remove(id);
-		self.entity_kinds.remove(&id);
-		self.render_styles.remove(&id);
-		self.widths.remove(&id);
-		self.heights.remove(&id);
-		self.speeds.remove(&id);
-		self.strengths.remove(&id);
-		self.luck.remove(&id);
+		self.entity_kinds.remove(id);
+		self.render_styles.remove(id);
+		self.widths.remove(id);
+		self.heights.remove(id);
+		self.speeds.remove(id);
+		self.strengths.remove(id);
+		self.luck.remove(id);
 
 		self.range_mins.remove(id);
 		self.range_maxes.remove(id);
@@ -319,11 +291,8 @@ impl GameState {
 		for e in entities {
 			let position: Vec2 = Vec2::new((e.left as f32 + 0.5) * tile_w, (e.top as f32 + 0.5) * tile_height);
 
-			//let position: Vec2 = Vec2::new((e.top as f32 + 0.5) * tile_height, (e.left as f32 + 0.5) * tile_w);
 			let range_min_x: f32 = (e.range_min as f32) * tile_w;
 			let range_max: f32 = (e.range_max as f32) * tile_w;
-
-			// let id: EntityId = self.add_entity(1, self.spawn_point, Vec2::zero(), 0, 1, 16, 16, 0, 0, 0, 0.0, 0.0);
 
 			let id: EntityId = self.add_entity(
 				e.kind,

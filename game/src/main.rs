@@ -67,9 +67,11 @@ fn main() {
 		renderer.draw_level(&state);
 		renderer.commit();
 
+		/*
+		// debug logging
 		if (renderer.frame_index % 60) == 0 {
 			for (id, pos) in state.positions.iter() {
-				let kind: u8 = *state.entity_kinds.get(&id).unwrap_or(&0);
+				let kind: u8 = *state.entity_kinds.get(id).unwrap_or(&0);
 				if kind == 2 {
 					// slime
 					let vel = state.velocities.get(id).copied().unwrap_or(Vec2::zero());
@@ -77,6 +79,7 @@ fn main() {
 				}
 			}
 		}
+		*/
 	}
 }
 

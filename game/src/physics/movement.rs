@@ -8,7 +8,7 @@ use crate::{
 
 #[inline(always)]
 pub fn move_and_collide(game_state: &mut GameState) {
-	let do_debug: bool = (game_state.tick % 60) == 0;
+	// let do_debug: bool = (game_state.tick % 60) == 0;
 
 	// let ids: Vec<EntityId> = game_state.positions.keys().copied().collect();
 
@@ -51,6 +51,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 
 			old_vx = velocity.x;
 
+			/*
 			if do_debug && id == player_id {
 				let tile_w: f32 = game_state.level.tile_width as f32;
 				let tile_h: f32 = game_state.level.tile_height as f32;
@@ -64,8 +65,10 @@ pub fn move_and_collide(game_state: &mut GameState) {
 				println!("  player tile tx={} ty={} kind={:?} pos=({}, {})", tx, ty, k, postion.x, postion.y);
 				println!("  feet tile tx={} ty={} id={}", tx, ty, id);
 			}
-
 			resolve_wall_collision(&game_state.level, postion, velocity, half_width, half_height, do_debug);
+			*/
+
+			resolve_wall_collision(&game_state.level, postion, velocity, half_width, half_height, false);
 
 			if old_vx != 0.0 && velocity.x == 0.0 {
 				hit_wall = true;
@@ -77,7 +80,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 
 		// ai response: flip slimes on wall hit
 		if hit_wall {
-			let kind: u8 = *game_state.entity_kinds.get(&id).unwrap_or(&0);
+			let kind: u8 = *game_state.entity_kinds.get(id).unwrap_or(&0);
 
 			// kind==2 is slime in your data
 			if kind == 2 {
