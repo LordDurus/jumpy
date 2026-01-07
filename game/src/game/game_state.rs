@@ -1,5 +1,4 @@
-use crate::{ecs::component_store::ComponentStore, engine_math::Vec2, game::level::Level, physics::collision};
-use std::collections::HashMap;
+use crate::{ecs::component_store::ComponentStore, engine_math::Vec2, game::level::Level, physics::collision, tile::TileCollision};
 
 pub type EntityId = u32;
 
@@ -162,11 +161,15 @@ impl GameState {
 
 		let inset: f32 = 0.5;
 
-		let foot_y: f32 = pos.y + half_height + inset;
-		let left_x: f32 = pos.x - half_width + inset;
-		let right_x: f32 = pos.x + half_width - inset;
+		let foot_top: f32 = pos.y + half_height + inset;
+		let left_left: f32 = pos.x - half_width + inset;
+		let right_left: f32 = pos.x + half_width - inset;
 
-		let grounded: bool = self.level.is_solid_world_f32(left_x, foot_y) || self.level.is_solid_world_f32(right_x, foot_y);
+		let left_col: TileCollision = self.level.is_collision_at_f32(left_left, foot_top);
+		let right_col: TileCollision = self.level.is_collision_at_f32(right_left, foot_top);
+
+		let grounded: bool =
+			left_col == TileCollision::Solid || left_col == TileCollision::OneWay || right_col == TileCollision::Solid || right_col == TileCollision::OneWay;
 
 		return grounded;
 	}

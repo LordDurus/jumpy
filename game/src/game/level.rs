@@ -1,4 +1,7 @@
-use crate::{game::game_state::EntityKind, tile::TileKind};
+use crate::{
+	game::game_state::EntityKind,
+	tile::{TileCollision, TileKind},
+};
 use std::fs;
 
 pub const BYTES_PER_ENTITY: usize = 24;
@@ -373,6 +376,20 @@ impl Level {
 		}
 
 		return 0.0;
+	}
+
+	pub fn is_collision_at_f32(&self, world_left: f32, world_top: f32) -> TileCollision {
+		if world_left < 0.0 || world_top < 0.0 {
+			return TileCollision::None;
+		}
+
+		let tx: i32 = (world_left / (self.tile_width as f32)).floor() as i32;
+		let ty: i32 = (world_top / (self.tile_height as f32)).floor() as i32;
+
+		let layer: u32 = self.get_action_layer_index() as u32;
+		let tile = self.get_tile_at_layer(layer, tx, ty);
+
+		return tile.get_collision_kind();
 	}
 }
 

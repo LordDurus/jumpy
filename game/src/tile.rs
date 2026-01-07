@@ -19,6 +19,7 @@ pub enum TileKind {
 	PlatformLeft = 9,
 	PlatformMiddle = 10,
 	PlatformRight = 11,
+	Stone = 12,
 }
 
 impl TileKind {
@@ -50,13 +51,14 @@ impl TileKind {
 			9 => TileKind::PlatformLeft,
 			10 => TileKind::PlatformMiddle,
 			11 => TileKind::PlatformRight,
+			12 => TileKind::Stone,
 			_ => TileKind::Empty,
 		}
 	}
 
 	pub fn is_solid(self) -> bool {
 		match self {
-			TileKind::Dirt | TileKind::GrassTop => true,
+			TileKind::Dirt | TileKind::GrassTop | TileKind::Stone => true,
 			_ => false,
 		}
 	}
