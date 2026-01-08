@@ -148,19 +148,13 @@ impl GameState {
 		self.player_id.expect("player_id not set")
 	}
 
-	#[allow(dead_code)]
-	#[inline(always)]
-	pub fn player_pos(&self) -> Option<&Vec2> {
-		self.player_id.and_then(|id| self.positions.get(id))
-	}
-
 	#[inline(always)]
 	pub fn on_moving_platform(&self, entity_id: EntityId) -> bool {
-		self.moving_platform_vx(entity_id).is_some()
+		self.get_moving_platform_vx(entity_id).is_some()
 	}
 
 	#[inline(always)]
-	pub fn moving_platform_vx(&self, entity_id: EntityId) -> Option<f32> {
+	pub fn get_moving_platform_vx(&self, entity_id: EntityId) -> Option<f32> {
 		let Some(pos) = self.positions.get(entity_id) else {
 			return None;
 		};
@@ -178,11 +172,11 @@ impl GameState {
 				continue;
 			}
 
-			let (phw, phh) = self.get_entity_half_values(entity_id);
+			let (ph_width, ph_height) = self.get_entity_half_values(entity_id);
 
-			let plat_left: f32 = ppos.x - phw;
-			let plat_right: f32 = ppos.x + phw;
-			let plat_top: f32 = ppos.y - phh;
+			let plat_left: f32 = ppos.x - ph_width;
+			let plat_right: f32 = ppos.x + ph_width;
+			let plat_top: f32 = ppos.y - ph_height;
 
 			if ent_right < plat_left || ent_left > plat_right {
 				continue;

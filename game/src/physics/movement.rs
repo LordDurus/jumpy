@@ -1,10 +1,107 @@
 use crate::{
-	game::game_state::{EntityId, EntityKind, GameState},
+	engine_math::Vec2,
+	game::{
+		game_state::{EntityId, EntityKind, GameState},
+		level::Level,
+	},
 	physics::{
 		collision::{resolve_ceiling_collision, resolve_floor_collision, resolve_wall_collision},
 		constants::JUMP_VELOCITY,
 	},
 };
+
+#[derive(Clone, Copy)]
+struct PlatformAabb {
+	left: f32,
+	right: f32,
+	top: f32,
+	bottom: f32,
+	vx: f32,
+}
+
+#[inline(always)]
+fn resolve_platform_pushout(level: &Level, pos: &mut Vec2, vel: &mut Vec2, prev_pos: Vec2, half_width: f32, half_height: f32, platforms: &[PlatformAabb]) {
+	let left: f32 = pos.x - half_width;
+	let right: f32 = pos.x + half_width;
+	let top: f32 = pos.y - half_height;
+	let bottom: f32 = pos.y + half_height;
+
+	let prev_left: f32 = prev_pos.x - half_width;
+	let prev_right: f32 = prev_pos.x + half_width;
+	let prev_top: f32 = prev_pos.y - half_height;
+	let prev_bottom: f32 = prev_pos.y + half_height;
+
+	for p in platforms {
+		// broadphase
+		if right <= p.left || left >= p.right || bottom <= p.top || top >= p.bottom {
+			continue;
+		}
+
+		// platform swept bounds (where it was last frame)
+		let p_prev_left: f32 = p.left - p.vx;
+		let p_prev_right: f32 = p.right - p.vx;
+
+		// --- side push from moving platform (this is what you’re missing) ---
+		if p.vx > 0.0 {
+			// platform moved right into entity
+			if prev_left >= p_prev_right && left < p.right {
+				pos.x = p.right + half_width;
+				if vel.x < p.vx {
+					vel.x = p.vx;
+				}
+				continue;
+			}
+		} else if p.vx < 0.0 {
+			// platform moved left into entity
+			if prev_right <= p_prev_left && right > p.left {
+				pos.x = p.left - half_width;
+				if vel.x > p.vx {
+					vel.x = p.vx;
+				}
+				continue;
+			}
+		}
+
+		// --- regular side hits (entity walks into platform) ---
+		if prev_right <= p.left {
+			pos.x = p.left - half_width;
+			if vel.x > 0.0 {
+				vel.x = 0.0;
+			}
+			continue;
+		}
+		if prev_left >= p.right {
+			pos.x = p.right + half_width;
+			if vel.x < 0.0 {
+				vel.x = 0.0;
+			}
+			continue;
+		}
+
+		// --- ceiling / underside ---
+		if prev_top >= p.bottom {
+			pos.y = p.bottom + half_height;
+			if vel.y < 0.0 {
+				vel.y = 0.0;
+			}
+			continue;
+		}
+
+		// --- landing on top (only if falling) ---
+		if vel.y > 0.0 && prev_bottom <= p.top {
+			pos.y = p.top - half_height;
+			vel.y = 0.0;
+
+			// carry
+			pos.x += p.vx;
+
+			// IMPORTANT: re-resolve wall collision after carry so you don’t shove into tiles
+			resolve_wall_collision(level, pos, vel, half_width, half_height, false);
+
+			continue;
+		}
+	}
+}
 
 #[inline(always)]
 pub fn move_and_collide(game_state: &mut GameState) {
@@ -18,18 +115,38 @@ pub fn move_and_collide(game_state: &mut GameState) {
 
 	let mut platform_tops: Vec<(f32, f32, f32, f32)> = Vec::new(); // left, right, top, vx
 
-	for (player_id, ppos) in game_state.positions.iter() {
-		let kind_u8: u8 = *game_state.entity_kinds.get(player_id).unwrap_or(&0);
+	let mut platforms: Vec<PlatformAabb> = Vec::new();
+
+	for (pid, ppos) in game_state.positions.iter() {
+		let kind_u8: u8 = *game_state.entity_kinds.get(pid).unwrap_or(&0);
 		if EntityKind::from_u8(kind_u8) != EntityKind::MovingPlatform {
 			continue;
 		}
 
-		let (phw, phh) = game_state.get_entity_half_values(player_id);
-		let vx: f32 = game_state.velocities.get(player_id).map(|v| v.x).unwrap_or(0.0);
+		let (ph_width, ph_height) = game_state.get_entity_half_values(pid);
+		let velocity_x: f32 = game_state.velocities.get(pid).map(|v| v.x).unwrap_or(0.0);
 
-		let left: f32 = ppos.x - phw;
-		let right: f32 = ppos.x + phw;
-		let top: f32 = ppos.y - phh;
+		platforms.push(PlatformAabb {
+			left: ppos.x - ph_width,
+			right: ppos.x + ph_width,
+			top: ppos.y - ph_height,
+			bottom: ppos.y + ph_height,
+			vx: velocity_x,
+		});
+	}
+
+	for (entity_id, position) in game_state.positions.iter() {
+		let kind_u8: u8 = *game_state.entity_kinds.get(entity_id).unwrap_or(&0);
+		if EntityKind::from_u8(kind_u8) != EntityKind::MovingPlatform {
+			continue;
+		}
+
+		let (phw, phh) = game_state.get_entity_half_values(entity_id);
+		let vx: f32 = game_state.velocities.get(entity_id).map(|v| v.x).unwrap_or(0.0);
+
+		let left: f32 = position.x - phw;
+		let right: f32 = position.x + phw;
+		let top: f32 = position.y - phh;
 
 		platform_tops.push((left, right, top, vx));
 	}
@@ -56,6 +173,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 				continue;
 			};
 
+			let prev_pos: Vec2 = *postion;
 			let prev_bottom_world: f32 = postion.y + half_height;
 			postion.x += velocity.x;
 			postion.y += velocity.y;
@@ -70,6 +188,14 @@ pub fn move_and_collide(game_state: &mut GameState) {
 
 			resolve_ceiling_collision(&game_state.level, postion, velocity, half_width, half_height);
 			resolve_floor_collision(&game_state.level, postion, velocity, half_width, half_height, prev_bottom_world);
+
+			let kind_u8: u8 = *game_state.entity_kinds.get(id).unwrap_or(&0);
+			let kind: EntityKind = EntityKind::from_u8(kind_u8);
+
+			// don’t push a platform out of itself
+			if kind != EntityKind::MovingPlatform {
+				resolve_platform_pushout(&game_state.level, postion, velocity, prev_pos, half_width, half_height, &platforms);
+			}
 
 			if velocity.y > 0.0 {
 				let inset_x: f32 = 0.5;

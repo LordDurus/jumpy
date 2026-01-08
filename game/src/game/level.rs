@@ -20,6 +20,8 @@ pub struct Level {
 	pub player_spawn_top: f32,
 	pub player_spawn_left: f32,
 	pub entities: Vec<LevelEntity>,
+
+	#[allow(dead_code)]
 	pub triggers: Vec<LevelTrigger>,
 }
 
@@ -67,33 +69,6 @@ impl Level {
 		return kind;
 	}
 
-	pub fn set_tile_id_at_layer(&mut self, layer: u32, tx: i32, ty: i32, tile_id: u8) -> bool {
-		if tx < 0 || ty < 0 {
-			return false;
-		}
-
-		let x: usize = tx as usize;
-		let y: usize = ty as usize;
-
-		if x >= self.width as usize || y >= self.height as usize {
-			return false;
-		}
-
-		if layer as u8 >= self.layer_count {
-			return false;
-		}
-
-		let index_in_layer: usize = y * (self.width as usize) + x;
-		let index: usize = (layer as usize) * self.tiles_per_layer + index_in_layer;
-
-		if index >= self.tiles.len() {
-			return false;
-		}
-
-		self.tiles[index] = tile_id;
-		return true;
-	}
-
 	pub fn get_tile_id_at_layer(&self, layer: u32, tx: i32, ty: i32) -> u8 {
 		if tx < 0 || ty < 0 {
 			return 0;
@@ -110,13 +85,13 @@ impl Level {
 			return 0;
 		}
 
-		let idx_in_layer: usize = y * (self.width as usize) + x;
-		let idx: usize = (layer as usize) * self.tiles_per_layer + idx_in_layer;
+		let index_in_layer: usize = y * (self.width as usize) + x;
+		let index: usize = (layer as usize) * self.tiles_per_layer + index_in_layer;
 
-		if idx >= self.tiles.len() {
+		if index >= self.tiles.len() {
 			return 0;
 		}
-		return self.tiles[idx];
+		return self.tiles[index];
 	}
 
 	pub fn load_binary(path: &str) -> Result<Level, String> {
@@ -263,7 +238,7 @@ impl Level {
 			};
 
 			println!(
-				" {}: kind={} - {} style={} top={} left={} health_regen_rate={} invulnerability_time={} width={} height={} speed={} strength={} luck={} hit_points={} range_min={} range_max={} gravity={}",
+				" {}: kind={}({}) style={} top={} left={} health_regen_rate={} invulnerability_time={} width={} height={} speed={} strength={} luck={} hit_points={} range_min={} range_max={} gravity={}",
 				i,
 				e.kind,
 				kind_name,

@@ -235,7 +235,6 @@ pub fn load_level_from_str(text: &str) -> Result<LevelSource, String> {
 				} else {
 					return Err(format!("Error: unexpected line in entity body at {}: {}", line_number, line));
 				}
-				// println!("ent.kind={:?}, speed={}, luck={}, strength={}", ent.kind, ent.speed, ent.luck, ent.strength);
 			}
 			Section::Triggers => {
 				if line.starts_with("trigger ") {

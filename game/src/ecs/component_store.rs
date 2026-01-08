@@ -47,11 +47,6 @@ impl<T> ComponentStore<T> {
 	}
 
 	#[inline(always)]
-	pub fn insert(&mut self, id: u32, value: T) {
-		self.push(id, value);
-	}
-
-	#[inline(always)]
 	pub fn push(&mut self, id: u32, value: T) {
 		let idx: usize = id as usize;
 		if idx >= self.data.len() {
