@@ -16,8 +16,26 @@ pub fn move_and_collide(game_state: &mut GameState) {
 	let margin: f32 = 64.0;
 	let player_id: EntityId = game_state.get_player_id();
 
-	for idx in 0..max_id {
-		let id: EntityId = idx as EntityId;
+	let mut platform_tops: Vec<(f32, f32, f32, f32)> = Vec::new(); // left, right, top, vx
+
+	for (player_id, ppos) in game_state.positions.iter() {
+		let kind_u8: u8 = *game_state.entity_kinds.get(player_id).unwrap_or(&0);
+		if EntityKind::from_u8(kind_u8) != EntityKind::MovingPlatform {
+			continue;
+		}
+
+		let (phw, phh) = game_state.get_entity_half_values(player_id);
+		let vx: f32 = game_state.velocities.get(player_id).map(|v| v.x).unwrap_or(0.0);
+
+		let left: f32 = ppos.x - phw;
+		let right: f32 = ppos.x + phw;
+		let top: f32 = ppos.y - phh;
+
+		platform_tops.push((left, right, top, vx));
+	}
+
+	for index in 0..max_id {
+		let id: EntityId = index as EntityId;
 
 		if !game_state.positions.has(id) {
 			continue;
@@ -52,6 +70,30 @@ pub fn move_and_collide(game_state: &mut GameState) {
 
 			resolve_ceiling_collision(&game_state.level, postion, velocity, half_width, half_height);
 			resolve_floor_collision(&game_state.level, postion, velocity, half_width, half_height, prev_bottom_world);
+
+			if velocity.y > 0.0 {
+				let inset_x: f32 = 0.5;
+
+				let bottom_world: f32 = postion.y + half_height;
+				let ent_left: f32 = postion.x - half_width + inset_x;
+				let ent_right: f32 = postion.x + half_width - inset_x;
+
+				for (plat_left, plat_right, plat_top, plat_vx) in &platform_tops {
+					if ent_right < *plat_left || ent_left > *plat_right {
+						continue;
+					}
+
+					if prev_bottom_world <= *plat_top && bottom_world >= *plat_top {
+						postion.y = *plat_top - half_height;
+						velocity.y = 0.0;
+
+						// carry along horizontally
+						postion.x += *plat_vx;
+
+						break;
+					}
+				}
+			}
 		} // <- pos/vel borrows end here
 
 		if hit_wall {

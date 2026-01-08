@@ -263,7 +263,7 @@ impl Level {
 			};
 
 			println!(
-				" {}: kind={} Kind Name={} style={} top={} left={} a={} b={} width={} height={} speed={} strength={} luck={} hit_points={}, range_min={}, range_max={}, gravity={}",
+				" {}: kind={} - {} style={} top={} left={} health_regen_rate={} invulnerability_time={} width={} height={} speed={} strength={} luck={} hit_points={} range_min={} range_max={} gravity={}",
 				i,
 				e.kind,
 				kind_name,

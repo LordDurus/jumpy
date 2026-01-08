@@ -44,15 +44,11 @@ pub fn resolve_floor_collision(level: &Level, pos: &mut Vec2, vel: &mut Vec2, ha
 	}
 
 	let layer: u32 = level.get_action_layer_index() as u32;
-
 	let tile_width_world: f32 = level.tile_width as f32;
 	let tile_height_world: f32 = level.tile_height as f32;
-
 	let bottom_world: f32 = pos.y + half_height;
 	let probe_world: f32 = bottom_world + 0.5;
-
 	let tile_top: i32 = (probe_world / tile_height_world).floor() as i32;
-
 	let inset: f32 = 0.5;
 	let tile_left: i32 = ((pos.x - half_width + inset) / tile_width_world).floor() as i32;
 	let tile_right: i32 = ((pos.x + half_width - inset) / tile_width_world).floor() as i32;
