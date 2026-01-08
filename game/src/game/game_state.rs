@@ -155,6 +155,49 @@ impl GameState {
 	}
 
 	#[inline(always)]
+	pub fn on_moving_platform(&self, entity_id: EntityId) -> bool {
+		self.moving_platform_vx(entity_id).is_some()
+	}
+
+	#[inline(always)]
+	pub fn moving_platform_vx(&self, entity_id: EntityId) -> Option<f32> {
+		let Some(pos) = self.positions.get(entity_id) else {
+			return None;
+		};
+
+		let (half_width, half_height) = self.get_entity_half_values(entity_id);
+
+		let inset_x: f32 = 0.5;
+		let foot_y: f32 = pos.y + half_height + 0.5;
+		let ent_left: f32 = pos.x - half_width + inset_x;
+		let ent_right: f32 = pos.x + half_width - inset_x;
+
+		for (entity_id, ppos) in self.positions.iter() {
+			let kind_u8: u8 = *self.entity_kinds.get(entity_id).unwrap_or(&0);
+			if EntityKind::from_u8(kind_u8) != EntityKind::MovingPlatform {
+				continue;
+			}
+
+			let (phw, phh) = self.get_entity_half_values(entity_id);
+
+			let plat_left: f32 = ppos.x - phw;
+			let plat_right: f32 = ppos.x + phw;
+			let plat_top: f32 = ppos.y - phh;
+
+			if ent_right < plat_left || ent_left > plat_right {
+				continue;
+			}
+
+			if (foot_y - plat_top).abs() <= 1.0 {
+				let vx: f32 = self.velocities.get(entity_id).map(|v| v.x).unwrap_or(0.0);
+				return Some(vx);
+			}
+		}
+
+		return None;
+	}
+
+	#[inline(always)]
 	pub fn on_ground(&self, id: EntityId) -> bool {
 		let Some(pos) = self.positions.get(id) else {
 			return false;

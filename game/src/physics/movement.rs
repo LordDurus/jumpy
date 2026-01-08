@@ -172,7 +172,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 }
 
 pub fn try_jump(game_state: &mut GameState, entity_id: EntityId) -> bool {
-	let grounded: bool = game_state.on_ground(entity_id);
+	let grounded: bool = game_state.on_ground(entity_id) || game_state.on_moving_platform(entity_id);
 	let on_left: bool = game_state.on_wall_left(entity_id);
 	let on_right: bool = game_state.on_wall_right(entity_id);
 
