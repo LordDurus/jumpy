@@ -32,7 +32,7 @@ fn get_gravity_from_file(v: u8) -> u8 {
 }
 
 impl Level {
-	pub fn is_solid_world_f32(&self, level_x: f32, level_y: f32) -> bool {
+	pub fn is_solid_tile_f32(&self, level_x: f32, level_y: f32) -> bool {
 		let tile_width: f32 = self.tile_width as f32;
 		let tile_height: f32 = self.tile_height as f32;
 
@@ -219,7 +219,7 @@ impl Level {
 		let mut ent_off: usize = offset_entities;
 
 		for _ in 0..entity_count {
-			entities.push(LevelEntity {
+			let entity: LevelEntity = LevelEntity {
 				kind: read_u8(&bytes, &mut ent_off)?,
 				render_style: read_u8(&bytes, &mut ent_off)?,
 				gravity_multiplier: get_gravity_from_file(read_u8(&bytes, &mut ent_off)?),
@@ -237,15 +237,36 @@ impl Level {
 				luck: read_u8(&bytes, &mut ent_off)?,
 				range_min: read_u16(&bytes, &mut ent_off)?,
 				range_max: read_u16(&bytes, &mut ent_off)?,
-			});
+			};
+
+			/*
+			if EntityKind::from_u8(entity.kind) == EntityKind::MovingPlatform {
+				if entity.width != 0 {
+					entity.width = entity.width / 16;
+				}
+				if entity.height != 0 {
+					entity.height = entity.height / 16;
+				}
+			}
+			*/
+			entities.push(entity);
 		}
 
 		println!("-- entities loaded --");
 		for (i, e) in entities.iter().enumerate() {
+			let kind_name = match e.kind {
+				1 => "Player",
+				2 => "Slime",
+				3 => "Imp",
+				4 => "MovingPlatform",
+				_ => "Emnpty",
+			};
+
 			println!(
-				" {}: kind={} style={} top={} left={} a={} b={} width={} height={} speed={} strength={} luck={} hit_points={}, range_min={}, range_max={}, gravity={}",
+				" {}: kind={} Kind Name={} style={} top={} left={} a={} b={} width={} height={} speed={} strength={} luck={} hit_points={}, range_min={}, range_max={}, gravity={}",
 				i,
 				e.kind,
+				kind_name,
 				e.render_style,
 				e.top,
 				e.left,
@@ -333,7 +354,7 @@ impl Level {
 
 		level.floor_y = level.compute_floor_y();
 
-		let action_layer: u32 = level.get_action_layer_index() as u32;
+		// let action_layer: u32 = level.get_action_layer_index() as u32;
 		let mut platform_stamps: Vec<(i32, i32, i32)> = Vec::new();
 
 		for e in level.entities.iter() {
@@ -344,10 +365,6 @@ impl Level {
 
 				platform_stamps.push((left_tile, top_tile, width_tiles));
 			}
-		}
-
-		for (left_tile, top_tile, width_tiles) in platform_stamps {
-			let _ = stamp_platform_tiles(&mut level, action_layer, left_tile, top_tile, width_tiles);
 		}
 
 		return Ok(level);
@@ -462,32 +479,4 @@ pub struct LevelTrigger {
 	pub height: u16,
 	pub target: u16,
 	pub text_id: u16,
-}
-
-pub fn stamp_platform_tiles(level: &mut Level, layer: u32, left_tile: i32, top_tile: i32, width_tiles: i32) -> i32 {
-	if width_tiles <= 0 {
-		return 0;
-	}
-
-	let mut written: i32 = 0;
-
-	for i in 0..width_tiles {
-		let tile_kind: TileKind = if width_tiles == 1 {
-			TileKind::PlatformMiddle
-		} else if i == 0 {
-			TileKind::PlatformLeft
-		} else if i == width_tiles - 1 {
-			TileKind::PlatformRight
-		} else {
-			TileKind::PlatformMiddle
-		};
-
-		let tile_id: u8 = tile_kind as u8;
-
-		if level.set_tile_id_at_layer(layer, left_tile + i, top_tile, tile_id) {
-			written += 1;
-		}
-	}
-
-	return written;
 }

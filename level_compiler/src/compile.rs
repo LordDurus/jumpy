@@ -107,7 +107,7 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 			},
 			EntityKindSource::MovingPlatform {
 				platform_kind,
-				size,
+				size: _,
 				speed,
 				range_min,
 				range_max,
@@ -126,13 +126,11 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 					left,
 					health_regen_rate: 0,
 					invulnerability_time: 0,
-					width: if platform_kind == "horizontal" { clamp_u8((*size as i32) * 16).max(1) } else { 16 },
-					height: if platform_kind == "vertical" { clamp_u8((*size as i32) * 16).max(1) } else { 16 },
+					width: clamp_u8((entity.width * 16.0).round() as i32).max(1),
+					height: clamp_u8((entity.height * 16.0).round() as i32).max(1),
 					speed: clamp_u8(*speed),
 					strength: resolve_platform_type(platform_kind)?,
 					luck: 0,
-					// range_min: entity.range_min as u16,
-					// range_max: entity.range_max as u16,
 					range_min: rm,
 					range_max: rx,
 				}
@@ -276,10 +274,16 @@ fn build_tile_palette() -> HashMap<char, u8> {
 	map.insert('v', 5); // SpikeDown
 	map.insert('<', 6); // SpikeLeft
 	map.insert('>', 7); // SpikeRight
-	map.insert('b', 8); // Water Body
-	map.insert('[', 9); // platform left
-	map.insert('0', 10); // platform middle
-	map.insert(']', 11); // platform right
+	map.insert('w', 8); // Water Body
+	map.insert('[', 9); // moving platform left
+	map.insert('-', 10); // moving platform middle
+	map.insert(']', 11); // moving platform right
+	map.insert('d', 12); // Dirt right
+	map.insert('b', 13); // Sign Begin
+	map.insert('e', 14); // Sign End
+	map.insert('(', 15); // platform left
+	map.insert('_', 16); // platform middle
+	map.insert(')', 17); // platform right
 	return map;
 }
 

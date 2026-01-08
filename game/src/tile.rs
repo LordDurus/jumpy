@@ -16,10 +16,15 @@ pub enum TileKind {
 	SpikeLeft = 6,
 	SpikeRight = 7,
 	WaterBody = 8,
-	PlatformLeft = 9,
-	PlatformMiddle = 10,
-	PlatformRight = 11,
+	MovingPlatformLeft = 9,
+	MovingPlatformMiddle = 10,
+	MovingPlatformRight = 11,
+	SignBegin = 13,
 	Stone = 12,
+	SignEnd = 14,
+	PlatformLeft = 15,
+	PlatformMiddle = 16,
+	PlatformRight = 17,
 }
 
 impl TileKind {
@@ -30,7 +35,12 @@ impl TileKind {
 				return TileCollision::None;
 			}
 
-			TileKind::PlatformLeft | TileKind::PlatformMiddle | TileKind::PlatformRight => {
+			TileKind::MovingPlatformLeft
+			| TileKind::MovingPlatformMiddle
+			| TileKind::MovingPlatformRight
+			| TileKind::PlatformLeft
+			| TileKind::PlatformMiddle
+			| TileKind::PlatformRight => {
 				return TileCollision::OneWay;
 			}
 
@@ -48,10 +58,16 @@ impl TileKind {
 			6 => TileKind::SpikeLeft,
 			7 => TileKind::SpikeRight,
 			8 => TileKind::WaterBody,
-			9 => TileKind::PlatformLeft,
-			10 => TileKind::PlatformMiddle,
-			11 => TileKind::PlatformRight,
+			9 => TileKind::MovingPlatformLeft,
+			10 => TileKind::MovingPlatformMiddle,
+			11 => TileKind::MovingPlatformRight,
 			12 => TileKind::Stone,
+			13 => TileKind::SignBegin,
+			14 => TileKind::SignEnd,
+			15 => TileKind::PlatformLeft,
+			16 => TileKind::PlatformMiddle,
+			17 => TileKind::PlatformRight,
+
 			_ => TileKind::Empty,
 		}
 	}

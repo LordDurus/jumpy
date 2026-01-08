@@ -1,5 +1,5 @@
 use crate::{
-	game::game_state::{EntityId, GameState},
+	game::game_state::{EntityId, EntityKind, GameState},
 	physics::{
 		collision::{resolve_ceiling_collision, resolve_floor_collision, resolve_wall_collision},
 		constants::JUMP_VELOCITY,
@@ -8,19 +8,11 @@ use crate::{
 
 #[inline(always)]
 pub fn move_and_collide(game_state: &mut GameState) {
-	// let do_debug: bool = (game_state.tick % 60) == 0;
-
-	// let ids: Vec<EntityId> = game_state.positions.keys().copied().collect();
-
-	// let ids: Vec<EntityId> = game_state.positions.keys();
 	let max_id: usize = game_state.positions.len();
-
 	let tile_width: f32 = game_state.level.tile_width as f32;
 	let tile_height: f32 = game_state.level.tile_height as f32;
-
 	let level_width_pixels: f32 = (game_state.level.width as f32) * tile_width;
 	let level_height_pixels: f32 = (game_state.level.height as f32) * tile_height;
-
 	let margin: f32 = 64.0;
 	let player_id: EntityId = game_state.get_player_id();
 
@@ -52,23 +44,6 @@ pub fn move_and_collide(game_state: &mut GameState) {
 
 			old_vx = velocity.x;
 
-			/*
-			if do_debug && id == player_id {
-				let tile_w: f32 = game_state.level.tile_width as f32;
-				let tile_h: f32 = game_state.level.tile_height as f32;
-
-				let tx: i32 = (postion.x / tile_w).floor() as i32;
-				let ty: i32 = (postion.y / tile_h).floor() as i32;
-
-				let layer: u32 = game_state.level.get_action_layer_index() as u32;
-				let k = game_state.level.get_tile_at_layer(layer, tx, ty);
-
-				println!("  player tile tx={} ty={} kind={:?} pos=({}, {})", tx, ty, k, postion.x, postion.y);
-				println!("  feet tile tx={} ty={} id={}", tx, ty, id);
-			}
-			resolve_wall_collision(&game_state.level, postion, velocity, half_width, half_height, do_debug);
-			*/
-
 			resolve_wall_collision(&game_state.level, postion, velocity, half_width, half_height, false);
 
 			if old_vx != 0.0 && velocity.x == 0.0 {
@@ -79,7 +54,6 @@ pub fn move_and_collide(game_state: &mut GameState) {
 			resolve_floor_collision(&game_state.level, postion, velocity, half_width, half_height, prev_bottom_world);
 		} // <- pos/vel borrows end here
 
-		// ai response: flip slimes on wall hit
 		if hit_wall {
 			let kind: u8 = *game_state.entity_kinds.get(id).unwrap_or(&0);
 
@@ -182,4 +156,69 @@ pub fn try_jump(game_state: &mut GameState, entity_id: EntityId) -> bool {
 	}
 
 	return false;
+}
+
+pub fn patrol(game_state: &mut GameState) {
+	let ids = game_state.patrolling.keys();
+
+	for id in ids {
+		let pos = match game_state.positions.get(id) {
+			Some(p) => *p,
+			None => continue,
+		};
+
+		let vel = match game_state.velocities.get_mut(id) {
+			Some(v) => v,
+			None => continue,
+		};
+
+		let kind_u8: u8 = *game_state.entity_kinds.get(id).unwrap_or(&0);
+		let kind = EntityKind::from_u8(kind_u8);
+		let speed_u8: u8 = game_state.speeds.get(id).copied().unwrap_or(0);
+
+		let speed: f32 = match kind {
+			EntityKind::MovingPlatform => speed_u8 as f32, // keep as-is (platform feels right)
+			EntityKind::Imp => (speed_u8 as f32) * 0.25,   // slow imps down
+			_ => (speed_u8 as f32) * 0.25,                 // default slow speed
+		};
+
+		let mut min_x: f32 = game_state.range_mins.get(id).copied().unwrap_or(pos.x);
+		let mut max_x: f32 = game_state.range_maxes.get(id).copied().unwrap_or(pos.x);
+
+		// normalize range ordering
+		if min_x > max_x {
+			let t: f32 = min_x;
+			min_x = max_x;
+			max_x = t;
+		}
+
+		// degenerate range => stand still
+		if (max_x - min_x) < 1.0 {
+			vel.x = 0.0;
+			continue;
+		}
+
+		// clamp position to range
+		if let Some(p) = game_state.positions.get_mut(id) {
+			if p.x < min_x {
+				p.x = min_x;
+			}
+			if p.x > max_x {
+				p.x = max_x;
+			}
+		}
+
+		// keep last direction (from vel) unless we hit an end
+		let mut dir: f32 = if vel.x < 0.0 { -1.0 } else { 1.0 };
+
+		if pos.x <= min_x {
+			dir = 1.0;
+		} else if pos.x >= max_x {
+			dir = -1.0;
+		}
+
+		vel.x = dir * speed;
+	}
+
+	return;
 }

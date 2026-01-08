@@ -55,6 +55,7 @@ pub struct GameState {
 	pub range_mins: ComponentStore<f32>,
 	pub range_maxes: ComponentStore<f32>,
 	pub jump_multipliers: ComponentStore<u8>,
+	pub patrolling: ComponentStore<u8>,
 
 	pub enemy_ids: Vec<EntityId>,
 	pub tick: u32,
@@ -88,6 +89,8 @@ impl GameState {
 			range_mins: ComponentStore::new(),
 			jump_multipliers: ComponentStore::new(),
 			gravity_multipliers: ComponentStore::new(),
+			patrolling: ComponentStore::new(),
+
 			enemy_ids: Vec::new(),
 			tick: 0,
 		};
@@ -188,7 +191,7 @@ impl GameState {
 		let y_mid: f32 = pos.y;
 		let y_bot: f32 = pos.y + half_h - inset;
 
-		let hit: bool = self.level.is_solid_world_f32(probe_x, y_top) || self.level.is_solid_world_f32(probe_x, y_mid) || self.level.is_solid_world_f32(probe_x, y_bot);
+		let hit: bool = self.level.is_solid_tile_f32(probe_x, y_top) || self.level.is_solid_tile_f32(probe_x, y_mid) || self.level.is_solid_tile_f32(probe_x, y_bot);
 
 		return hit;
 	}
@@ -207,12 +210,25 @@ impl GameState {
 		let y_mid: f32 = pos.y;
 		let y_bot: f32 = pos.y + half_h - inset;
 
-		let hit: bool = self.level.is_solid_world_f32(probe_x, y_top) || self.level.is_solid_world_f32(probe_x, y_mid) || self.level.is_solid_world_f32(probe_x, y_bot);
+		let hit: bool = self.level.is_solid_tile_f32(probe_x, y_top) || self.level.is_solid_tile_f32(probe_x, y_mid) || self.level.is_solid_tile_f32(probe_x, y_bot);
 
 		return hit;
 	}
 
 	pub fn get_entity_half_values(&self, id: EntityId) -> (f32, f32) {
+		/*
+		if EntityKind::from_u8(id as u8) == EntityKind::MovingPlatform {
+			println!("Getting half values for moving platform {}", id);
+			let width_tiles: f32 = *self.widths.get(id).unwrap_or(&1) as f32;
+			let height_tiles: f32 = *self.heights.get(id).unwrap_or(&1) as f32;
+
+			let half_width: f32 = (width_tiles * self.level.tile_width as f32) * 0.5;
+			let half_height: f32 = (height_tiles * self.level.tile_height as f32) * 0.5;
+
+			return (half_width, half_height);
+		}
+		*/
+
 		let width: f32 = self.widths.get(id).copied().unwrap_or(16) as f32;
 		let height: f32 = self.heights.get(id).copied().unwrap_or(16) as f32;
 
@@ -238,22 +254,23 @@ impl GameState {
 		range_min: f32,
 		range_max: f32,
 	) -> EntityId {
-		let width: u8 = if width == 0 { 16 } else { width };
-		let height: u8 = if height == 0 { 16 } else { height };
+		let width: u8 = if width == 0 { 1 } else { width };
+		let height: u8 = if height == 0 { 1 } else { height };
 
 		let id: EntityId = self.next_entity_id;
 		self.next_entity_id += 1;
 		self.positions.push(id, position);
 
-		self.velocities.insert(id, velocity);
-		self.entity_kinds.insert(id, kind);
-		self.render_styles.insert(id, render_style);
+		self.velocities.push(id, velocity);
+		self.entity_kinds.push(id, kind);
+		self.render_styles.push(id, render_style);
 		self.gravity_multipliers.push(id, gravity_multiplier);
-		self.widths.insert(id, width);
-		self.heights.insert(id, height);
-		self.speeds.insert(id, speed);
-		self.strengths.insert(id, strength);
-		self.luck.insert(id, luck);
+
+		self.widths.push(id, width);
+		self.heights.push(id, height);
+		self.speeds.push(id, speed);
+		self.strengths.push(id, strength);
+		self.luck.push(id, luck);
 
 		self.jump_multipliers.push(id, jump_multiplier);
 
@@ -269,6 +286,10 @@ impl GameState {
 			self.enemy_ids.push(id);
 		}
 
+		if (range_min > 0.0 && range_max > 0.0) || gravity_multiplier == 0 && speed > 0 {
+			self.patrolling.push(id, 1);
+		}
+
 		return id;
 	}
 
@@ -282,11 +303,11 @@ impl GameState {
 		self.speeds.remove(id);
 		self.strengths.remove(id);
 		self.luck.remove(id);
-
 		self.range_mins.remove(id);
 		self.range_maxes.remove(id);
 		self.gravity_multipliers.remove(id);
 		self.jump_multipliers.remove(id);
+		self.patrolling.remove(id);
 
 		// linear scan is fine. I’ll have maybe dozens of enemies, not millions.
 		self.enemy_ids.retain(|&e| e != id);
@@ -354,8 +375,8 @@ impl GameState {
 		let left_x: f32 = pos.x - half_w + inset;
 		let right_x: f32 = pos.x + half_w - inset;
 
-		let left_ok: bool = self.level.is_solid_world_f32(left_x, foot_y);
-		let right_ok: bool = self.level.is_solid_world_f32(right_x, foot_y);
+		let left_ok: bool = self.level.is_solid_tile_f32(left_x, foot_y);
+		let right_ok: bool = self.level.is_solid_tile_f32(right_x, foot_y);
 
 		return left_ok && right_ok;
 	}

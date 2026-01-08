@@ -121,10 +121,16 @@ pub fn resolve_wall_collision(level: &Level, postion: &mut Vec2, velocity: &mut 
 	let ty_top: i32 = (top_left / tile_height).floor() as i32;
 	let ty_middle: i32 = (middle_left / tile_height).floor() as i32;
 	let ty_bottom: i32 = (bottom_left / tile_height).floor() as i32;
+	let hit: bool;
+	let kind = level.get_tile_at_layer(layer, tx, ty_middle).get_collision_kind();
 
-	let hit: bool = level.get_tile_id_at_layer(layer, tx, ty_top) != 0
-		|| level.get_tile_id_at_layer(layer, tx, ty_middle) != 0
-		|| level.get_tile_id_at_layer(layer, tx, ty_bottom) != 0;
+	if kind == TileCollision::None {
+		hit = false;
+	} else {
+		hit = level.get_tile_id_at_layer(layer, tx, ty_top) != 0
+			|| level.get_tile_id_at_layer(layer, tx, ty_middle) != 0
+			|| level.get_tile_id_at_layer(layer, tx, ty_bottom) != 0;
+	}
 
 	if hit {
 		if velocity.x > 0.0 {

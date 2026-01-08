@@ -3,6 +3,9 @@ const WINDOW_WIDTH: u32 = 640;
 const WINDOW_HEIGHT: u32 = 360;
 const TILE_PIXELS: u32 = 16;
 
+#[path = "pc_platform.rs"]
+mod pc_platform;
+
 use crate::{
 	common::coords::{PixelSize, WorldPoint, WorldSize, clamp_camera_to_level_world, visible_tile_bounds, world_to_screen},
 	game::{
@@ -10,6 +13,7 @@ use crate::{
 		level::Level,
 	},
 	platform::{RenderBackend, input::InputState, render::common::RenderCommon},
+	tile::TileKind,
 };
 use sdl2::{
 	EventPump,
@@ -116,7 +120,7 @@ impl PcRenderer {
 		return;
 	}
 
-	fn draw_background(&mut self, cam_x_world: i32, cam_y_world: i32, scale: f32) {
+	fn draw_background(&mut self, cam_x_world: i32, cam_y_world: i32, _scale: f32) {
 		// always draw a sky fallback so you know this ran
 		let (sw, sh) = self.canvas.output_size().unwrap_or((WINDOW_WIDTH, WINDOW_HEIGHT));
 		self.canvas.set_draw_color(Color::RGB(60, 110, 190));
@@ -173,62 +177,18 @@ impl PcRenderer {
 		let cam = WorldPoint::new(cam_left_world, cam_top_world);
 		let tile_size = WorldSize::new(level.tile_width as f32, level.tile_height as f32);
 		let view_pixels = PixelSize::new(WINDOW_WIDTH as i32, WINDOW_HEIGHT as i32);
-
 		let cam = clamp_camera_to_level_world(cam, view_pixels, scale, tile_size, level.width as i32, level.height as i32);
 		let bounds = visible_tile_bounds(cam, view_pixels, scale, tile_size, level.width as i32, level.height as i32);
-
-		// let bounds = visible_tile_bounds(cam, view_pixels, scale, tile_size, level.width as i32, level.height as i32);
-
 		let start_tile_left: i32 = bounds.start_left;
 		let start_tile_top: i32 = bounds.start_top;
 		let end_tile_left: i32 = bounds.end_left;
 		let end_tile_top: i32 = bounds.end_top;
-
-		let q = tile_tex.query();
-		let tile_cols: u32 = q.width / tile_pixel;
-
+		let tile_cols: u32 = tile_tex.query().width / tile_pixel;
 		let scale_i32: i32 = scale as i32;
 		let tile_pixel_scaled: i32 = tile_pixel as i32 * scale_i32;
 
 		let cam_left_pixels: i32 = (cam.left * scale).floor() as i32;
 		let cam_top_pixels: i32 = (cam.top * scale).floor() as i32;
-
-		/*
-		static mut PRINTED_LAYER: [bool; 16] = [false; 16]; // bump 16 if you ever exceed it
-
-		// debug: print layer info once
-		let layer_usize: usize = layer as usize;
-		if layer_usize < 16 && !unsafe { PRINTED_LAYER[layer_usize] } {
-			let mut min_id: u8 = 255;
-			let mut max_id: u8 = 0;
-			let mut non_zero: u32 = 0;
-
-			for ty in start_tile_top..end_tile_top {
-				for tx in start_tile_left..end_tile_left {
-					let tile_id: u8 = level.get_tile_id_at_layer(layer, tx, ty);
-
-					if tile_id != 0 {
-						non_zero += 1;
-					}
-					if tile_id < min_id {
-						min_id = tile_id;
-					}
-					if tile_id > max_id {
-						max_id = tile_id;
-					}
-				}
-			}
-
-			println!(
-				"layer={} visible tiles: left={} top={} right={} bottom={} min_id={} max_id={} non_zero={}",
-				layer, start_tile_left, start_tile_top, end_tile_left, end_tile_top, min_id, max_id, non_zero
-			);
-
-			unsafe {
-				PRINTED_LAYER[layer_usize] = true;
-			}
-		}
-		*/
 
 		for ty in start_tile_top..end_tile_top {
 			for tx in start_tile_left..end_tile_left {
@@ -241,26 +201,6 @@ impl PcRenderer {
 				let source_left: i32 = ((id % tile_cols) * tile_pixel) as i32;
 				let source_top: i32 = ((id / tile_cols) * tile_pixel) as i32;
 				let source = sdl2::rect::Rect::new(source_left, source_top, tile_pixel, tile_pixel);
-
-				/*
-				let world_left: f32 = (tx as f32) * tile_width_world;
-				let world_top: f32 = (ty as f32) * tile_height_world;
-
-				let cam: WorldPoint = WorldPoint {
-					left: cam_left_world,
-					top: cam_top_world,
-				};
-				let world: WorldPoint = WorldPoint {
-					left: world_left,
-					top: world_top,
-				};
-				let screen = world_to_screen(world, cam, scale);
-				*/
-
-				/*
-				let destination_left: i32 = screen.left;
-				let destination_top: i32 = screen.top;
-				*/
 
 				let destination_left: i32 = tx * tile_pixel_scaled - cam_left_pixels;
 				let destination_top: i32 = ty * tile_pixel_scaled - cam_top_pixels;
@@ -280,24 +220,18 @@ impl PcRenderer {
 	}
 
 	fn draw_level_internal(&mut self, game_state: &GameState) {
-		//let common: super::common::RenderCommon = super::common::RenderCommon::new();
-
 		let (cam_left_world, cam_top_world) = self.common.compute_camera(self, game_state);
 		let scale: f32 = self.render_scale();
 
 		// background first, tiles on top
 		self.draw_background(cam_left_world, cam_top_world, scale);
 
-		// Old way: quick and dirty tile drawing for testing
-		// common.draw_level(self, game_state, cam_x_world, cam_y_world, self.frame_index);
-
 		let texture_creator = self.canvas.texture_creator();
 		let tile_path: PathBuf = get_asset_root().join("pc").join("tiles.png");
 		let tile_tex: sdl2::render::Texture = texture_creator.load_texture(&tile_path).unwrap();
-		// tile_tex.set_scale_mode(sdl2::render::ScaleMode::Nearest);
+		let tile_cols: u32 = tile_tex.query().width / TILE_PIXELS;
 
 		for layer in 0..(game_state.level.layer_count as u32) {
-			// println!("Drawing layer {}", layer);
 			self.draw_tiles_layer_atlas(
 				&tile_tex,
 				TILE_PIXELS,
@@ -311,37 +245,36 @@ impl PcRenderer {
 		}
 
 		self.frame_index = self.frame_index.wrapping_add(1);
-		// self.draw_entities(game_state, scale, self.frame_index);
 
-		self.draw_entities(game_state, cam_left_world as f32, cam_top_world as f32, scale, self.frame_index);
+		self.draw_entities(game_state, &tile_tex, tile_cols, cam_left_world as f32, cam_top_world as f32, scale, self.frame_index);
 
 		return;
 	}
 
-	fn draw_entities(&mut self, game_state: &GameState, cam_left_world: f32, cam_top_world: f32, scale: f32, _frame_index: u32) {
-		if self.frame_index == 0 {
-			println!("cam world = {}, {}", cam_left_world, cam_top_world);
-		}
-
+	fn draw_entities(
+		&mut self,
+		game_state: &GameState,
+		tile_tex: &sdl2::render::Texture,
+		tile_cols: u32,
+		cam_left_world: f32,
+		cam_top_world: f32,
+		scale: f32,
+		_frame_index: u32,
+	) {
 		for (id, pos) in game_state.positions.iter() {
 			let kind = *game_state.entity_kinds.get(id).unwrap_or(&0);
 			let entiy_kind = EntityKind::from_u8(kind);
 
-			if entiy_kind == EntityKind::Emnpty || entiy_kind == EntityKind::MovingPlatform {
+			if entiy_kind == EntityKind::Emnpty {
+				println!("Warning: entity id {} has unknown kind {}", id, kind);
 				continue;
 			}
 
 			let style: u8 = *game_state.render_styles.get(id).unwrap_or(&0);
-
 			let (half_width, half_height) = game_state.get_entity_half_values(id);
-
 			let world_left: f32 = pos.x - half_width;
 			let world_top: f32 = pos.y - half_height;
-
-			let cam: WorldPoint = WorldPoint {
-				left: cam_left_world,
-				top: cam_top_world,
-			};
+			let cam: WorldPoint = WorldPoint::new(cam_left_world, cam_top_world);
 
 			let world: WorldPoint = WorldPoint {
 				left: world_left,
@@ -351,9 +284,59 @@ impl PcRenderer {
 
 			let scale_left: i32 = screen.left;
 			let scale_top: i32 = screen.top;
-
 			let width: u32 = ((half_width * 2.0) * scale).round() as u32;
 			let height: u32 = ((half_height * 2.0) * scale).round() as u32;
+
+			if entiy_kind == EntityKind::MovingPlatform {
+				let width_pixels: f32 = *game_state.widths.get(id).unwrap_or(&16) as f32;
+				let tile_width_world: f32 = game_state.level.tile_width as f32;
+				let width_tiles: i32 = ((width_pixels / tile_width_world).ceil() as i32).max(1);
+
+				/*
+				println!(
+					"Drawing moving platform entity id={} at tiles width_tiles={} width_pixels={} total widths={}",
+					id,
+					width_tiles,
+					width_pixels,
+					game_state.widths.len()
+				);
+				*/
+
+				self.draw_platform_entity_tiles(
+					tile_tex,
+					tile_cols,
+					TILE_PIXELS,
+					world_left,
+					world_top,
+					width_tiles,
+					&game_state.level,
+					cam_left_world,
+					cam_top_world,
+					scale,
+					TileKind::MovingPlatformLeft,
+					TileKind::MovingPlatformMiddle,
+					TileKind::MovingPlatformRight,
+				);
+
+				/*
+					self.draw_platform_entity_tiles(
+					tile_tex,
+					tile_cols,
+					TILE_PIXELS,
+					left_tile,
+					top_tile,
+					width_tiles,
+					&game_state.level,
+					cam_left_world,
+					cam_top_world,
+					scale,
+					TileKind::MovingPlatformLeft,
+					TileKind::MovingPlatformMiddle,
+					TileKind::MovingPlatformRight,
+				);
+				*/
+				continue;
+			}
 
 			let color: Color = match entiy_kind {
 				EntityKind::Emnpty => Color::RGB(0, 0, 0),             // not set (black)
