@@ -6,7 +6,7 @@ pub type EntityId = u32;
 #[allow(dead_code)]
 #[derive(PartialEq)]
 pub enum EntityKind {
-	Emnpty = 0,
+	Empty = 0,
 	Player = 1,
 	Slime = 2,
 	Imp = 3,
@@ -30,7 +30,7 @@ impl EntityKind {
 			2 => EntityKind::Slime,
 			3 => EntityKind::Imp,
 			4 => EntityKind::MovingPlatform,
-			_ => EntityKind::Emnpty,
+			_ => EntityKind::Empty,
 		}
 	}
 }
@@ -105,14 +105,14 @@ impl GameState {
 		let tile_height: f32 = self.level.tile_height as f32;
 
 		// player is 16x16 right now (or pull from game_state.width/height for player id if available)
-		let player_width_world: f32 = 16.0;
-		let player_height_world: f32 = 16.0;
+		let player_width: f32 = 16.0;
+		let player_height: f32 = 16.0;
 
-		let left_world: f32 = (left_tiles as f32) * tile_width;
-		let top_world: f32 = (top_tiles as f32) * tile_height;
+		let left: f32 = (left_tiles as f32) * tile_width;
+		let top: f32 = (top_tiles as f32) * tile_height;
 
-		self.spawn_point.x = left_world + (player_width_world * 0.5);
-		self.spawn_point.y = top_world + (player_height_world * 0.5);
+		self.spawn_point.x = left + (player_width * 0.5);
+		self.spawn_point.y = top + (player_height * 0.5);
 
 		return;
 	}
@@ -166,7 +166,7 @@ impl GameState {
 		let ent_left: f32 = pos.x - half_width + inset_x;
 		let ent_right: f32 = pos.x + half_width - inset_x;
 
-		for (entity_id, ppos) in self.positions.iter() {
+		for (entity_id, position) in self.positions.iter() {
 			let kind_u8: u8 = *self.entity_kinds.get(entity_id).unwrap_or(&0);
 			if EntityKind::from_u8(kind_u8) != EntityKind::MovingPlatform {
 				continue;
@@ -174,9 +174,9 @@ impl GameState {
 
 			let (ph_width, ph_height) = self.get_entity_half_values(entity_id);
 
-			let plat_left: f32 = ppos.x - ph_width;
-			let plat_right: f32 = ppos.x + ph_width;
-			let plat_top: f32 = ppos.y - ph_height;
+			let plat_left: f32 = position.x - ph_width;
+			let plat_right: f32 = position.x + ph_width;
+			let plat_top: f32 = position.y - ph_height;
 
 			if ent_right < plat_left || ent_left > plat_right {
 				continue;
@@ -358,7 +358,7 @@ impl GameState {
 		let tile_w: f32 = self.level.tile_width as f32;
 		let tile_height: f32 = self.level.tile_height as f32;
 
-		// clone to avoid borrow conflicts: self.level.entities (immut) vs self (mut) for add_entity
+		// clone to avoid borrow conflicts: self.level.entities (immutable) vs self (mutable) for add_entity
 		let entities = self.level.entities.clone();
 
 		for e in entities {

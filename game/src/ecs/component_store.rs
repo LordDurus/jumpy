@@ -7,6 +7,7 @@ impl<T> ComponentStore<T> {
 		return Self { data: Vec::new() };
 	}
 
+	#[allow(dead_code)]
 	#[inline(always)]
 	pub fn has(&self, id: u32) -> bool {
 		let idx: usize = id as usize;
@@ -16,6 +17,7 @@ impl<T> ComponentStore<T> {
 		return self.data[idx].is_some();
 	}
 
+	#[allow(dead_code)]
 	#[inline(always)]
 	pub fn len(&self) -> usize {
 		return self.data.len();

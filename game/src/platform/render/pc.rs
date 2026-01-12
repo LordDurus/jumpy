@@ -7,7 +7,7 @@ const TILE_PIXELS: u32 = 16;
 mod pc_platform;
 
 use crate::{
-	common::coords::{PixelSize, WorldPoint, WorldSize, clamp_camera_to_level_world, visible_tile_bounds, world_to_screen},
+	common::coords::{PixelSize, Pointf32, Size, clamp_camera_to_level_world, get_screen, visible_tile_bounds},
 	game::{
 		game_state::{EntityKind, GameState},
 		level::Level,
@@ -20,7 +20,7 @@ use sdl2::{
 	image::LoadTexture,
 	pixels::Color,
 	rect::Rect,
-	render::{Canvas, Texture},
+	render::{BlendMode, Canvas, Texture},
 	video::Window,
 };
 use std::path::{Path, PathBuf};
@@ -167,15 +167,15 @@ impl PcRenderer {
 		tile_pixel: u32,
 		level: &Level,
 		layer: u32,
-		cam_left_world: f32,
-		cam_top_world: f32,
+		camera_left: f32,
+		camera_top: f32,
 		scale: f32,
 		_frame_index: u32,
 	) {
-		let tile_width_world: f32 = level.tile_width as f32;
-		let tile_height_world: f32 = level.tile_height as f32;
-		let cam = WorldPoint::new(cam_left_world, cam_top_world);
-		let tile_size = WorldSize::new(level.tile_width as f32, level.tile_height as f32);
+		let tile_width: f32 = level.tile_width as f32;
+		let tile_height: f32 = level.tile_height as f32;
+		let cam = Pointf32::new(camera_left, camera_top);
+		let tile_size = Size::new(level.tile_width as f32, level.tile_height as f32);
 		let view_pixels = PixelSize::new(WINDOW_WIDTH as i32, WINDOW_HEIGHT as i32);
 		let cam = clamp_camera_to_level_world(cam, view_pixels, scale, tile_size, level.width as i32, level.height as i32);
 		let bounds = visible_tile_bounds(cam, view_pixels, scale, tile_size, level.width as i32, level.height as i32);
@@ -208,8 +208,8 @@ impl PcRenderer {
 				let destination = Rect::new(
 					destination_left,
 					destination_top,
-					(tile_width_world * scale).round() as u32,
-					(tile_height_world * scale).round() as u32,
+					(tile_width * scale).round() as u32,
+					(tile_height * scale).round() as u32,
 				);
 
 				let _ = self.canvas.copy(tile_tex, source, destination).unwrap();
@@ -254,18 +254,18 @@ impl PcRenderer {
 	fn draw_entities(
 		&mut self,
 		game_state: &GameState,
-		tile_tex: &sdl2::render::Texture,
+		texture: &sdl2::render::Texture,
 		tile_cols: u32,
-		cam_left_world: f32,
-		cam_top_world: f32,
+		camera_left: f32,
+		camera_top: f32,
 		scale: f32,
 		_frame_index: u32,
 	) {
 		for (id, pos) in game_state.positions.iter() {
 			let kind = *game_state.entity_kinds.get(id).unwrap_or(&0);
-			let entiy_kind = EntityKind::from_u8(kind);
+			let entity_kind = EntityKind::from_u8(kind);
 
-			if entiy_kind == EntityKind::Emnpty {
+			if entity_kind == EntityKind::Empty {
 				println!("Warning: entity id {} has unknown kind {}", id, kind);
 				continue;
 			}
@@ -274,77 +274,48 @@ impl PcRenderer {
 			let (half_width, half_height) = game_state.get_entity_half_values(id);
 			let world_left: f32 = pos.x - half_width;
 			let world_top: f32 = pos.y - half_height;
-			let cam: WorldPoint = WorldPoint::new(cam_left_world, cam_top_world);
+			let cam: Pointf32 = Pointf32::new(camera_left, camera_top);
 
-			let world: WorldPoint = WorldPoint {
+			let world: Pointf32 = Pointf32 {
 				left: world_left,
 				top: world_top,
 			};
-			let screen = world_to_screen(world, cam, scale);
+			let screen = get_screen(world, cam, scale);
 
 			let scale_left: i32 = screen.left;
 			let scale_top: i32 = screen.top;
 			let width: u32 = ((half_width * 2.0) * scale).round() as u32;
 			let height: u32 = ((half_height * 2.0) * scale).round() as u32;
 
-			if entiy_kind == EntityKind::MovingPlatform {
+			if entity_kind == EntityKind::MovingPlatform {
 				let width_pixels: f32 = *game_state.widths.get(id).unwrap_or(&16) as f32;
-				let tile_width_world: f32 = game_state.level.tile_width as f32;
-				let width_tiles: i32 = ((width_pixels / tile_width_world).ceil() as i32).max(1);
-
-				/*
-				println!(
-					"Drawing moving platform entity id={} at tiles width_tiles={} width_pixels={} total widths={}",
-					id,
-					width_tiles,
-					width_pixels,
-					game_state.widths.len()
-				);
-				*/
+				let tile_width: f32 = game_state.level.tile_width as f32;
+				let width_tiles: i32 = ((width_pixels / tile_width).ceil() as i32).max(1);
 
 				self.draw_platform_entity_tiles(
-					tile_tex,
+					texture,
 					tile_cols,
 					TILE_PIXELS,
 					world_left,
 					world_top,
 					width_tiles,
 					&game_state.level,
-					cam_left_world,
-					cam_top_world,
+					camera_left,
+					camera_top,
 					scale,
 					TileKind::MovingPlatformLeft,
 					TileKind::MovingPlatformMiddle,
 					TileKind::MovingPlatformRight,
 				);
-
-				/*
-					self.draw_platform_entity_tiles(
-					tile_tex,
-					tile_cols,
-					TILE_PIXELS,
-					left_tile,
-					top_tile,
-					width_tiles,
-					&game_state.level,
-					cam_left_world,
-					cam_top_world,
-					scale,
-					TileKind::MovingPlatformLeft,
-					TileKind::MovingPlatformMiddle,
-					TileKind::MovingPlatformRight,
-				);
-				*/
 				continue;
 			}
 
-			let color: Color = match entiy_kind {
-				EntityKind::Emnpty => Color::RGB(0, 0, 0),             // not set (black)
+			let color: Color = match entity_kind {
+				EntityKind::Empty => Color::RGB(0, 0, 0),              // not set (black)
 				EntityKind::Player => Color::RGB(255, 255, 255),       // player (white)
 				EntityKind::Slime => Color::RGB(64, 160, 255),         // slime (blue)
 				EntityKind::Imp => Color::RGB(64, 200, 64),            // imp (green)
 				EntityKind::MovingPlatform => Color::RGB(255, 255, 0), // platform (yellow)
-				_ => Color::RGB(255, 0, 255),                          // debug
 			};
 
 			match style {
@@ -386,17 +357,17 @@ impl RenderBackend for PcRenderer {
 		let texture_creator: &'static sdl2::render::TextureCreator<sdl2::video::WindowContext> = Box::leak(creator_box);
 
 		let bg_path: PathBuf = get_asset_root().join("pc").join("bg_parallax_forest.png");
-		let bg_texture = texture_creator.load_texture(bg_path).ok();
-		if bg_texture.is_none() {
-			panic!("manifest_dir={}", env!("CARGO_MANIFEST_DIR"));
-		}
+		let mut bg_texture = texture_creator.load_texture(bg_path).expect("failed to load bg_parallax_forest.png");
+
+		bg_texture.set_blend_mode(BlendMode::Blend);
+		bg_texture.set_alpha_mod(208);
 
 		return PcRenderer {
 			canvas,
 			event_pump,
 			common: RenderCommon::new(),
 			frame_index: 0,
-			bg_texture,
+			bg_texture: Some(bg_texture),
 			bg_parallax_x: 0.35,
 			bg_parallax_y: 0.15,
 		};

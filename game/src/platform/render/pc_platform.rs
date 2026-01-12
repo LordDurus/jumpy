@@ -18,8 +18,8 @@ impl PcRenderer {
 		world_top: f32,
 		width_tiles: i32,
 		level: &Level,
-		cam_left_world: f32,
-		cam_top_world: f32,
+		camera_left: f32,
+		camera_top: f32,
 		scale: f32,
 		left_kind: TileKind,
 		mid_kind: TileKind,
@@ -51,8 +51,8 @@ impl PcRenderer {
 			let seg_world_left: f32 = world_left + (i as f32) * tile_width_world;
 			let seg_world_top: f32 = world_top;
 
-			let screen_left: i32 = ((seg_world_left - cam_left_world) * scale).round() as i32;
-			let screen_top: i32 = ((seg_world_top - cam_top_world) * scale).round() as i32;
+			let screen_left: i32 = ((seg_world_left - camera_left) * scale).round() as i32;
+			let screen_top: i32 = ((seg_world_top - camera_top) * scale).round() as i32;
 
 			let dest_width_pixels: u32 = (tile_pixel as f32 * scale).round() as u32;
 			let dest_height_pixels: u32 = (tile_pixel as f32 * scale).round() as u32;

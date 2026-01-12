@@ -234,7 +234,7 @@ impl Level {
 				2 => "Slime",
 				3 => "Imp",
 				4 => "MovingPlatform",
-				_ => "Emnpty",
+				_ => "Empty",
 			};
 
 			println!(
@@ -370,16 +370,16 @@ impl Level {
 		return 0.0;
 	}
 
-	pub fn is_collision_at_f32(&self, world_left: f32, world_top: f32) -> TileCollision {
-		if world_left < 0.0 || world_top < 0.0 {
+	pub fn is_collision_at_f32(&self, left: f32, top: f32) -> TileCollision {
+		if left < 0.0 || top < 0.0 {
 			return TileCollision::None;
 		}
 
-		let tx: i32 = (world_left / (self.tile_width as f32)).floor() as i32;
-		let ty: i32 = (world_top / (self.tile_height as f32)).floor() as i32;
+		let tile_left: i32 = (left / (self.tile_width as f32)).floor() as i32;
+		let tile_top: i32 = (top / (self.tile_height as f32)).floor() as i32;
 
 		let layer: u32 = self.get_action_layer_index() as u32;
-		let tile = self.get_tile_at_layer(layer, tx, ty);
+		let tile = self.get_tile_at_layer(layer, tile_left, tile_top);
 
 		return tile.get_collision_kind();
 	}
