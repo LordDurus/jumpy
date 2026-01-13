@@ -4,7 +4,7 @@ pub type EntityId = u32;
 
 #[repr(u8)]
 #[allow(dead_code)]
-#[derive(PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum EntityKind {
 	Empty = 0,
 	Player = 1,
@@ -55,8 +55,9 @@ pub struct GameState {
 	pub range_mins: ComponentStore<f32>,
 	pub range_maxes: ComponentStore<f32>,
 	pub jump_multipliers: ComponentStore<u8>,
-	pub patrolling: ComponentStore<u8>,
-
+	pub patrolling: ComponentStore<bool>,
+	pub patrol_flips: ComponentStore<bool>,
+	pub bump_cooldowns: ComponentStore<u8>,
 	pub enemy_ids: Vec<EntityId>,
 	pub tick: u32,
 	next_entity_id: EntityId,
@@ -72,13 +73,11 @@ impl GameState {
 			gravity: crate::physics::constants::LEVEL_GRAVITY,
 			positions: ComponentStore::new(),
 			velocities: ComponentStore::new(),
-
 			player_id: None,
 			spawn_point: Vec2::zero(),
 			next_entity_id: 1,
 			last_grounded_pos: None,
 			entity_kinds: ComponentStore::new(),
-
 			render_styles: ComponentStore::new(),
 			widths: ComponentStore::new(),
 			heights: ComponentStore::new(),
@@ -90,6 +89,8 @@ impl GameState {
 			jump_multipliers: ComponentStore::new(),
 			gravity_multipliers: ComponentStore::new(),
 			patrolling: ComponentStore::new(),
+			patrol_flips: ComponentStore::new(),
+			bump_cooldowns: ComponentStore::new(),
 
 			enemy_ids: Vec::new(),
 			tick: 0,
@@ -296,27 +297,27 @@ impl GameState {
 
 		let id: EntityId = self.next_entity_id;
 		self.next_entity_id += 1;
-		self.positions.push(id, position);
+		self.positions.set(id, position);
 
-		self.velocities.push(id, velocity);
-		self.entity_kinds.push(id, kind);
-		self.render_styles.push(id, render_style);
-		self.gravity_multipliers.push(id, gravity_multiplier);
+		self.velocities.set(id, velocity);
+		self.entity_kinds.set(id, kind);
+		self.render_styles.set(id, render_style);
+		self.gravity_multipliers.set(id, gravity_multiplier);
 
-		self.widths.push(id, width);
-		self.heights.push(id, height);
-		self.speeds.push(id, speed);
-		self.strengths.push(id, strength);
-		self.luck.push(id, luck);
+		self.widths.set(id, width);
+		self.heights.set(id, height);
+		self.speeds.set(id, speed);
+		self.strengths.set(id, strength);
+		self.luck.set(id, luck);
 
-		self.jump_multipliers.push(id, jump_multiplier);
+		self.jump_multipliers.set(id, jump_multiplier);
 
 		if range_min > 0.0 {
-			self.range_mins.push(id, range_min);
+			self.range_mins.set(id, range_min);
 		}
 
 		if range_max > 0.0 {
-			self.range_maxes.push(id, range_max);
+			self.range_maxes.set(id, range_max);
 		}
 
 		if EntityKind::is_enemy(kind) {
@@ -324,7 +325,7 @@ impl GameState {
 		}
 
 		if (range_min > 0.0 && range_max > 0.0) || gravity_multiplier == 0 && speed > 0 {
-			self.patrolling.push(id, 1);
+			self.patrolling.set(id, true);
 		}
 
 		return id;

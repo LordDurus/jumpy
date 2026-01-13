@@ -7,11 +7,15 @@ use crate::{
 	},
 };
 
+const SEPARATOR: f32 = 0.5;
+
 #[allow(dead_code)]
 pub enum CollisionOutcome {
 	None,
 	Stomped(EntityId),
 	Damaged { source: EntityId },
+	HitWall,
+	HitWallEnemy,
 }
 
 #[allow(dead_code)]
@@ -42,15 +46,15 @@ pub struct CollisionProfile {
 	pub stompable: bool,
 }
 
-#[derive(Clone, Copy)]
 pub struct Collider {
 	pub id: EntityId,
+	pub kind: EntityKind,
 	pub left: f32,
 	pub right: f32,
 	pub top: f32,
 	pub bottom: f32,
-	// 	pub velocity_x: f32,
-	// 	pub shape: ColliderShape,
+	// pub velocity_x: f32,
+	// pub shape: ColliderShape,
 	pub profile: CollisionProfile,
 	pub delta_x: f32,
 }
@@ -105,12 +109,11 @@ pub fn move_and_collide(game_state: &mut GameState) {
 
 		colliders.push(Collider {
 			id,
+			kind,
 			left: pos.x - half_width,
 			right: pos.x + half_width,
 			top: pos.y - half_height,
 			bottom: pos.y + half_height,
-			// velocity_x: game_state.velocities.get(id).map(|v| v.x).unwrap_or(0.0),
-			// shape: ColliderShape::Aabb,
 			profile: profile_for_kind(kind),
 			delta_x,
 		});
@@ -148,7 +151,8 @@ pub fn move_and_collide(game_state: &mut GameState) {
 			resolve_floor_collision(&game_state.level, position, velocity, half_width, half_height, prev_bottom_level);
 
 			let pos_before_entities: Vec2 = position.clone();
-			let outcome: CollisionOutcome = resolve_entity_collisions(entity_id, prev_pos, position, velocity, half_width, half_height, &colliders);
+			let is_patrolling: bool = game_state.patrolling.get(entity_id).copied().unwrap_or(false);
+			let outcome: CollisionOutcome = resolve_entity_collisions(entity_id, kind, is_patrolling, prev_pos, position, velocity, half_width, half_height, &colliders);
 
 			let external_dx: f32 = position.x - pos_before_entities.x;
 			if external_dx != 0.0 {
@@ -166,9 +170,29 @@ pub fn move_and_collide(game_state: &mut GameState) {
 					game_state.remove_entity(target_id);
 				}
 				CollisionOutcome::Damaged { source: _ } => {
-					//TODO: Calc Damage kill player if needed.
-					println!("Damaged");
-					game_state.respawn_player();
+					if is_player {
+						//TODO: Calc Damage kill player if needed.
+						println!("Damaged");
+						game_state.respawn_player();
+					}
+				}
+				CollisionOutcome::HitWall => {
+					// request a patrol flip for this entity
+					let cool_down: u8 = game_state.bump_cooldowns.get(entity_id).copied().unwrap_or(0);
+					if cool_down == 0 {
+						game_state.patrol_flips.set(entity_id, true);
+						game_state.bump_cooldowns.set(entity_id, 6);
+					}
+				}
+				CollisionOutcome::HitWallEnemy => {
+					// enemy bump: debounce
+					if kind != EntityKind::Player && kind != EntityKind::MovingPlatform {
+						let cool_down: u8 = game_state.bump_cooldowns.get(entity_id).copied().unwrap_or(0);
+						if cool_down == 0 {
+							game_state.patrol_flips.set(entity_id, true);
+							game_state.bump_cooldowns.set(entity_id, 6);
+						}
+					}
 				}
 			} // <- pos/vel borrows end here
 
@@ -233,6 +257,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 		}
 	}
 }
+
 pub fn try_jump(game_state: &mut GameState, entity_id: EntityId) -> bool {
 	let grounded: bool = game_state.on_ground(entity_id) || game_state.on_moving_platform(entity_id);
 	let on_left: bool = game_state.on_wall_left(entity_id);
@@ -266,7 +291,7 @@ pub fn patrol(game_state: &mut GameState) {
 	let ids = game_state.patrolling.keys();
 
 	for id in ids {
-		let pos = match game_state.positions.get(id) {
+		let position = match game_state.positions.get(id) {
 			Some(p) => *p,
 			None => continue,
 		};
@@ -276,20 +301,31 @@ pub fn patrol(game_state: &mut GameState) {
 			None => continue,
 		};
 
-		let kind_u8: u8 = *game_state.entity_kinds.get(id).unwrap_or(&0);
-		let kind = EntityKind::from_u8(kind_u8);
-		let speed_u8: u8 = game_state.speeds.get(id).copied().unwrap_or(0);
-
-		let speed: f32 = match kind {
-			EntityKind::MovingPlatform => speed_u8 as f32, // keep as-is (platform feels right)
-			EntityKind::Imp => (speed_u8 as f32) * 0.25,   // slow imps down
-			_ => (speed_u8 as f32) * 0.25,                 // default slow speed
-		};
-
-		let mut min_x: f32 = game_state.range_mins.get(id).copied().unwrap_or(pos.x);
-		let mut max_x: f32 = game_state.range_maxes.get(id).copied().unwrap_or(pos.x);
+		if let Some(cd) = game_state.bump_cooldowns.get(id).copied() {
+			if cd > 1 {
+				game_state.bump_cooldowns.set(id, cd - 1);
+			} else {
+				// cd == 1 → expire now
+				game_state.bump_cooldowns.remove(id);
+			}
+		}
 
 		// normalize range ordering
+		let mut min_x: f32 = game_state.range_mins.get(id).copied().unwrap_or(position.x);
+		let mut max_x: f32 = game_state.range_maxes.get(id).copied().unwrap_or(position.x);
+		let speed = game_state.speeds.get(id).copied().unwrap_or(0) as f32;
+
+		let flip_now: bool = game_state.patrol_flips.take(id).unwrap_or(false);
+
+		if flip_now {
+			velocity.x = -velocity.x;
+			if velocity.x == 0.0 {
+				let mid_x: f32 = (min_x + max_x) * 0.5;
+				velocity.x = if position.x >= mid_x { -speed } else { speed };
+			}
+			continue;
+		}
+
 		if min_x > max_x {
 			let t: f32 = min_x;
 			min_x = max_x;
@@ -302,22 +338,25 @@ pub fn patrol(game_state: &mut GameState) {
 			continue;
 		}
 
-		// clamp position to range
-		if let Some(position) = game_state.positions.get_mut(id) {
-			if position.x < min_x {
-				position.x = min_x;
-			}
-			if position.x > max_x {
-				position.x = max_x;
-			}
-		}
+		// re-read x after clamping
+		let pos_x: f32 = match game_state.positions.get(id) {
+			Some(p) => p.x,
+			None => continue,
+		};
 
-		// keep last direction (from vel) unless we hit an end
+		// pick direction from current velocity
 		let mut dir: f32 = if velocity.x < 0.0 { -1.0 } else { 1.0 };
 
-		if pos.x <= min_x {
+		// if collision stopped us, choose direction based on range
+		if velocity.x == 0.0 {
+			let mid_x: f32 = (min_x + max_x) * 0.5;
+			dir = if pos_x >= mid_x { -1.0 } else { 1.0 };
+		}
+
+		// flip cleanly at patrol bounds
+		if pos_x <= min_x {
 			dir = 1.0;
-		} else if pos.x >= max_x {
+		} else if pos_x >= max_x {
 			dir = -1.0;
 		}
 
@@ -366,6 +405,8 @@ fn profile_for_kind(kind: EntityKind) -> CollisionProfile {
 #[inline(always)]
 fn resolve_entity_collisions(
 	entity_id: EntityId,
+	kind: EntityKind,
+	is_patrolling: bool,
 	prev_pos: Vec2,
 	position: &mut Vec2,
 	velocity: &mut Vec2,
@@ -429,37 +470,42 @@ fn resolve_entity_collisions(
 
 				HitSide::Left => {
 					if c.profile.left.blocks && prev_right <= c.left + 0.01 {
-						position.x = c.left - half_width;
+						position.x = c.left - half_width - SEPARATOR;
 
-						if c.delta_x < 0.0 {
+						// only moving platforms should "carry/push" via delta_x
+						if c.kind == EntityKind::MovingPlatform && c.delta_x < 0.0 {
+							position.x += c.delta_x;
+						}
+
+						let actor_is_enemy: bool = kind != EntityKind::Player && kind != EntityKind::MovingPlatform;
+						let other_is_enemy: bool = c.kind != EntityKind::Player && c.kind != EntityKind::MovingPlatform;
+
+						if is_patrolling && actor_is_enemy && other_is_enemy {
+							return CollisionOutcome::HitWallEnemy;
+						}
+
+						velocity.x = 0.0;
+						return CollisionOutcome::HitWall;
+					}
+				}
+
+				HitSide::Right => {
+					if c.profile.right.blocks && prev_left >= c.right - 0.01 {
+						position.x = c.right + half_width + SEPARATOR;
+
+						// only moving platforms should "carry/push" via delta_x
+						if c.kind == EntityKind::MovingPlatform && c.delta_x > 0.0 {
 							position.x += c.delta_x;
 						}
 
 						velocity.x = 0.0;
-						continue 'pass;
-					}
-				}
-				HitSide::Right => {
-					if c.profile.right.blocks && prev_left >= c.right - 0.01 {
-						position.x = c.right + half_width;
-
-						if c.delta_x < 0.0 {
-							position.x += c.delta_x;
-						}
-
-						if c.delta_x != 0.0 {
-							velocity.x = c.delta_x;
-						} else {
-							velocity.x = 0.0;
-						}
-
-						continue 'pass;
+						return CollisionOutcome::HitWall;
 					}
 				}
 			}
 
 			let on_top: bool = prev_bottom <= c.top + 0.02 && bottom <= c.top + 0.05;
-			if on_top && c.delta_x != 0.0 && (c.profile.left.blocks || c.profile.right.blocks) {
+			if !on_top && c.delta_x != 0.0 && (c.profile.left.blocks || c.profile.right.blocks) {
 				// if platform moved right this frame, shove actor right out of it
 				if c.delta_x > 0.0 {
 					// entity must end up to the right of platform
@@ -486,6 +532,27 @@ fn resolve_entity_collisions(
 
 			if push_left.abs() < push_top.abs() {
 				position.x += push_left;
+
+				if push_left > 0.0 {
+					position.x += SEPARATOR;
+				} else {
+					position.x -= SEPARATOR;
+				}
+
+				// if we had to resolve along X, and the actor is patrolling, this should count as a wall hit
+				if is_patrolling {
+					// do not zero x for enemy-enemy patrol bumps (prevents twitch)
+					let actor_is_enemy: bool = kind != EntityKind::Player && kind != EntityKind::MovingPlatform;
+					let other_is_enemy: bool = c.kind != EntityKind::Player && c.kind != EntityKind::MovingPlatform;
+
+					if actor_is_enemy && other_is_enemy {
+						return CollisionOutcome::HitWallEnemy;
+					}
+
+					velocity.x = 0.0;
+					return CollisionOutcome::HitWall;
+				}
+
 				velocity.x = 0.0;
 			} else {
 				position.y += push_top;
@@ -519,14 +586,6 @@ fn resolve_entity_collisions(
 			side = HitSide::Top;
 		}
 
-		/*
-		if velocity.y < 0.0 && prev_top >= c.bottom - 0.01 && top < c.bottom {
-			side = HitSide::Bottom;
-		} else if velocity.y > 0.0 && prev_bottom <= c.top + 0.01 && bottom > c.top {
-			side = HitSide::Top;
-		}
-		*/
-
 		// stomp is safe + affects target if stompable
 		if side == HitSide::Top && velocity.y > 0.0 && prev_bottom <= c.top + 0.01 && c.profile.stompable {
 			// bounce
@@ -534,15 +593,24 @@ fn resolve_entity_collisions(
 			return CollisionOutcome::Stomped(c.id);
 		}
 
+		let actor_is_enemy: bool = kind != EntityKind::Player && kind != EntityKind::MovingPlatform;
+		let other_is_enemy: bool = c.kind != EntityKind::Player && c.kind != EntityKind::MovingPlatform;
+
+		// enemies should not damage enemies when patrolling
+		if is_patrolling && actor_is_enemy && other_is_enemy {
+			println!("enemies should not damage enemies");
+			continue;
+		}
+
 		// otherwise apply face damage (players will have 0 in profile later)
-		let dmg: u8 = match side {
+		let damage: u8 = match side {
 			HitSide::Top => c.profile.top.damage,
 			HitSide::Right => c.profile.right.damage,
 			HitSide::Bottom => c.profile.bottom.damage,
 			HitSide::Left => c.profile.left.damage,
 		};
 
-		if dmg > 0 {
+		if damage > 0 {
 			return CollisionOutcome::Damaged { source: c.id };
 		}
 	}

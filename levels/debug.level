@@ -109,11 +109,11 @@ entities
 		gravity_multiplier = 1.00
 		jump_multiplier = 0.25
 		attack_power = 1
-		hit_points = 2
+		hit_points = 1
 		render_style = 2
 		width = .5
 		height = .5
-		speed = 6
+		speed = 4
 		luck = 5
 		strength = 5
 	}
@@ -127,11 +127,11 @@ entities
 		gravity_multiplier = 1.00
 		jump_multiplier = 0.25
 		attack_power = 1
-		hit_points = 2
+		hit_points = 1
 		render_style = 2
 		width = .5
 		height = .5
-		speed = 6
+		speed = 4
 		luck = 5
 		strength = 5
 	}
@@ -145,11 +145,11 @@ entities
 		gravity_multiplier = 1.00
 		jump_multiplier = 0.25
 		attack_power = 1
-		hit_points = 2
+		hit_points = 1
 		render_style = 2
 		width = .5
 		height = .5
-		speed = 6
+		speed = 4
 		luck = 5
 		strength = 5
 	}
@@ -167,7 +167,7 @@ entities
 		render_style = 3
 		width = 1
 		height = 1
-		speed = 5
+		speed = 2
 		luck = 7
 		strength = 7
 	}
@@ -185,7 +185,7 @@ entities
 		render_style = 3
 		width = 1
 		height = 1
-		speed = 5
+		speed = 2
 		luck = 7
 		strength = 7
 	}
