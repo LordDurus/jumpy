@@ -1,14 +1,8 @@
 use crate::{
 	engine_math::Vec2,
 	game::game_state::{EntityId, EntityKind, GameState},
-	physics::{
-		collision::{HitSide, classify_aabb_hit_side, resolve_ceiling_collision, resolve_floor_collision, resolve_wall_collision},
-		constants::JUMP_VELOCITY,
-	},
+	physics::collision::{HitSide, classify_aabb_hit_side, resolve_ceiling_collision, resolve_floor_collision, resolve_wall_collision},
 };
-
-const SEPARATOR: f32 = 0.5;
-const STOMP_BOUNCE_MULTIPLIER: f32 = 0.6;
 
 #[allow(dead_code)]
 pub enum CollisionOutcome {
@@ -153,7 +147,18 @@ pub fn move_and_collide(game_state: &mut GameState) {
 
 			let pos_before_entities: Vec2 = position.clone();
 			let is_patrolling: bool = game_state.patrolling.get(entity_id).copied().unwrap_or(false);
-			let outcome: CollisionOutcome = resolve_entity_collisions(entity_id, kind, is_patrolling, prev_pos, position, velocity, half_width, half_height, &colliders);
+			let outcome: CollisionOutcome = resolve_entity_collisions(
+				&game_state.settings,
+				entity_id,
+				kind,
+				is_patrolling,
+				prev_pos,
+				position,
+				velocity,
+				half_width,
+				half_height,
+				&colliders,
+			);
 
 			let external_dx: f32 = position.x - pos_before_entities.x;
 			if external_dx != 0.0 {
@@ -242,18 +247,6 @@ pub fn move_and_collide(game_state: &mut GameState) {
 							respawn_state.has_last_grounded_pos = true;
 						}
 					}
-				}
-
-				if let Some(jump_state) = game_state.jump_states.get_mut(entity_id) {
-					if grounded_now {
-						jump_state.coyote_frames_left = game_state.settings.coyote_frames_max;
-					} else {
-						if jump_state.coyote_frames_left > 0 {
-							jump_state.coyote_frames_left -= 1;
-						}
-					}
-
-					jump_state.was_grounded = grounded_now;
 				}
 			}
 
@@ -489,6 +482,7 @@ fn profile_for_kind(kind: EntityKind) -> CollisionProfile {
 
 #[inline(always)]
 fn resolve_entity_collisions(
+	settings: &crate::game::Settings,
 	entity_id: EntityId,
 	kind: EntityKind,
 	is_patrolling: bool,
@@ -538,7 +532,7 @@ fn resolve_entity_collisions(
 						// stomp: player landing on a stompable target while falling
 						if kind == EntityKind::Player && c.profile.stompable && velocity.y > 0.0 {
 							position.y = c.top - half_height;
-							velocity.y = JUMP_VELOCITY * STOMP_BOUNCE_MULTIPLIER; // bounce up (JUMP_VELOCITY is negative)
+							velocity.y = settings.jump_velocity * settings.stomp_bounce_multiplier; // bounce up (JUMP_VELOCITY is negative)
 							return CollisionOutcome::Stomped(c.id);
 						}
 
@@ -563,7 +557,7 @@ fn resolve_entity_collisions(
 
 				HitSide::Left => {
 					if c.profile.left.blocks && prev_right <= c.left + 0.01 {
-						position.x = c.left - half_width - SEPARATOR;
+						position.x = c.left - half_width - settings.bounce_separator;
 
 						// only moving platforms should "carry/push" via delta_x
 						if c.kind == EntityKind::MovingPlatform && c.delta_x < 0.0 {
@@ -584,7 +578,7 @@ fn resolve_entity_collisions(
 
 				HitSide::Right => {
 					if c.profile.right.blocks && prev_left >= c.right - 0.01 {
-						position.x = c.right + half_width + SEPARATOR;
+						position.x = c.right + half_width + settings.bounce_separator;
 
 						// only moving platforms should "carry/push" via delta_x
 						if c.kind == EntityKind::MovingPlatform && c.delta_x > 0.0 {
@@ -627,9 +621,9 @@ fn resolve_entity_collisions(
 				position.x += push_left;
 
 				if push_left > 0.0 {
-					position.x += SEPARATOR;
+					position.x += settings.bounce_separator;
 				} else {
-					position.x -= SEPARATOR;
+					position.x -= settings.bounce_separator;
 				}
 
 				// if we had to resolve along X, and the actor is patrolling, this should count as a wall hit

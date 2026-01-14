@@ -11,7 +11,6 @@ use crate::{game::level::Level, tile::TileKind};
 impl PcRenderer {
 	pub fn draw_platform_entity_tiles(
 		&mut self,
-		texture: &sdl2::render::Texture,
 		tile_cols: u32,
 		tile_pixel: u32,
 		world_left: f32,
@@ -25,6 +24,7 @@ impl PcRenderer {
 		mid_kind: TileKind,
 		right_kind: TileKind,
 	) {
+		let texture = self.tile_texture.as_mut().expect("tile_texture is not set");
 		if width_tiles <= 0 {
 			return;
 		}

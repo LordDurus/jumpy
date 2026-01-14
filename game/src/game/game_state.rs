@@ -1,10 +1,7 @@
-#[path = "settings.rs"]
-mod settings;
-
 use crate::{
 	ecs::component_store::ComponentStore,
 	engine_math::Vec2,
-	game::{game_state::settings::Settings, level::Level},
+	game::{Settings, level::Level},
 	physics::collision,
 	tile::TileCollision,
 };
@@ -62,7 +59,6 @@ impl EntityKind {
 /// Represents the game world, containing entities and their properties (runtime state).
 pub struct GameState {
 	pub level: Level,
-	pub gravity: f32,
 	pub positions: ComponentStore<Vec2>,
 	pub velocities: ComponentStore<Vec2>,
 	pub player_id: Option<EntityId>,
@@ -97,7 +93,6 @@ impl GameState {
 
 		let mut state = GameState {
 			level: current_level,
-			gravity: crate::physics::constants::LEVEL_GRAVITY,
 			positions: ComponentStore::new(),
 			velocities: ComponentStore::new(),
 			player_id: None,

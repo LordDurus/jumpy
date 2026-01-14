@@ -1,7 +1,6 @@
 const RENDER_SCALE: f32 = 1.0;
 const WINDOW_WIDTH: u32 = 640;
 const WINDOW_HEIGHT: u32 = 360;
-const TILE_PIXELS: u32 = 16;
 
 #[path = "pc_platform.rs"]
 mod pc_platform;
@@ -30,9 +29,13 @@ pub struct PcRenderer {
 	event_pump: EventPump,
 	common: RenderCommon,
 	pub frame_index: u32,
+	pub atlas_tile_width_pixels: u32,
+	#[allow(dead_code)]
+	pub atlas_tile_height_pixels: u32,
 
 	// bg parallax
 	bg_texture: Option<Texture<'static>>,
+	tile_texture: Option<Texture<'static>>,
 	bg_parallax_x: f32,
 	bg_parallax_y: f32,
 }
@@ -161,17 +164,7 @@ impl PcRenderer {
 		return;
 	}
 
-	fn draw_tiles_layer_atlas(
-		&mut self,
-		tile_tex: &sdl2::render::Texture,
-		tile_pixel: u32,
-		level: &Level,
-		layer: u32,
-		camera_left: f32,
-		camera_top: f32,
-		scale: f32,
-		_frame_index: u32,
-	) {
+	fn draw_tiles_layer_atlas(&mut self, level: &Level, layer: u32, camera_left: f32, camera_top: f32, scale: f32, _frame_index: u32) {
 		let tile_width: f32 = level.tile_width as f32;
 		let tile_height: f32 = level.tile_height as f32;
 		let cam = Pointf32::new(camera_left, camera_top);
@@ -183,12 +176,15 @@ impl PcRenderer {
 		let start_tile_top: i32 = bounds.start_top;
 		let end_tile_left: i32 = bounds.end_left;
 		let end_tile_top: i32 = bounds.end_top;
-		let tile_cols: u32 = tile_tex.query().width / tile_pixel;
-		let scale_i32: i32 = scale as i32;
-		let tile_pixel_scaled: i32 = tile_pixel as i32 * scale_i32;
+		let atlas_tile_width_pixels: u32 = self.atlas_tile_width_pixels;
+		let atlas_tile_height_pixels: u32 = self.atlas_tile_height_pixels;
+		let tile_cols: u32 = self.tile_texture.as_mut().unwrap().query().width / atlas_tile_width_pixels;
 
-		let cam_left_pixels: i32 = (cam.left * scale).floor() as i32;
-		let cam_top_pixels: i32 = (cam.top * scale).floor() as i32;
+		// let scale_i32: i32 = scale as i32;
+		// let tile_pixel_scaled: i32 = atlas_tile_width_pixels as i32 * scale_i32;
+
+		// let camera_left_pixels: i32 = (cam.left * scale).floor() as i32;
+		// let camera_top_pixels: i32 = (cam.top * scale).floor() as i32;
 
 		for ty in start_tile_top..end_tile_top {
 			for tx in start_tile_left..end_tile_left {
@@ -198,12 +194,21 @@ impl PcRenderer {
 				}
 				let id = tile_id as u32;
 
-				let source_left: i32 = ((id % tile_cols) * tile_pixel) as i32;
-				let source_top: i32 = ((id / tile_cols) * tile_pixel) as i32;
-				let source = sdl2::rect::Rect::new(source_left, source_top, tile_pixel, tile_pixel);
+				let source_left: i32 = ((id % tile_cols) * atlas_tile_width_pixels) as i32;
+				let source_top: i32 = ((id / tile_cols) * atlas_tile_height_pixels) as i32;
+				let source = Rect::new(source_left, source_top, atlas_tile_width_pixels, atlas_tile_height_pixels);
 
-				let destination_left: i32 = tx * tile_pixel_scaled - cam_left_pixels;
-				let destination_top: i32 = ty * tile_pixel_scaled - cam_top_pixels;
+				// let scale_i32: i32 = scale as i32;
+				//let tile_pixel_scaled: i32 = atlas_tile_width_pixels as i32 * scale_i32;
+
+				// let destination_left: i32 = tx * tile_pixel_scaled - camera_left_pixels;
+				// let destination_top: i32 = ty * tile_pixel_scaled - camera_top_pixels;
+
+				let world_left: f32 = (tx as f32) * tile_width;
+				let world_top: f32 = (ty as f32) * tile_height;
+
+				let destination_left: i32 = ((world_left - cam.left) * scale).round() as i32;
+				let destination_top: i32 = ((world_top - cam.top) * scale).round() as i32;
 
 				let destination = Rect::new(
 					destination_left,
@@ -212,7 +217,8 @@ impl PcRenderer {
 					(tile_height * scale).round() as u32,
 				);
 
-				let _ = self.canvas.copy(tile_tex, source, destination).unwrap();
+				let texture = self.tile_texture.as_mut().unwrap();
+				let _ = self.canvas.copy(&texture, source, destination).unwrap();
 			}
 		}
 
@@ -226,41 +232,19 @@ impl PcRenderer {
 		// background first, tiles on top
 		self.draw_background(cam_left_world, cam_top_world, scale);
 
-		let texture_creator = self.canvas.texture_creator();
-		let tile_path: PathBuf = get_asset_root().join("pc").join("tiles.png");
-		let tile_tex: sdl2::render::Texture = texture_creator.load_texture(&tile_path).unwrap();
-		let tile_cols: u32 = tile_tex.query().width / TILE_PIXELS;
-
+		let tile_cols: u32 = self.tile_texture.as_mut().expect("tile_texture does not have a value").query().width / self.atlas_tile_width_pixels;
 		for layer in 0..(game_state.level.layer_count as u32) {
-			self.draw_tiles_layer_atlas(
-				&tile_tex,
-				TILE_PIXELS,
-				&game_state.level,
-				layer,
-				cam_left_world as f32,
-				cam_top_world as f32,
-				scale,
-				self.frame_index,
-			);
+			self.draw_tiles_layer_atlas(&game_state.level, layer, cam_left_world as f32, cam_top_world as f32, scale, self.frame_index);
 		}
 
 		self.frame_index = self.frame_index.wrapping_add(1);
-
-		self.draw_entities(game_state, &tile_tex, tile_cols, cam_left_world as f32, cam_top_world as f32, scale, self.frame_index);
+		self.draw_entities(game_state, tile_cols, cam_left_world as f32, cam_top_world as f32, scale, self.frame_index);
 
 		return;
 	}
 
-	fn draw_entities(
-		&mut self,
-		game_state: &GameState,
-		texture: &sdl2::render::Texture,
-		tile_cols: u32,
-		camera_left: f32,
-		camera_top: f32,
-		scale: f32,
-		_frame_index: u32,
-	) {
+	fn draw_entities(&mut self, game_state: &GameState, tile_cols: u32, camera_left: f32, camera_top: f32, scale: f32, _frame_index: u32) {
+		//let texture = self.tile_texture.as_mut().expect("tile_texture does not have a value");
 		for (id, pos) in game_state.positions.iter() {
 			let kind = *game_state.entity_kinds.get(id).unwrap_or(&0);
 			let entity_kind = EntityKind::from_u8(kind);
@@ -293,9 +277,8 @@ impl PcRenderer {
 				let width_tiles: i32 = ((width_pixels / tile_width).ceil() as i32).max(1);
 
 				self.draw_platform_entity_tiles(
-					texture,
 					tile_cols,
-					TILE_PIXELS,
+					self.atlas_tile_width_pixels,
 					world_left,
 					world_top,
 					width_tiles,
@@ -362,6 +345,9 @@ impl RenderBackend for PcRenderer {
 		bg_texture.set_blend_mode(BlendMode::Blend);
 		bg_texture.set_alpha_mod(208);
 
+		let tile_path: PathBuf = get_asset_root().join("pc").join("tiles.png");
+		let tile_texture = texture_creator.load_texture(tile_path).expect("failed to load the tiles png");
+
 		return PcRenderer {
 			canvas,
 			event_pump,
@@ -370,6 +356,9 @@ impl RenderBackend for PcRenderer {
 			bg_texture: Some(bg_texture),
 			bg_parallax_x: 0.35,
 			bg_parallax_y: 0.15,
+			atlas_tile_width_pixels: 16,
+			atlas_tile_height_pixels: 16,
+			tile_texture: Some(tile_texture),
 		};
 	}
 

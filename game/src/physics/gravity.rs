@@ -9,6 +9,6 @@ pub fn apply(game_state: &mut GameState) {
 			continue;
 		}
 
-		vel.y += game_state.gravity * grav as f32;
+		vel.y += game_state.settings.gravity * grav as f32;
 	}
 }

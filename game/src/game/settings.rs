@@ -1,14 +1,11 @@
 pub struct Settings {
+	pub gravity: f32,
 	pub coyote_frames_max: u8,
-
 	pub jump_buffer_frames_max: u8,
-
-	// variable jump height
 	pub jump_cut_multiplier: f32,
-
-	// core jump physics
 	pub jump_velocity: f32,
 	pub stomp_bounce_multiplier: f32,
+	pub bounce_separator: f32,
 }
 
 impl Settings {
@@ -19,6 +16,8 @@ impl Settings {
 			jump_cut_multiplier: 0.4,
 			jump_velocity: -6.0,
 			stomp_bounce_multiplier: 0.6,
+			gravity: 0.35,
+			bounce_separator: 0.5,
 		};
 	}
 }
