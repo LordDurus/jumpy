@@ -43,18 +43,43 @@ fn main() {
 			break;
 		}
 
-		// left/right + jump impulse
-		if let Some(v) = state.velocities.get_mut(player_id) {
-			if input.left && !input.right {
-				v.set_x(-2.0);
-			} else if input.right && !input.left {
-				v.set_x(2.0);
-			} else {
-				v.set_x(0.0);
-			}
+		// left/right
+		let desired_x: f32 = if input.left && !input.right {
+			-2.0
+		} else if input.right && !input.left {
+			2.0
+		} else {
+			0.0
+		};
 
-			if input.jump {
-				physics::movement::try_jump(&mut state, player_id);
+		if let Some(v) = state.velocities.get_mut(player_id) {
+			v.set_x(desired_x);
+		}
+
+		// jump edge detection must run every frame
+		let jump_down: bool = input.jump;
+
+		let mut jump_pressed: bool = false;
+		let mut jump_released: bool = false;
+
+		if let Some(js) = state.jump_states.get_mut(player_id) {
+			jump_pressed = jump_down && !js.jump_was_down;
+			jump_released = !jump_down && js.jump_was_down;
+
+			js.jump_was_down = jump_down;
+		}
+
+		// now no borrows are active, so this is fine
+		if jump_pressed {
+			physics::movement::try_jump(&mut state, player_id);
+		}
+		if jump_released {
+			if let Some(vel) = state.velocities.get_mut(player_id) {
+				// only cut jump if still going up
+				if vel.y < 0.0 {
+					vel.y *= state.settings.jump_cut_multiplier;
+					// println!("short jump cut"); // keep temporarily if you want
+				}
 			}
 		}
 
@@ -68,20 +93,6 @@ fn main() {
 		renderer.begin_frame();
 		renderer.draw_level(&state);
 		renderer.commit();
-
-		/*
-		// debug logging
-		if (renderer.frame_index % 60) == 0 {
-			for (id, pos) in state.positions.iter() {
-				let kind: u8 = *state.entity_kinds.get(id).unwrap_or(&0);
-				if kind == 2 {
-					// slime
-					let vel = state.velocities.get(id).copied().unwrap_or(Vec2::zero());
-					println!("slime id={} pos=({}, {}) vel=({}, {})", id, pos.x, pos.y, vel.x, vel.y);
-				}
-			}
-		}
-		*/
 	}
 }
 

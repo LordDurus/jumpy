@@ -1,6 +1,6 @@
 use crate::{
 	engine_math::Vec2,
-	game::game_state::{EntityId, EntityKind, GameState},
+	game::game_state::{EntityId, EntityKind, GameState, JumpState},
 	physics::{
 		collision::{HitSide, classify_aabb_hit_side, resolve_ceiling_collision, resolve_floor_collision, resolve_wall_collision},
 		constants::JUMP_VELOCITY,
@@ -173,7 +173,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 					if is_player {
 						//TODO: Calc Damage kill player if needed.
 						println!("Damaged");
-						game_state.respawn_player();
+						game_state.kill_player(player_id);
 					}
 				}
 				CollisionOutcome::HitWall => {
@@ -195,13 +195,42 @@ pub fn move_and_collide(game_state: &mut GameState) {
 					}
 				}
 			} // <- pos/vel borrows end here
-
 			// now it's legal to query game_state immutably
-			if is_player && game_state.on_ground(entity_id) && game_state.on_ground_safe(entity_id) {
-				let Some(pos) = game_state.positions.get(entity_id) else {
-					continue;
-				};
-				game_state.last_grounded_pos = Some(*pos);
+
+			if is_player {
+				let grounded_now: bool = (game_state.on_ground(entity_id) && game_state.on_ground_safe(entity_id)) || game_state.on_moving_platform(entity_id);
+
+				// tick respawn cooldown every frame
+				if let Some(respawn_state) = game_state.respawn_states.get_mut(entity_id) {
+					if respawn_state.respawn_cooldown_frames > 0 {
+						respawn_state.respawn_cooldown_frames -= 1;
+					}
+
+					// update last grounded pos only when grounded
+					if grounded_now {
+						if let Some(position) = game_state.positions.get(entity_id).copied() {
+							respawn_state.last_grounded_pos = position;
+							respawn_state.has_last_grounded_pos = true;
+						}
+					}
+				}
+
+				if let Some(jump_state) = game_state.jump_states.get_mut(entity_id) {
+					if grounded_now {
+						jump_state.coyote_frames_left = game_state.settings.coyote_frames_max;
+					} else {
+						// just left ground this frame
+						if jump_state.was_grounded {
+							println!("coyote countdown started");
+						}
+
+						if jump_state.coyote_frames_left > 0 {
+							jump_state.coyote_frames_left -= 1;
+						}
+					}
+
+					jump_state.was_grounded = grounded_now;
+				}
 			}
 
 			let (half_width, half_height) = &game_state.get_entity_half_values(entity_id);
@@ -247,7 +276,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 
 			if out {
 				if is_player {
-					game_state.respawn_player();
+					game_state.kill_player(player_id);
 					continue;
 				} else {
 					game_state.remove_entity(entity_id);
@@ -263,24 +292,55 @@ pub fn try_jump(game_state: &mut GameState, entity_id: EntityId) -> bool {
 	let on_left: bool = game_state.on_wall_left(entity_id);
 	let on_right: bool = game_state.on_wall_right(entity_id);
 
-	if !grounded && !on_left && !on_right {
+	let coyote_frames_left: u8 = game_state.jump_states.get(entity_id).map(|js| js.coyote_frames_left).unwrap_or(0);
+
+	let coyote_ok: bool = coyote_frames_left > 0;
+
+	if !grounded && !coyote_ok && !on_left && !on_right {
 		return false;
 	}
 
-	if let Some(vel) = game_state.velocities.get_mut(entity_id) {
-		let jump_multiplier: f32 = *game_state.jump_multipliers.get(entity_id).unwrap_or(&1) as f32;
+	let jump_multiplier_u8: u8 = game_state.jump_multipliers.get(entity_id).copied().unwrap_or(1);
+	let jump_multiplier: f32 = jump_multiplier_u8 as f32;
 
-		vel.y = JUMP_VELOCITY * jump_multiplier;
+	let jump_velocity: f32 = game_state.settings.jump_velocity * jump_multiplier;
 
-		if !grounded {
+	if let Some(velocity) = game_state.velocities.get_mut(entity_id) {
+		velocity.y = jump_velocity;
+
+		// wall jump push (only if not grounded/coyote jump)
+		if !grounded && !coyote_ok {
 			let wall_push: f32 = 2.5;
 			if on_left {
-				vel.x = wall_push;
+				velocity.x = wall_push;
 			} else if on_right {
-				vel.x = -wall_push;
+				velocity.x = -wall_push;
 			}
 		}
 
+		// consume grace/buffer state when a jump actually fires
+		if let Some(js) = game_state.jump_states.get_mut(entity_id) {
+			js.coyote_frames_left = 0;
+			js.jump_buffer_frames_left = 0;
+		}
+		// debug print
+		let reason: &'static str = if grounded {
+			"grounded"
+		} else if coyote_ok {
+			"coyote"
+		} else if on_left {
+			"wall_left"
+		} else if on_right {
+			"wall_right"
+		} else {
+			"unknown"
+		};
+
+		println!(
+			"JUMP FIRED reason={} grounded={} coyote_frames_left={} on_left={} on_right={} vel_y={}",
+			reason, grounded, coyote_frames_left, on_left, on_right, jump_velocity
+		);
+		//
 		return true;
 	}
 

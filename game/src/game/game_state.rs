@@ -1,6 +1,30 @@
-use crate::{ecs::component_store::ComponentStore, engine_math::Vec2, game::level::Level, physics::collision, tile::TileCollision};
+#[path = "settings.rs"]
+mod settings;
+
+use crate::{
+	ecs::component_store::ComponentStore,
+	engine_math::Vec2,
+	game::{game_state::settings::Settings, level::Level},
+	physics::collision,
+	tile::TileCollision,
+};
 
 pub type EntityId = u32;
+
+#[derive(Clone, Copy)]
+pub struct RespawnState {
+	pub last_grounded_pos: Vec2,
+	pub has_last_grounded_pos: bool,
+	pub respawn_cooldown_frames: u8,
+}
+
+#[derive(Clone, Copy)]
+pub struct JumpState {
+	pub coyote_frames_left: u8,
+	pub jump_buffer_frames_left: u8,
+	pub jump_was_down: bool,
+	pub was_grounded: bool,
+}
 
 #[repr(u8)]
 #[allow(dead_code)]
@@ -43,7 +67,6 @@ pub struct GameState {
 	pub velocities: ComponentStore<Vec2>,
 	pub player_id: Option<EntityId>,
 	pub spawn_point: Vec2,
-	pub last_grounded_pos: Option<Vec2>,
 	pub entity_kinds: ComponentStore<u8>,
 	pub render_styles: ComponentStore<u8>,
 	pub widths: ComponentStore<u8>,
@@ -60,6 +83,10 @@ pub struct GameState {
 	pub bump_cooldowns: ComponentStore<u8>,
 	pub enemy_ids: Vec<EntityId>,
 	pub tick: u32,
+	pub settings: Settings,
+	pub jump_states: ComponentStore<JumpState>,
+	pub respawn_states: ComponentStore<RespawnState>,
+	pub respawn_cooldown_frames: u8,
 	next_entity_id: EntityId,
 }
 
@@ -76,7 +103,6 @@ impl GameState {
 			player_id: None,
 			spawn_point: Vec2::zero(),
 			next_entity_id: 1,
-			last_grounded_pos: None,
 			entity_kinds: ComponentStore::new(),
 			render_styles: ComponentStore::new(),
 			widths: ComponentStore::new(),
@@ -91,8 +117,11 @@ impl GameState {
 			patrolling: ComponentStore::new(),
 			patrol_flips: ComponentStore::new(),
 			bump_cooldowns: ComponentStore::new(),
-
+			settings: Settings::new(),
+			jump_states: ComponentStore::new(),
+			respawn_states: ComponentStore::new(),
 			enemy_ids: Vec::new(),
+			respawn_cooldown_frames: 0,
 			tick: 0,
 		};
 
@@ -118,17 +147,28 @@ impl GameState {
 		return;
 	}
 
-	pub fn respawn_player(&mut self) {
-		// TODO: Add wait here (.25 seconds)
-		let player_id: EntityId = self.get_player_id();
+	pub fn kill_player(&mut self, player_id: EntityId) {
+		// TODOs:
+		// Play Death Music
+		// Reduce number of lives and check before respwaning
+		// println!("kill_player {}", player_id);
 
-		let spawn_pos: Vec2 = match self.last_grounded_pos {
-			Some(p) => p,
-			None => self.spawn_point, // level default
+		if let Some(respawn_state) = self.respawn_states.get_mut(player_id) {
+			respawn_state.respawn_cooldown_frames = self.respawn_cooldown_frames;
+		}
+
+		self.respawn_cooldown_frames = 20;
+		self.respawn_player(player_id);
+	}
+
+	pub fn respawn_player(&mut self, player_id: EntityId) {
+		let spawn_base: Vec2 = match self.respawn_states.get(player_id) {
+			Some(respawn_state) if respawn_state.has_last_grounded_pos => respawn_state.last_grounded_pos,
+			_ => self.spawn_point,
 		};
 
 		let (_half_width, half_height) = self.get_entity_half_values(player_id);
-		let spawn_pos: Vec2 = spawn_pos + Vec2::new(0.0, -half_height - 0.1);
+		let spawn_pos: Vec2 = spawn_base + Vec2::new(0.0, -half_height - 0.1);
 
 		if let Some(pos) = self.positions.get_mut(player_id) {
 			*pos = spawn_pos;
@@ -139,12 +179,10 @@ impl GameState {
 		}
 	}
 
-	#[inline(always)]
 	pub fn set_player(&mut self, id: EntityId) {
 		self.player_id = Some(id);
 	}
 
-	#[inline(always)]
 	pub fn get_player_id(&self) -> EntityId {
 		self.player_id.expect("player_id not set")
 	}
@@ -254,19 +292,6 @@ impl GameState {
 	}
 
 	pub fn get_entity_half_values(&self, id: EntityId) -> (f32, f32) {
-		/*
-		if EntityKind::from_u8(id as u8) == EntityKind::MovingPlatform {
-			println!("Getting half values for moving platform {}", id);
-			let width_tiles: f32 = *self.widths.get(id).unwrap_or(&1) as f32;
-			let height_tiles: f32 = *self.heights.get(id).unwrap_or(&1) as f32;
-
-			let half_width: f32 = (width_tiles * self.level.tile_width as f32) * 0.5;
-			let half_height: f32 = (height_tiles * self.level.tile_height as f32) * 0.5;
-
-			return (half_width, half_height);
-		}
-		*/
-
 		let width: f32 = self.widths.get(id).copied().unwrap_or(16) as f32;
 		let height: f32 = self.heights.get(id).copied().unwrap_or(16) as f32;
 
@@ -322,6 +347,25 @@ impl GameState {
 
 		if EntityKind::is_enemy(kind) {
 			self.enemy_ids.push(id);
+		} else {
+			self.jump_states.set(
+				id,
+				JumpState {
+					coyote_frames_left: 0,
+					jump_buffer_frames_left: 0,
+					jump_was_down: false,
+					was_grounded: false,
+				},
+			);
+
+			self.respawn_states.set(
+				id,
+				RespawnState {
+					last_grounded_pos: self.spawn_point,
+					has_last_grounded_pos: false,
+					respawn_cooldown_frames: 0,
+				},
+			);
 		}
 
 		if (range_min > 0.0 && range_max > 0.0) || gravity_multiplier == 0 && speed > 0 {
@@ -346,6 +390,8 @@ impl GameState {
 		self.gravity_multipliers.remove(id);
 		self.jump_multipliers.remove(id);
 		self.patrolling.remove(id);
+		self.jump_states.remove(id);
+		self.respawn_states.remove(id);
 
 		// linear scan is fine. I’ll have maybe dozens of enemies, not millions.
 		self.enemy_ids.retain(|&e| e != id);
