@@ -8,6 +8,7 @@ use crate::{
 };
 
 const SEPARATOR: f32 = 0.5;
+const STOMP_BOUNCE_MULTIPLIER: f32 = 0.6;
 
 #[allow(dead_code)]
 pub enum CollisionOutcome {
@@ -166,7 +167,6 @@ pub fn move_and_collide(game_state: &mut GameState) {
 				CollisionOutcome::None => {}
 				CollisionOutcome::Stomped(target_id) => {
 					//TODO: Calc Damage remove id needed
-					println!("Stomped");
 					game_state.remove_entity(target_id);
 				}
 				CollisionOutcome::Damaged { source: _ } => {
@@ -450,6 +450,14 @@ fn resolve_entity_collisions(
 			match side {
 				HitSide::Top => {
 					if c.profile.top.blocks && moved_down && prev_bottom <= c.top + 0.01 {
+						// stomp: player landing on a stompable target while falling
+						if kind == EntityKind::Player && c.profile.stompable && velocity.y > 0.0 {
+							position.y = c.top - half_height;
+							velocity.y = JUMP_VELOCITY * STOMP_BOUNCE_MULTIPLIER; // bounce up (JUMP_VELOCITY is negative)
+							return CollisionOutcome::Stomped(c.id);
+						}
+
+						// normal landing/blocking
 						position.y = c.top - half_height;
 						velocity.y = 0.0;
 
@@ -584,13 +592,6 @@ fn resolve_entity_collisions(
 			side = HitSide::Bottom;
 		} else if moved_down && prev_bottom <= c.top + 0.01 && bottom > c.top {
 			side = HitSide::Top;
-		}
-
-		// stomp is safe + affects target if stompable
-		if side == HitSide::Top && velocity.y > 0.0 && prev_bottom <= c.top + 0.01 && c.profile.stompable {
-			// bounce
-			velocity.y = -6.0;
-			return CollisionOutcome::Stomped(c.id);
 		}
 
 		let actor_is_enemy: bool = kind != EntityKind::Player && kind != EntityKind::MovingPlatform;
