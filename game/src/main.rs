@@ -52,8 +52,8 @@ fn main() {
 			0.0
 		};
 
-		if let Some(v) = state.velocities.get_mut(player_id) {
-			v.set_x(desired_x);
+		if let Some(velocitie) = state.velocities.get_mut(player_id) {
+			velocitie.set_x(desired_x);
 		}
 
 		// jump edge detection must run every frame
@@ -69,17 +69,21 @@ fn main() {
 			js.jump_was_down = jump_down;
 		}
 
-		// now no borrows are active, so this is fine
 		if jump_pressed {
-			physics::movement::try_jump(&mut state, player_id);
+			if let Some(jump_state) = state.jump_states.get_mut(player_id) {
+				jump_state.jump_buffer_frames_left = state.settings.jump_buffer_frames_max;
+			}
 		}
+
 		if jump_released {
-			if let Some(vel) = state.velocities.get_mut(player_id) {
+			if let Some(velocity) = state.velocities.get_mut(player_id) {
 				// only cut jump if still going up
-				if vel.y < 0.0 {
-					vel.y *= state.settings.jump_cut_multiplier;
-					// println!("short jump cut"); // keep temporarily if you want
+				if velocity.y < 0.0 {
+					velocity.y *= state.settings.jump_cut_multiplier;
 				}
+			}
+			if let Some(jump_state) = state.jump_states.get_mut(player_id) {
+				jump_state.jump_buffer_frames_left = 0;
 			}
 		}
 

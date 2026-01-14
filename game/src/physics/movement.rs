@@ -1,6 +1,6 @@
 use crate::{
 	engine_math::Vec2,
-	game::game_state::{EntityId, EntityKind, GameState, JumpState},
+	game::game_state::{EntityId, EntityKind, GameState},
 	physics::{
 		collision::{HitSide, classify_aabb_hit_side, resolve_ceiling_collision, resolve_floor_collision, resolve_wall_collision},
 		constants::JUMP_VELOCITY,
@@ -198,7 +198,36 @@ pub fn move_and_collide(game_state: &mut GameState) {
 			// now it's legal to query game_state immutably
 
 			if is_player {
+				let on_wall_left = game_state.on_wall_left(entity_id);
+				let on_wall_right = game_state.on_wall_right(entity_id);
 				let grounded_now: bool = (game_state.on_ground(entity_id) && game_state.on_ground_safe(entity_id)) || game_state.on_moving_platform(entity_id);
+
+				if let Some(jump_state) = game_state.jump_states.get_mut(entity_id) {
+					// coyote update (your existing code)
+					if grounded_now {
+						jump_state.coyote_frames_left = game_state.settings.coyote_frames_max;
+					} else if jump_state.coyote_frames_left > 0 {
+						jump_state.coyote_frames_left -= 1;
+					}
+
+					jump_state.was_grounded = grounded_now;
+
+					// jump buffer update + consume
+					if jump_state.jump_buffer_frames_left > 0 {
+						jump_state.jump_buffer_frames_left -= 1;
+
+						let can_jump_now: bool = grounded_now || jump_state.coyote_frames_left > 0 || on_wall_left || on_wall_right;
+
+						if can_jump_now {
+							// we must drop the mutable borrow before calling try_jump(&mut game_state)
+							let should_fire: bool = true;
+
+							if should_fire {
+								let _ = try_jump(game_state, entity_id);
+							}
+						}
+					}
+				}
 
 				// tick respawn cooldown every frame
 				if let Some(respawn_state) = game_state.respawn_states.get_mut(entity_id) {
@@ -219,11 +248,6 @@ pub fn move_and_collide(game_state: &mut GameState) {
 					if grounded_now {
 						jump_state.coyote_frames_left = game_state.settings.coyote_frames_max;
 					} else {
-						// just left ground this frame
-						if jump_state.was_grounded {
-							println!("coyote countdown started");
-						}
-
 						if jump_state.coyote_frames_left > 0 {
 							jump_state.coyote_frames_left -= 1;
 						}
@@ -323,6 +347,7 @@ pub fn try_jump(game_state: &mut GameState, entity_id: EntityId) -> bool {
 			js.coyote_frames_left = 0;
 			js.jump_buffer_frames_left = 0;
 		}
+		/*
 		// debug print
 		let reason: &'static str = if grounded {
 			"grounded"
@@ -340,7 +365,7 @@ pub fn try_jump(game_state: &mut GameState, entity_id: EntityId) -> bool {
 			"JUMP FIRED reason={} grounded={} coyote_frames_left={} on_left={} on_right={} vel_y={}",
 			reason, grounded, coyote_frames_left, on_left, on_right, jump_velocity
 		);
-		//
+		 */
 		return true;
 	}
 
