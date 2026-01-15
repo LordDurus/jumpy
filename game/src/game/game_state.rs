@@ -5,7 +5,6 @@ use crate::{
 	physics::collision,
 	tile::TileCollision,
 };
-
 pub type EntityId = u32;
 
 #[derive(Clone, Copy)]
@@ -83,6 +82,7 @@ pub struct GameState {
 	pub jump_states: ComponentStore<JumpState>,
 	pub respawn_states: ComponentStore<RespawnState>,
 	pub respawn_cooldown_frames: u8,
+	pub camera_baseline_max_bottom_world: Option<f32>,
 	next_entity_id: EntityId,
 }
 
@@ -117,6 +117,7 @@ impl GameState {
 			respawn_states: ComponentStore::new(),
 			enemy_ids: Vec::new(),
 			respawn_cooldown_frames: 0,
+			camera_baseline_max_bottom_world: None,
 			tick: 0,
 		};
 
@@ -223,29 +224,6 @@ impl GameState {
 		}
 
 		return None;
-	}
-
-	#[inline(always)]
-	pub fn on_ground(&self, id: EntityId) -> bool {
-		let Some(pos) = self.positions.get(id) else {
-			return false;
-		};
-
-		let (half_width, half_height) = self.get_entity_half_values(id);
-
-		let inset: f32 = 0.5;
-
-		let foot_top: f32 = pos.y + half_height + inset;
-		let left_left: f32 = pos.x - half_width + inset;
-		let right_left: f32 = pos.x + half_width - inset;
-
-		let left_col: TileCollision = self.level.is_collision_at_f32(left_left, foot_top);
-		let right_col: TileCollision = self.level.is_collision_at_f32(right_left, foot_top);
-
-		let grounded: bool =
-			left_col == TileCollision::Solid || left_col == TileCollision::OneWay || right_col == TileCollision::Solid || right_col == TileCollision::OneWay;
-
-		return grounded;
 	}
 
 	pub fn on_wall_left(&self, id: EntityId) -> bool {
@@ -440,23 +418,60 @@ impl GameState {
 		return;
 	}
 
-	#[inline(always)]
-	pub fn on_ground_safe(&self, id: EntityId) -> bool {
-		let Some(pos) = self.positions.get(id) else {
-			return false;
+	pub fn is_grounded_now(&self, entity_id: EntityId) -> bool {
+		let (grounded, grounded_safe) = self.get_ground_state(entity_id);
+		let on_platform: bool = self.on_moving_platform(entity_id);
+		return (grounded && grounded_safe) || on_platform;
+	}
+
+	pub fn get_ground_state(&self, entity_id: EntityId) -> (bool, bool) {
+		let (half_width, half_height) = self.get_entity_half_values(entity_id);
+
+		let Some(pos) = self.positions.get(entity_id) else {
+			return (false, false);
 		};
 
-		let (half_w, half_h) = self.get_entity_half_values(id);
+		let tile_width: f32 = self.level.tile_width as f32;
+		let tile_height: f32 = self.level.tile_height as f32;
 
-		let inset: f32 = 2.0; // > 0.5 so we’re not on the lip
-		let foot_y: f32 = pos.y + half_h + 0.5;
+		let eps: f32 = 0.05;
+		let foot_y: f32 = pos.y + half_height;
+		let probe_tile_y: i32 = ((foot_y + eps) / tile_height).floor() as i32;
 
-		let left_x: f32 = pos.x - half_w + inset;
-		let right_x: f32 = pos.x + half_w - inset;
+		let foot_left_x: f32 = pos.x - half_width + eps;
+		let foot_right_x: f32 = pos.x + half_width - eps;
 
-		let left_ok: bool = self.level.is_solid_tile_f32(left_x, foot_y);
-		let right_ok: bool = self.level.is_solid_tile_f32(right_x, foot_y);
+		let layer: u32 = self.level.get_action_layer_index() as u32;
 
-		return left_ok && right_ok;
+		let mut grounded: bool = false;
+		let mut grounded_safe: bool = false;
+
+		for foot_x in [foot_left_x, foot_right_x] {
+			let tx: i32 = (foot_x / tile_width).floor() as i32;
+
+			if tx < 0 || tx >= self.level.width as i32 {
+				continue;
+			}
+			if probe_tile_y < 0 || probe_tile_y >= self.level.height as i32 {
+				continue;
+			}
+
+			let tile = self.level.get_tile_at_layer(layer, tx, probe_tile_y);
+			match tile.get_collision_kind() {
+				TileCollision::Solid => {
+					grounded = true;
+					grounded_safe = true;
+					break;
+				}
+				TileCollision::OneWay => {
+					grounded = true;
+					grounded_safe = true; // important with your current grounded_now logic
+					break;
+				}
+				_ => {}
+			}
+		}
+
+		return (grounded, grounded_safe);
 	}
 }

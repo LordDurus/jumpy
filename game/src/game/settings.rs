@@ -6,6 +6,7 @@ pub struct Settings {
 	pub jump_velocity: f32,
 	pub stomp_bounce_multiplier: f32,
 	pub bounce_separator: f32,
+	pub camera_bottom_padding_tiles: u8,
 }
 
 impl Settings {
@@ -18,6 +19,7 @@ impl Settings {
 			stomp_bounce_multiplier: 0.6,
 			gravity: 0.35,
 			bounce_separator: 0.5,
+			camera_bottom_padding_tiles: 2,
 		};
 	}
 }

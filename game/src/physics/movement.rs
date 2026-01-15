@@ -205,7 +205,18 @@ pub fn move_and_collide(game_state: &mut GameState) {
 			if is_player {
 				let on_wall_left = game_state.on_wall_left(entity_id);
 				let on_wall_right = game_state.on_wall_right(entity_id);
-				let grounded_now: bool = (game_state.on_ground(entity_id) && game_state.on_ground_safe(entity_id)) || game_state.on_moving_platform(entity_id);
+				let grounded_now: bool = game_state.is_grounded_now(entity_id);
+
+				if grounded_now && game_state.camera_baseline_max_bottom_world.is_none() {
+					let (_half_width, half_height) = game_state.get_entity_half_values(entity_id);
+					if let Some(pos) = game_state.positions.get(entity_id) {
+						let tile_height_world: f32 = game_state.level.tile_height as f32;
+						let pad_world: f32 = game_state.settings.camera_bottom_padding_tiles as f32 * tile_height_world;
+
+						let ground_world_y: f32 = pos.y + half_height;
+						game_state.camera_baseline_max_bottom_world = Some(ground_world_y + pad_world);
+					}
+				}
 
 				if let Some(jump_state) = game_state.jump_states.get_mut(entity_id) {
 					// coyote update (your existing code)
@@ -305,7 +316,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 }
 
 pub fn try_jump(game_state: &mut GameState, entity_id: EntityId) -> bool {
-	let grounded: bool = game_state.on_ground(entity_id) || game_state.on_moving_platform(entity_id);
+	let grounded: bool = game_state.is_grounded_now(entity_id);
 	let on_left: bool = game_state.on_wall_left(entity_id);
 	let on_right: bool = game_state.on_wall_right(entity_id);
 
@@ -469,9 +480,9 @@ fn profile_for_kind(kind: EntityKind) -> CollisionProfile {
 		}
 		EntityKind::MovingPlatform => {
 			// start with fully solid, then make it jump-through from below
-			let mut p: CollisionProfile = solid_profile(0, false);
-			p.bottom.blocks = false;
-			return p;
+			let mut profile: CollisionProfile = solid_profile(0, false);
+			profile.bottom.blocks = false;
+			return profile;
 		}
 		_ => {
 			// enemies: solid + damage on sides/bottom, stompable
@@ -509,63 +520,78 @@ fn resolve_entity_collisions(
 		moved_down = bottom > prev_bottom + 0.001;
 		moved_up = top < prev_top - 0.001;
 
-		for c in colliders {
-			if c.id == entity_id {
+		for collider in colliders {
+			if moved_up && prev_top >= collider.bottom - 0.01 {
 				continue;
 			}
 
-			if right <= c.left || left >= c.right || bottom <= c.top || top >= c.bottom {
+			if collider.id == entity_id {
 				continue;
 			}
 
-			let mut side: HitSide = classify_aabb_hit_side(prev_left, prev_right, prev_top, prev_bottom, c.left, c.right, c.top, c.bottom);
-			if moved_up && prev_top >= c.bottom - 0.01 && top < c.bottom {
+			if right <= collider.left || left >= collider.right || bottom <= collider.top || top >= collider.bottom {
+				continue;
+			}
+
+			let mut side: HitSide = classify_aabb_hit_side(
+				prev_left,
+				prev_right,
+				prev_top,
+				prev_bottom,
+				collider.left,
+				collider.right,
+				collider.top,
+				collider.bottom,
+			);
+			if moved_up && prev_top >= collider.bottom - 0.01 && top < collider.bottom {
 				side = HitSide::Bottom;
-			} else if moved_down && prev_bottom <= c.top + 0.01 && bottom > c.top {
+			} else if moved_down && prev_bottom <= collider.top + 0.01 && bottom > collider.top {
 				side = HitSide::Top;
 			}
 
 			// -------- block resolution --------
 			match side {
 				HitSide::Top => {
-					if c.profile.top.blocks && moved_down && prev_bottom <= c.top + 0.01 {
+					if collider.profile.top.blocks && moved_down && prev_bottom <= collider.top + 0.01 {
 						// stomp: player landing on a stompable target while falling
-						if kind == EntityKind::Player && c.profile.stompable && velocity.y > 0.0 {
-							position.y = c.top - half_height;
+						if kind == EntityKind::Player && collider.profile.stompable && velocity.y > 0.0 {
+							position.y = collider.top - half_height;
 							velocity.y = settings.jump_velocity * settings.stomp_bounce_multiplier; // bounce up (JUMP_VELOCITY is negative)
-							return CollisionOutcome::Stomped(c.id);
+							return CollisionOutcome::Stomped(collider.id);
 						}
 
 						// normal landing/blocking
-						position.y = c.top - half_height;
+						position.y = collider.top - half_height;
 						velocity.y = 0.0;
 
-						if c.delta_x != 0.0 {
-							position.x += c.delta_x;
+						if collider.delta_x != 0.0 {
+							position.x += collider.delta_x;
 						}
 
 						continue 'pass;
 					}
 				}
 				HitSide::Bottom => {
-					if c.profile.bottom.blocks && moved_up && prev_top >= c.bottom - 0.01 {
-						position.y = c.bottom + half_height;
+					if collider.profile.bottom.blocks && moved_up && prev_top >= collider.bottom - 0.01 {
+						position.y = collider.bottom + half_height;
 						velocity.y = 0.0;
 						continue 'pass;
 					}
 				}
 
 				HitSide::Left => {
-					if c.profile.left.blocks && prev_right <= c.left + 0.01 {
-						position.x = c.left - half_width - settings.bounce_separator;
+					if collider.profile.left.blocks && prev_right <= collider.left + 0.01 {
+						position.x = collider.left - half_width - settings.bounce_separator;
 
 						// only moving platforms should "carry/push" via delta_x
-						if c.kind == EntityKind::MovingPlatform && c.delta_x < 0.0 {
-							position.x += c.delta_x;
+						if collider.kind == EntityKind::MovingPlatform && collider.delta_x < 0.0 {
+							position.x += collider.delta_x;
+							velocity.x = 0.0;
+							continue 'pass;
 						}
 
 						let actor_is_enemy: bool = kind != EntityKind::Player && kind != EntityKind::MovingPlatform;
-						let other_is_enemy: bool = c.kind != EntityKind::Player && c.kind != EntityKind::MovingPlatform;
+						let other_is_enemy: bool = collider.kind != EntityKind::Player && collider.kind != EntityKind::MovingPlatform;
 
 						if is_patrolling && actor_is_enemy && other_is_enemy {
 							return CollisionOutcome::HitWallEnemy;
@@ -577,12 +603,12 @@ fn resolve_entity_collisions(
 				}
 
 				HitSide::Right => {
-					if c.profile.right.blocks && prev_left >= c.right - 0.01 {
-						position.x = c.right + half_width + settings.bounce_separator;
+					if collider.profile.right.blocks && prev_left >= collider.right - 0.01 {
+						position.x = collider.right + half_width + settings.bounce_separator;
 
 						// only moving platforms should "carry/push" via delta_x
-						if c.kind == EntityKind::MovingPlatform && c.delta_x > 0.0 {
-							position.x += c.delta_x;
+						if collider.kind == EntityKind::MovingPlatform && collider.delta_x > 0.0 {
+							position.x += collider.delta_x;
 						}
 
 						velocity.x = 0.0;
@@ -591,28 +617,53 @@ fn resolve_entity_collisions(
 				}
 			}
 
-			let on_top: bool = prev_bottom <= c.top + 0.02 && bottom <= c.top + 0.05;
-			if !on_top && c.delta_x != 0.0 && (c.profile.left.blocks || c.profile.right.blocks) {
+			// let on_top: bool = prev_bottom <= collider.top + 0.02 && bottom <= collider.top + 0.05;
+
+			let was_above: bool = prev_bottom <= collider.top + 0.01;
+			let was_below: bool = prev_top >= collider.bottom - 0.01;
+			let side_overlap: bool = !was_above && !was_below;
+
+			/*
+			if !on_top && collider.delta_x != 0.0 && (collider.profile.left.blocks || collider.profile.right.blocks) {
 				// if platform moved right this frame, shove actor right out of it
-				if c.delta_x > 0.0 {
+				if collider.delta_x > 0.0 {
 					// entity must end up to the right of platform
-					position.x = c.right + half_width;
+					position.x = collider.right + half_width;
 					velocity.x = 0.0;
 					continue 'pass;
 				}
 
 				// moved left
-				if c.delta_x < 0.0 {
-					position.x = c.left - half_width;
+				if collider.delta_x < 0.0 {
+					position.x = collider.left - half_width;
+					velocity.x = 0.0;
+					continue 'pass;
+				}
+			}
+			*/
+
+			if side_overlap && collider.delta_x != 0.0 && (collider.profile.left.blocks || collider.profile.right.blocks) {
+				println!("shove actor out sideways...");
+				// shove actor out sideways...
+				if collider.delta_x > 0.0 {
+					println!("  right");
+					position.x = collider.right + half_width;
+					velocity.x = 0.0;
+					continue 'pass;
+				}
+
+				if collider.delta_x < 0.0 {
+					println!("  left");
+					position.x = collider.left - half_width;
 					velocity.x = 0.0;
 					continue 'pass;
 				}
 			}
 
-			let overlap_left: f32 = c.right - left;
-			let overlap_right: f32 = right - c.left;
-			let overlap_top: f32 = c.bottom - top;
-			let overlap_bottom: f32 = bottom - c.top;
+			let overlap_left: f32 = collider.right - left;
+			let overlap_right: f32 = right - collider.left;
+			let overlap_top: f32 = collider.bottom - top;
+			let overlap_bottom: f32 = bottom - collider.top;
 
 			let push_left: f32 = if overlap_left < overlap_right { overlap_left } else { -overlap_right };
 			let push_top: f32 = if overlap_top < overlap_bottom { overlap_top } else { -overlap_bottom };
@@ -630,7 +681,7 @@ fn resolve_entity_collisions(
 				if is_patrolling {
 					// do not zero x for enemy-enemy patrol bumps (prevents twitch)
 					let actor_is_enemy: bool = kind != EntityKind::Player && kind != EntityKind::MovingPlatform;
-					let other_is_enemy: bool = c.kind != EntityKind::Player && c.kind != EntityKind::MovingPlatform;
+					let other_is_enemy: bool = collider.kind != EntityKind::Player && collider.kind != EntityKind::MovingPlatform;
 
 					if actor_is_enemy && other_is_enemy {
 						return CollisionOutcome::HitWallEnemy;
@@ -663,6 +714,23 @@ fn resolve_entity_collisions(
 		}
 		if right <= c.left || left >= c.right || bottom <= c.top || top >= c.bottom {
 			continue;
+		}
+
+		// one-way moving platform behavior for player
+		if kind == EntityKind::Player && c.kind == EntityKind::MovingPlatform {
+			// if we were below the top last frame, we are not allowed to collide from below/sides while rising
+			let was_below_top: bool = prev_bottom > c.top + 0.01;
+
+			// rising (jumping up into it)
+			if moved_up && was_below_top {
+				continue;
+			}
+
+			// also ignore side shoves while we're coming up from below
+			// (prevents "snap to edge" when platform is moving)
+			if was_below_top && (moved_up || velocity.y < 0.0) {
+				continue;
+			}
 		}
 
 		let mut side: HitSide = classify_aabb_hit_side(prev_left, prev_right, prev_top, prev_bottom, c.left, c.right, c.top, c.bottom);

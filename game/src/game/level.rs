@@ -1,11 +1,42 @@
-use crate::{
-	game::game_state::EntityKind,
-	tile::{TileCollision, TileKind},
-};
+use crate::{game::game_state::EntityKind, tile::TileKind};
 use std::fs;
 
 pub const BYTES_PER_ENTITY: usize = 24;
 pub const PLAYER_HALF_HEIGHT: f32 = 8.0;
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct LevelEntity {
+	pub kind: u8,
+	pub render_style: u8,
+	pub gravity_multiplier: u8,
+	pub jump_multiplier: u8,
+	pub attack_power: u8,
+	pub hit_points: u16,
+	pub top: u16,
+	pub left: u16,
+	pub health_regen_rate: i16,
+	pub invulnerability_time: i16,
+	pub width: u8,
+	pub height: u8,
+	pub speed: u8,
+	pub strength: u8,
+	pub luck: u8,
+	pub range_min: u16,
+	pub range_max: u16,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct LevelTrigger {
+	pub kind: u8,
+	pub x: u16,
+	pub y: u16,
+	pub width: u16,
+	pub height: u16,
+	pub target: u16,
+	pub text_id: u16,
+}
 
 #[derive(Debug, Clone)]
 pub struct Level {
@@ -214,16 +245,6 @@ impl Level {
 				range_max: read_u16(&bytes, &mut ent_off)?,
 			};
 
-			/*
-			if EntityKind::from_u8(entity.kind) == EntityKind::MovingPlatform {
-				if entity.width != 0 {
-					entity.width = entity.width / 16;
-				}
-				if entity.height != 0 {
-					entity.height = entity.height / 16;
-				}
-			}
-			*/
 			entities.push(entity);
 		}
 
@@ -370,20 +391,6 @@ impl Level {
 
 		return 0.0;
 	}
-
-	pub fn is_collision_at_f32(&self, left: f32, top: f32) -> TileCollision {
-		if left < 0.0 || top < 0.0 {
-			return TileCollision::None;
-		}
-
-		let tile_left: i32 = (left / (self.tile_width as f32)).floor() as i32;
-		let tile_top: i32 = (top / (self.tile_height as f32)).floor() as i32;
-
-		let layer: u32 = self.get_action_layer_index() as u32;
-		let tile = self.get_tile_at_layer(layer, tile_left, tile_top);
-
-		return tile.get_collision_kind();
-	}
 }
 
 fn read_u32(bytes: &[u8], offset: &mut usize) -> Result<u32, String> {
@@ -421,38 +428,4 @@ fn read_i16(bytes: &[u8], offset: &mut usize) -> Result<i16, String> {
 	let v = i16::from_le_bytes([bytes[*offset], bytes[*offset + 1]]);
 	*offset += 2;
 	return Ok(v);
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub struct LevelEntity {
-	pub kind: u8,
-	pub render_style: u8,
-	pub gravity_multiplier: u8,
-	pub jump_multiplier: u8,
-	pub attack_power: u8,
-	pub hit_points: u16,
-	pub top: u16,
-	pub left: u16,
-	pub health_regen_rate: i16,
-	pub invulnerability_time: i16,
-	pub width: u8,
-	pub height: u8,
-	pub speed: u8,
-	pub strength: u8,
-	pub luck: u8,
-	pub range_min: u16,
-	pub range_max: u16,
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub struct LevelTrigger {
-	pub kind: u8,
-	pub x: u16,
-	pub y: u16,
-	pub width: u16,
-	pub height: u16,
-	pub target: u16,
-	pub text_id: u16,
 }

@@ -7,14 +7,12 @@ impl RenderCommon {
 	pub fn new() -> RenderCommon {
 		return RenderCommon;
 	}
-
-	// camera is in world pixels (unscaled)
 	pub fn compute_camera<B: RenderBackend>(&self, backend: &B, game_state: &GameState) -> (i32, i32) {
 		let (screen_width_pixels, screen_height_pixels) = backend.screen_size();
 		let scale: f32 = backend.render_scale();
 
-		let screen_width: i32 = ((screen_width_pixels as f32) / scale).round() as i32;
-		let screen_height: i32 = ((screen_height_pixels as f32) / scale).round() as i32;
+		let screen_width: f32 = (screen_width_pixels as f32) / scale;
+		let screen_height: f32 = (screen_height_pixels as f32) / scale;
 
 		let mut focus_left: f32 = 0.0;
 		let mut focus_top: f32 = 0.0;
@@ -38,41 +36,47 @@ impl RenderCommon {
 			}
 		}
 
-		let tile_width: i32 = game_state.level.tile_width as i32;
-		let tile_height: i32 = game_state.level.tile_height as i32;
+		let tile_width: f32 = game_state.level.tile_width as f32;
+		let tile_height: f32 = game_state.level.tile_height as f32;
 
-		let level_width_pixels: i32 = (game_state.level.width as i32) * tile_width;
-		let level_height_pixels: i32 = (game_state.level.height as i32) * tile_height;
+		let level_width_world: f32 = (game_state.level.width as f32) * tile_width;
+		let level_height_world: f32 = (game_state.level.height as f32) * tile_height;
 
-		let mut cam_left: i32 = focus_left as i32 - (screen_width / 2);
-		let mut cam_top: i32 = focus_top as i32 - (screen_height / 2);
+		let mut camera_left: f32 = focus_left - (screen_width * 0.5);
+		let mut camera_top: f32 = focus_top - (screen_height * 0.5);
 
-		let max_x: i32 = (level_width_pixels - screen_width).max(0);
-		let max_y: i32 = (level_height_pixels - screen_height).max(0);
+		// --- horizontal deadzone (player can drift before camera follows) ---
+		let deadzone_half_width: f32 = tile_width * 3.0; // 3 tiles each side (tweak)
+		let center_x: f32 = camera_left + (screen_width * 0.5);
+		let dx: f32 = focus_left - center_x;
 
-		if cam_left < 0 {
-			cam_left = 0;
-		}
-		if cam_top < 0 {
-			cam_top = 0;
-		}
-		if cam_left > max_x {
-			cam_left = max_x;
-		}
-		if cam_top > max_y {
-			cam_top = max_y;
+		if dx > deadzone_half_width {
+			camera_left += dx - deadzone_half_width;
+		} else if dx < -deadzone_half_width {
+			camera_left += dx + deadzone_half_width;
 		}
 
-		/*
-		println!(
-			"camera: player_id={} focus_id={:?} level_w={} level_h={}",
-			world.get_player_id(),
-			focus_id,
-			world.level.width,
-			world.level.height
-		);
-		*/
+		// clamp left/top to level
+		let max_x: f32 = (level_width_world - screen_width).max(0.0);
+		let mut max_y: f32 = (level_height_world - screen_height).max(0.0);
 
-		return (cam_left, cam_top);
+		if let Some(baseline_max_bottom_world) = game_state.camera_baseline_max_bottom_world {
+			let (_half_width, half_height) = game_state.get_entity_half_values(focus_id.unwrap());
+			let player_bottom_world: f32 = focus_top + half_height;
+
+			let pad_world: f32 = game_state.settings.camera_bottom_padding_tiles as f32 * tile_height;
+
+			let effective_max_bottom_world: f32 = baseline_max_bottom_world.max(player_bottom_world + pad_world);
+			let max_camera_top: f32 = (effective_max_bottom_world - screen_height).max(0.0);
+
+			if max_y > max_camera_top {
+				max_y = max_camera_top;
+			}
+		}
+
+		camera_left = camera_left.clamp(0.0, max_x);
+		camera_top = camera_top.clamp(0.0, max_y);
+
+		return (camera_left.round() as i32, camera_top.round() as i32);
 	}
 }
