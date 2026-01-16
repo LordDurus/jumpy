@@ -25,10 +25,28 @@ pub enum TileKind {
 	PlatformLeft = 15,
 	PlatformMiddle = 16,
 	PlatformRight = 17,
+	Blackout = 255,
+	TorchGlow = 254,
+	DarkBrownRock = 253,
 }
 
 impl TileKind {
 	#[inline(always)]
+
+	pub fn is_empty(self) -> bool {
+		matches!(self, TileKind::Empty)
+	}
+
+	pub fn is_color_only(self) -> bool {
+		matches!(self, TileKind::Blackout | TileKind::TorchGlow | TileKind::DarkBrownRock)
+	}
+
+	// TOOD: Find all the place that can be chaged to use this, and change them
+	#[allow(dead_code)]
+	pub fn is_interactive(self) -> bool {
+		!self.is_empty() && !self.is_color_only()
+	}
+
 	pub fn get_collision_kind(self) -> TileCollision {
 		match self {
 			TileKind::Empty => {
@@ -67,7 +85,9 @@ impl TileKind {
 			15 => TileKind::PlatformLeft,
 			16 => TileKind::PlatformMiddle,
 			17 => TileKind::PlatformRight,
-
+			255 => TileKind::Blackout,
+			254 => TileKind::TorchGlow,
+			253 => TileKind::DarkBrownRock,
 			_ => TileKind::Empty,
 		}
 	}

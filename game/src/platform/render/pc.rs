@@ -52,28 +52,83 @@ impl PcRenderer {
 		return RENDER_SCALE;
 	}
 
-	fn draw_filled_circle(&mut self, cx: i32, cy: i32, r: i32, color: Color) {
+	fn draw_filled_circle(&mut self, circle_x: i32, circle_y: i32, radius: i32, color: Color) {
 		self.canvas.set_draw_color(color);
 
-		let rr: i32 = r * r;
-		let mut y: i32 = -r;
-		while y <= r {
+		let rr: i32 = radius * radius;
+		let mut y: i32 = -radius;
+		while y <= radius {
 			let yy: i32 = y * y;
 			let dx: f32 = ((rr - yy) as f32).sqrt();
-			let x0: i32 = cx - dx.round() as i32;
-			let x1: i32 = cx + dx.round() as i32;
+			let x0: i32 = circle_x - dx.round() as i32;
+			let x1: i32 = circle_x + dx.round() as i32;
 
-			let _ = self.canvas.draw_line((x0, cy + y), (x1, cy + y));
+			let _ = self.canvas.draw_line((x0, circle_y + y), (x1, circle_y + y));
 			y += 1;
 		}
 
 		return;
 	}
 
-	fn draw_filled_triangle(&mut self, x: i32, y: i32, w: u32, h: u32, color: Color) {
+	fn draw_color_only_tile(&mut self, tile_kind: TileKind, destination: Rect) {
+		self.canvas.set_blend_mode(BlendMode::Blend);
+
+		match tile_kind {
+			TileKind::Blackout => {
+				/*
+				// Dither edges
+				self.canvas.set_draw_color(Color::RGBA(0, 0, 0, 200));
+				let _ = self.canvas.fill_rect(destination);
+				*/
+
+				/*
+				let alpha: u8 = self.cave_mask_alpha(level, layer, tile_left, tile_top); // 140 edge / 220 interior
+				self.canvas.set_blend_mode(BlendMode::Blend);
+				self.canvas.set_draw_color(Color::RGBA(0, 0, 0, alpha));
+				let _ = self.canvas.fill_rect(destination);
+				*/
+
+				self.canvas.set_blend_mode(BlendMode::Blend);
+				self.canvas.set_draw_color(Color::RGBA(0, 0, 0, 255));
+				let _ = self.canvas.fill_rect(destination);
+			}
+
+			TileKind::TorchGlow => {
+				// make this area less dark than full blackout
+				self.canvas.set_blend_mode(BlendMode::Blend);
+				self.canvas.set_draw_color(Color::RGBA(0, 0, 0, 200));
+				let _ = self.canvas.fill_rect(destination);
+
+				// add warm light (needs a real alpha)
+				self.canvas.set_blend_mode(BlendMode::Add);
+				self.canvas.set_draw_color(Color::RGBA(255, 235, 160, 220)); // pale warm yellow
+				let _ = self.canvas.fill_rect(destination);
+
+				self.canvas.set_blend_mode(BlendMode::Blend);
+			}
+
+			TileKind::DarkBrownRock => {
+				self.canvas.set_blend_mode(BlendMode::Blend);
+				self.canvas.set_draw_color(Color::RGBA(0, 0, 0, 235));
+				let _ = self.canvas.fill_rect(destination);
+				self.canvas.set_blend_mode(BlendMode::Add);
+				self.canvas.set_draw_color(Color::RGBA(255, 235, 100, 80)); // pale yellow
+				let _ = self.canvas.fill_rect(destination);
+				self.canvas.set_blend_mode(BlendMode::Blend);
+			}
+
+			_ => {
+				// Silently do nothing instead of drawing the wrong thing
+			}
+		}
+
+		return;
+	}
+
+	fn draw_filled_triangle(&mut self, x: i32, y: i32, width: u32, h: u32, color: Color) {
 		self.canvas.set_draw_color(color);
 
-		let ww: i32 = w as i32;
+		let ww: i32 = width as i32;
 		let hh: i32 = h as i32;
 
 		let x0: i32 = x;
@@ -180,36 +235,20 @@ impl PcRenderer {
 		let atlas_tile_height_pixels: u32 = self.atlas_tile_height_pixels;
 		let tile_cols: u32 = self.tile_texture.as_mut().unwrap().query().width / atlas_tile_width_pixels;
 
-		// let scale_i32: i32 = scale as i32;
-		// let tile_pixel_scaled: i32 = atlas_tile_width_pixels as i32 * scale_i32;
-
-		// let camera_left_pixels: i32 = (cam.left * scale).floor() as i32;
-		// let camera_top_pixels: i32 = (cam.top * scale).floor() as i32;
-
-		for ty in start_tile_top..end_tile_top {
-			for tx in start_tile_left..end_tile_left {
-				let tile_id: u8 = level.get_tile_id_at_layer(layer, tx, ty);
-				if tile_id == 0 {
-					continue; // empty
+		for tile_top in start_tile_top..end_tile_top {
+			for tile_left in start_tile_left..end_tile_left {
+				let tile_id: u8 = level.get_tile_id_at_layer(layer, tile_left, tile_top);
+				let tile_kind: TileKind = TileKind::from_u8(tile_id);
+				if tile_kind.is_empty() {
+					continue;
 				}
-				let id = tile_id as u32;
 
-				let source_left: i32 = ((id % tile_cols) * atlas_tile_width_pixels) as i32;
-				let source_top: i32 = ((id / tile_cols) * atlas_tile_height_pixels) as i32;
-				let source = Rect::new(source_left, source_top, atlas_tile_width_pixels, atlas_tile_height_pixels);
-
-				// let scale_i32: i32 = scale as i32;
-				//let tile_pixel_scaled: i32 = atlas_tile_width_pixels as i32 * scale_i32;
-
-				// let destination_left: i32 = tx * tile_pixel_scaled - camera_left_pixels;
-				// let destination_top: i32 = ty * tile_pixel_scaled - camera_top_pixels;
-
-				let world_left: f32 = (tx as f32) * tile_width;
-				let world_top: f32 = (ty as f32) * tile_height;
-
-				let destination_left: i32 = ((world_left - cam.left) * scale).round() as i32;
-				let destination_top: i32 = ((world_top - cam.top) * scale).round() as i32;
-
+				let scale_i32: i32 = scale as i32;
+				let camera_left_pixels: i32 = (cam.left * scale).floor() as i32;
+				let camera_top_pixels: i32 = (cam.top * scale).floor() as i32;
+				let tile_pixel_scaled: i32 = atlas_tile_width_pixels as i32 * scale_i32;
+				let destination_left: i32 = tile_left * tile_pixel_scaled - camera_left_pixels;
+				let destination_top: i32 = tile_top * tile_pixel_scaled - camera_top_pixels;
 				let destination = Rect::new(
 					destination_left,
 					destination_top,
@@ -217,11 +256,21 @@ impl PcRenderer {
 					(tile_height * scale).round() as u32,
 				);
 
+				// color-only overlays (no atlas sampling)
+				if tile_kind.is_color_only() {
+					self.draw_color_only_tile(tile_kind, destination);
+					continue;
+				}
+
+				// normal atlas draw path (interactive / solid / regular tiles)
+				let id: u32 = tile_id as u32;
+				let source_left: i32 = ((id % tile_cols) * atlas_tile_width_pixels) as i32;
+				let source_top: i32 = ((id / tile_cols) * atlas_tile_height_pixels) as i32;
+				let source = Rect::new(source_left, source_top, atlas_tile_width_pixels, atlas_tile_height_pixels);
 				let texture = self.tile_texture.as_mut().unwrap();
 				let _ = self.canvas.copy(&texture, source, destination).unwrap();
 			}
 		}
-
 		return;
 	}
 

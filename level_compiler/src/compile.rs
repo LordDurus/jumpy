@@ -284,6 +284,9 @@ fn build_tile_palette() -> HashMap<char, u8> {
 	map.insert('(', 15); // platform left
 	map.insert('_', 16); // platform middle
 	map.insert(')', 17); // platform right
+	map.insert('B', 255); // Black
+	map.insert('G', 254); // Torch Glow
+	map.insert('D', 253); // Dark Brown Rock
 	return map;
 }
 
