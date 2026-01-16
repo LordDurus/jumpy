@@ -9,7 +9,7 @@ impl RenderCommon {
 	}
 	pub fn compute_camera<B: RenderBackend>(&self, backend: &B, game_state: &GameState) -> (i32, i32) {
 		let (screen_width_pixels, screen_height_pixels) = backend.screen_size();
-		let scale: f32 = backend.render_scale();
+		let scale: f32 = backend.get_render_scale();
 
 		let screen_width: f32 = (screen_width_pixels as f32) / scale;
 		let screen_height: f32 = (screen_height_pixels as f32) / scale;

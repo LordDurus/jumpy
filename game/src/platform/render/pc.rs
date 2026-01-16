@@ -1,6 +1,6 @@
-const RENDER_SCALE: f32 = 1.0;
-const WINDOW_WIDTH: u32 = 640;
-const WINDOW_HEIGHT: u32 = 360;
+// const RENDER_SCALE: f32 = 4.0;
+// const WINDOW_WIDTH: u32 = 640;
+// const WINDOW_HEIGHT: u32 = 360;
 
 #[path = "pc_platform.rs"]
 mod pc_platform;
@@ -11,7 +11,14 @@ use crate::{
 		game_state::{EntityKind, GameState},
 		level::Level,
 	},
-	platform::{RenderBackend, input::InputState, render::common::RenderCommon},
+	platform::{
+		RenderBackend,
+		input::InputState,
+		render::{
+			common::RenderCommon,
+			pc::pc_platform::{WindowSettings, load_window_settings, save_window_settings},
+		},
+	},
 	tile::TileKind,
 };
 use sdl2::{
@@ -38,6 +45,13 @@ pub struct PcRenderer {
 	tile_texture: Option<Texture<'static>>,
 	bg_parallax_x: f32,
 	bg_parallax_y: f32,
+	render_scale: u32,
+}
+
+impl Drop for PcRenderer {
+	fn drop(&mut self) {
+		save_window_settings(self.canvas.window());
+	}
 }
 
 impl PcRenderer {
@@ -48,8 +62,8 @@ impl PcRenderer {
 		return;
 	}
 
-	fn render_scale(&self) -> f32 {
-		return RENDER_SCALE;
+	fn get_render_scale(&self) -> f32 {
+		return self.render_scale as f32;
 	}
 
 	fn draw_filled_circle(&mut self, circle_x: i32, circle_y: i32, radius: i32, color: Color) {
@@ -75,19 +89,6 @@ impl PcRenderer {
 
 		match tile_kind {
 			TileKind::Blackout => {
-				/*
-				// Dither edges
-				self.canvas.set_draw_color(Color::RGBA(0, 0, 0, 200));
-				let _ = self.canvas.fill_rect(destination);
-				*/
-
-				/*
-				let alpha: u8 = self.cave_mask_alpha(level, layer, tile_left, tile_top); // 140 edge / 220 interior
-				self.canvas.set_blend_mode(BlendMode::Blend);
-				self.canvas.set_draw_color(Color::RGBA(0, 0, 0, alpha));
-				let _ = self.canvas.fill_rect(destination);
-				*/
-
 				self.canvas.set_blend_mode(BlendMode::Blend);
 				self.canvas.set_draw_color(Color::RGBA(0, 0, 0, 255));
 				let _ = self.canvas.fill_rect(destination);
@@ -178,45 +179,66 @@ impl PcRenderer {
 		return;
 	}
 
-	fn draw_background(&mut self, cam_x_world: i32, cam_y_world: i32, _scale: f32) {
-		// always draw a sky fallback so you know this ran
-		let (sw, sh) = self.canvas.output_size().unwrap_or((WINDOW_WIDTH, WINDOW_HEIGHT));
+	fn draw_background(&mut self, cam_left_world: i32, cam_top_world: i32, scale: f32) {
+		let (sw_u32, sh_u32) = match self.canvas.output_size() {
+			Ok(v) => v,
+			Err(_) => self.canvas.window().size(),
+		};
+
+		// sky fallback
 		self.canvas.set_draw_color(Color::RGB(60, 110, 190));
-		let _ = self.canvas.fill_rect(Rect::new(0, 0, sw, sh));
+		let _ = self.canvas.fill_rect(Rect::new(0, 0, sw_u32, sh_u32));
 
 		let Some(bg) = self.bg_texture.as_ref() else {
 			return;
 		};
 
 		let q = bg.query();
-		let bg_width: i32 = q.width as i32;
-		let bg_height: i32 = q.height as i32;
-		if bg_width <= 0 || bg_height <= 0 {
+		if q.width == 0 || q.height == 0 {
 			return;
 		}
 
-		let bg_cam_x: f32 = cam_x_world as f32 * self.bg_parallax_x * self.bg_parallax_x;
-		let bg_cam_y: f32 = cam_y_world as f32 * self.bg_parallax_y * self.bg_parallax_y;
-
-		let start_left: i32 = -(((bg_cam_x as i32) % bg_width + bg_width) % bg_width);
-		let mut start_top: i32 = -(((bg_cam_y as i32) % bg_height + bg_height) % bg_height);
-
-		if bg_height >= sh as i32 {
-			start_top = 0;
+		let bg_tile_width_pixels: i32 = (q.width as f32 * scale).round() as i32;
+		let bg_tile_height_pixels: i32 = (q.height as f32 * scale).round() as i32;
+		if bg_tile_width_pixels <= 0 || bg_tile_height_pixels <= 0 {
+			return;
 		}
 
-		let mut x: i32 = start_left;
-		while x < sw as i32 {
-			let mut y: i32 = start_top;
-			while y < sh as i32 {
-				let dst = Rect::new(x, y, q.width, q.height);
-				let _ = self.canvas.copy(bg, None, dst);
-				y += bg_height;
+		let sw: i32 = sw_u32 as i32;
+		let sh: i32 = sh_u32 as i32;
+
+		// camera -> pixels
+		let cam_left_pixels: f32 = cam_left_world as f32 * scale;
+		let cam_top_pixels: f32 = cam_top_world as f32 * scale;
+
+		// parallax offsets in pixels
+		let bg_cam_left_pixels: i32 = (cam_left_pixels * self.bg_parallax_x).floor() as i32;
+		let bg_cam_top_pixels: i32 = (cam_top_pixels * self.bg_parallax_y).floor() as i32;
+
+		// horizontal wrap (repeat)
+		let start_left: i32 = -(((bg_cam_left_pixels % bg_tile_width_pixels) + bg_tile_width_pixels) % bg_tile_width_pixels);
+
+		// vertical clamp (no repeat)
+		let mut top: i32 = -bg_cam_top_pixels;
+		if bg_tile_height_pixels >= sh {
+			let min_top: i32 = sh - bg_tile_height_pixels; // negative or 0
+			if top < min_top {
+				top = min_top;
 			}
-			x += bg_width;
+			if top > 0 {
+				top = 0;
+			}
+		} else {
+			// bg shorter than screen: pin to top (sky fill covers the rest)
+			top = 0;
 		}
 
-		return;
+		let mut left: i32 = start_left;
+		while left < sw {
+			let dst = Rect::new(left, top, bg_tile_width_pixels as u32, bg_tile_height_pixels as u32);
+			let _ = self.canvas.copy(bg, None, dst);
+			left += bg_tile_width_pixels;
+		}
 	}
 
 	fn draw_tiles_layer_atlas(&mut self, level: &Level, layer: u32, camera_left: f32, camera_top: f32, scale: f32, _frame_index: u32) {
@@ -224,7 +246,13 @@ impl PcRenderer {
 		let tile_height: f32 = level.tile_height as f32;
 		let cam = Pointf32::new(camera_left, camera_top);
 		let tile_size = Size::new(level.tile_width as f32, level.tile_height as f32);
-		let view_pixels = PixelSize::new(WINDOW_WIDTH as i32, WINDOW_HEIGHT as i32);
+
+		let (view_width_pixels, view_height_pixels) = match self.canvas.output_size() {
+			Ok(v) => v,
+			Err(_) => self.canvas.window().size(),
+		};
+		let view_pixels = PixelSize::new(view_width_pixels as i32, view_height_pixels as i32);
+
 		let cam = clamp_camera_to_level_world(cam, view_pixels, scale, tile_size, level.width as i32, level.height as i32);
 		let bounds = visible_tile_bounds(cam, view_pixels, scale, tile_size, level.width as i32, level.height as i32);
 		let start_tile_left: i32 = bounds.start_left;
@@ -243,18 +271,33 @@ impl PcRenderer {
 					continue;
 				}
 
+				let tile_dest_width_pixels: i32 = (tile_width * scale).round() as i32;
+				let tile_dest_height_pixels: i32 = (tile_height * scale).round() as i32;
+
+				let camera_left_pixels: i32 = (cam.left * scale).floor() as i32;
+				let camera_top_pixels: i32 = (cam.top * scale).floor() as i32;
+
+				let destination_left: i32 = tile_left * tile_dest_width_pixels - camera_left_pixels;
+				let destination_top: i32 = tile_top * tile_dest_height_pixels - camera_top_pixels;
+
+				let destination = Rect::new(destination_left, destination_top, tile_dest_width_pixels as u32, tile_dest_height_pixels as u32);
+
+				/*
 				let scale_i32: i32 = scale as i32;
 				let camera_left_pixels: i32 = (cam.left * scale).floor() as i32;
 				let camera_top_pixels: i32 = (cam.top * scale).floor() as i32;
 				let tile_pixel_scaled: i32 = atlas_tile_width_pixels as i32 * scale_i32;
 				let destination_left: i32 = tile_left * tile_pixel_scaled - camera_left_pixels;
 				let destination_top: i32 = tile_top * tile_pixel_scaled - camera_top_pixels;
+
+
 				let destination = Rect::new(
 					destination_left,
 					destination_top,
 					(tile_width * scale).round() as u32,
 					(tile_height * scale).round() as u32,
 				);
+				*/
 
 				// color-only overlays (no atlas sampling)
 				if tile_kind.is_color_only() {
@@ -276,7 +319,7 @@ impl PcRenderer {
 
 	fn draw_level_internal(&mut self, game_state: &GameState) {
 		let (cam_left_world, cam_top_world) = self.common.compute_camera(self, game_state);
-		let scale: f32 = self.render_scale();
+		let scale: f32 = self.get_render_scale();
 
 		// background first, tiles on top
 		self.draw_background(cam_left_world, cam_top_world, scale);
@@ -375,14 +418,57 @@ impl RenderBackend for PcRenderer {
 		// nothing special yet
 	}
 
+	fn get_render_scale(&self) -> f32 {
+		return self.get_render_scale();
+	}
+
 	fn new() -> Self {
 		let sdl = sdl2::init().unwrap();
 		let _ = sdl2::hint::set("SDL_RENDER_SCALE_QUALITY", "0"); // nearest
 
 		let _image = sdl2::image::init(sdl2::image::InitFlag::PNG).unwrap();
 		let video = sdl.video().unwrap();
-		let window = video.window("jumpy", WINDOW_WIDTH, WINDOW_HEIGHT).position_centered().build().unwrap();
+		let dm = video.desktop_display_mode(0).expect("desktop_display_mode failed");
+		let desktop_width_pixels: u32 = dm.w as u32;
+		let desktop_height_pixels: u32 = dm.h as u32;
+		let target_aspect: f32 = 16.0 / 9.0;
+
+		let saved: Option<WindowSettings> = load_window_settings();
+
+		let (window_width_pixels, window_height_pixels) = if let Some(s) = saved {
+			(s.width_pixels, s.height_pixels)
+		} else {
+			let mut window_height_pixels: u32 = ((desktop_height_pixels as f32) * 0.80) as u32;
+			if window_height_pixels < 360 {
+				window_height_pixels = 360;
+			}
+
+			let mut window_width_pixels: u32 = (window_height_pixels as f32 * target_aspect) as u32;
+			if window_width_pixels > desktop_width_pixels {
+				window_width_pixels = desktop_width_pixels;
+				window_height_pixels = (window_width_pixels as f32 / target_aspect) as u32;
+			}
+
+			(window_width_pixels, window_height_pixels)
+		};
+
+		let mut window = video
+			.window("jumpy", window_width_pixels, window_height_pixels)
+			.position_centered()
+			.resizable()
+			.build()
+			.unwrap();
+
+		if let Some(s) = saved {
+			window.set_position(sdl2::video::WindowPos::Positioned(s.left), sdl2::video::WindowPos::Positioned(s.top));
+
+			if s.is_maximized {
+				window.maximize();
+			}
+		}
+
 		let canvas = window.into_canvas().accelerated().present_vsync().build().unwrap();
+
 		let event_pump = sdl.event_pump().unwrap();
 
 		let creator_box = Box::new(canvas.texture_creator());
@@ -394,7 +480,8 @@ impl RenderBackend for PcRenderer {
 		bg_texture.set_blend_mode(BlendMode::Blend);
 		bg_texture.set_alpha_mod(208);
 
-		let tile_path: PathBuf = get_asset_root().join("pc").join("tiles.png");
+		// let tile_path: PathBuf = get_asset_root().join("pc").join("tiles.png");
+		let tile_path: PathBuf = get_asset_root().join("pc").join("tiles64.png");
 		let tile_texture = texture_creator.load_texture(tile_path).expect("failed to load the tiles png");
 
 		return PcRenderer {
@@ -405,19 +492,16 @@ impl RenderBackend for PcRenderer {
 			bg_texture: Some(bg_texture),
 			bg_parallax_x: 0.35,
 			bg_parallax_y: 0.15,
-			atlas_tile_width_pixels: 16,
-			atlas_tile_height_pixels: 16,
+			atlas_tile_width_pixels: 64,
+			atlas_tile_height_pixels: 64,
 			tile_texture: Some(tile_texture),
+			render_scale: 4,
 		};
 	}
 
 	fn screen_size(&self) -> (i32, i32) {
 		let (w, h) = self.canvas.output_size().unwrap();
 		return (w as i32, h as i32);
-	}
-
-	fn render_scale(&self) -> f32 {
-		return RENDER_SCALE;
 	}
 
 	fn poll_input(&mut self) -> InputState {

@@ -17,6 +17,7 @@ impl RenderBackend for GbaRenderer {
 	fn render_scale(&self) -> f32 {
 		return 1.0;
 	}
+
 	fn new() -> Self {
 		return Self { frame_index: 0 };
 	}
