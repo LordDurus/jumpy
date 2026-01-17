@@ -21,6 +21,9 @@ use crate::{
 	},
 	tile::TileKind,
 };
+
+use crate::assets::get_gfx_root;
+
 use sdl2::{
 	EventPump,
 	image::LoadTexture,
@@ -29,7 +32,7 @@ use sdl2::{
 	render::{BlendMode, Canvas, Texture},
 	video::Window,
 };
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub struct PcRenderer {
 	canvas: Canvas<Window>,
@@ -474,14 +477,14 @@ impl RenderBackend for PcRenderer {
 		let creator_box = Box::new(canvas.texture_creator());
 		let texture_creator: &'static sdl2::render::TextureCreator<sdl2::video::WindowContext> = Box::leak(creator_box);
 
-		let bg_path: PathBuf = get_asset_root().join("pc").join("bg_parallax_forest.png");
+		let bg_path: PathBuf = get_gfx_root().join("pc").join("bg_parallax_forest.png");
 		let mut bg_texture = texture_creator.load_texture(bg_path).expect("failed to load bg_parallax_forest.png");
 
 		bg_texture.set_blend_mode(BlendMode::Blend);
 		bg_texture.set_alpha_mod(208);
 
 		// let tile_path: PathBuf = get_asset_root().join("pc").join("tiles.png");
-		let tile_path: PathBuf = get_asset_root().join("pc").join("tiles64.png");
+		let tile_path: PathBuf = get_gfx_root().join("pc").join("tiles64.png");
 		let tile_texture = texture_creator.load_texture(tile_path).expect("failed to load the tiles png");
 
 		return PcRenderer {
@@ -520,9 +523,4 @@ impl RenderBackend for PcRenderer {
 	fn commit(&mut self) {
 		self.canvas.present();
 	}
-}
-
-fn get_asset_root() -> PathBuf {
-	let root: PathBuf = Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("assets").join("gfx");
-	return root;
 }

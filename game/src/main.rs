@@ -35,7 +35,7 @@ fn main() {
 		}
 	};
 
-	let mut audio: Box<dyn AudioEngine> = {
+	let audio: Box<dyn AudioEngine> = {
 		let mut a = PcAudio::new();
 		a.init();
 		Box::new(a)

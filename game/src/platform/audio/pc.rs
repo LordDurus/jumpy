@@ -1,12 +1,14 @@
 #![cfg(feature = "pc")]
 
-use crate::platform::audio::{AudioEngine, SfxId};
+use crate::platform::audio::{AudioEngine, SfxId, backend::AudioHandle};
 use sdl2::mixer::{self, Channel, Chunk, Music};
 use std::{collections::HashMap, path::PathBuf};
 
 pub struct PcAudio {
 	sfx: HashMap<SfxId, Chunk>,
 	music: Option<Music<'static>>,
+	next_handle: u32,
+	active_channels: HashMap<AudioHandle, Channel>,
 }
 
 impl PcAudio {
@@ -26,6 +28,8 @@ impl AudioEngine for PcAudio {
 		return Self {
 			sfx: HashMap::new(),
 			music: None,
+			next_handle: 1,
+			active_channels: HashMap::new(),
 		};
 	}
 
@@ -46,9 +50,22 @@ impl AudioEngine for PcAudio {
 		self.music.as_ref().unwrap().play(-1).expect("failed to start music");
 	}
 
-	fn play_sfx(&mut self, id: SfxId) {
-		if let Some(chunk) = self.sfx.get(&id) {
-			let _ = Channel::all().play(chunk, 0);
+	fn play_sfx(&mut self, id: SfxId) -> Option<AudioHandle> {
+		let chunk = self.sfx.get(&id)?;
+
+		let channel = Channel::all().play(chunk, 0).ok()?;
+
+		let handle = AudioHandle::new(self.next_handle);
+		self.next_handle += 1;
+
+		self.active_channels.insert(handle, channel);
+
+		return Some(handle);
+	}
+
+	fn stop(&mut self, handle: AudioHandle) {
+		if let Some(channel) = self.active_channels.remove(&handle) {
+			let _ = channel.halt();
 		}
 	}
 
@@ -68,9 +85,5 @@ impl AudioEngine for PcAudio {
 
 	fn update(&mut self) {
 		// nothing required for SDL mixer
-	}
-
-	fn stop(&mut self, _id: SfxId) {
-		Channel::all().halt();
 	}
 }

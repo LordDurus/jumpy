@@ -154,7 +154,6 @@ impl GameState {
 
 		self.audio.play_sfx_and_wait(SfxId::Player1Died);
 		self.respawn_cooldown_frames = 20;
-
 		self.respawn_player(player_id);
 	}
 
