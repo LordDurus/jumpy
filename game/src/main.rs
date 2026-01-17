@@ -1,4 +1,5 @@
 mod ai;
+mod assets;
 mod common;
 mod ecs;
 mod engine_math;
@@ -7,7 +8,13 @@ mod physics;
 mod platform;
 mod tile;
 
-use crate::{game::game_state::GameState, platform::render::backend::RenderBackend};
+use crate::{
+	game::game_state::GameState,
+	platform::{audio::AudioEngine, render::backend::RenderBackend},
+};
+
+#[cfg(feature = "pc")]
+use crate::platform::audio::pc::PcAudio;
 
 #[cfg(feature = "pc")]
 type ActiveRenderer = crate::platform::render::pc::PcRenderer;
@@ -28,7 +35,13 @@ fn main() {
 		}
 	};
 
-	let mut state = GameState::new(level);
+	let mut audio: Box<dyn AudioEngine> = {
+		let mut a = PcAudio::new();
+		a.init();
+		Box::new(a)
+	};
+
+	let mut state = GameState::new(level, audio);
 
 	state.spawn_level_entities();
 	let player_id = state.get_player_id();

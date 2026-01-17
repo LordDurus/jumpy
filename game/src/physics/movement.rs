@@ -2,6 +2,7 @@ use crate::{
 	engine_math::Vec2,
 	game::game_state::{EntityId, EntityKind, GameState},
 	physics::collision::{HitSide, classify_aabb_hit_side, resolve_ceiling_collision, resolve_floor_collision, resolve_wall_collision},
+	platform::audio::SfxId,
 };
 
 #[allow(dead_code)]
@@ -173,6 +174,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 				CollisionOutcome::Stomped(target_id) => {
 					//TODO: Calc Damage remove id needed
 					game_state.remove_entity(target_id);
+					game_state.audio.play_sfx(SfxId::Stomp);
 				}
 				CollisionOutcome::Damaged { source: _ } => {
 					if is_player {
@@ -239,7 +241,10 @@ pub fn move_and_collide(game_state: &mut GameState) {
 							let should_fire: bool = true;
 
 							if should_fire {
-								let _ = try_jump(game_state, entity_id);
+								let jumped = try_jump(game_state, entity_id);
+								if jumped {
+									game_state.audio.play_sfx(SfxId::Jump);
+								}
 							}
 						}
 					}
@@ -622,25 +627,6 @@ fn resolve_entity_collisions(
 			let was_above: bool = prev_bottom <= collider.top + 0.01;
 			let was_below: bool = prev_top >= collider.bottom - 0.01;
 			let side_overlap: bool = !was_above && !was_below;
-
-			/*
-			if !on_top && collider.delta_x != 0.0 && (collider.profile.left.blocks || collider.profile.right.blocks) {
-				// if platform moved right this frame, shove actor right out of it
-				if collider.delta_x > 0.0 {
-					// entity must end up to the right of platform
-					position.x = collider.right + half_width;
-					velocity.x = 0.0;
-					continue 'pass;
-				}
-
-				// moved left
-				if collider.delta_x < 0.0 {
-					position.x = collider.left - half_width;
-					velocity.x = 0.0;
-					continue 'pass;
-				}
-			}
-			*/
 
 			if side_overlap && collider.delta_x != 0.0 && (collider.profile.left.blocks || collider.profile.right.blocks) {
 				println!("shove actor out sideways...");

@@ -1,8 +1,8 @@
 #[allow(dead_code)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SfxId {
 	Jump,
-	Land,
+	Stomp,
 	Hit,
 	Player1Died,
 	Player2Died,

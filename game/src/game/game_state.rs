@@ -3,8 +3,10 @@ use crate::{
 	engine_math::Vec2,
 	game::{Settings, level::Level},
 	physics::collision,
+	platform::audio::{AudioEngine, SfxId},
 	tile::TileCollision,
 };
+
 pub type EntityId = u32;
 
 #[derive(Clone, Copy)]
@@ -83,11 +85,12 @@ pub struct GameState {
 	pub respawn_states: ComponentStore<RespawnState>,
 	pub respawn_cooldown_frames: u8,
 	pub camera_baseline_max_bottom_world: Option<f32>,
+	pub audio: Box<dyn AudioEngine>,
 	next_entity_id: EntityId,
 }
 
 impl GameState {
-	pub fn new(current_level: Level) -> GameState {
+	pub fn new(current_level: Level, audio: Box<dyn AudioEngine>) -> GameState {
 		let spawn_top_tiles: u16 = current_level.player_spawn_top as u16;
 		let spawn_left_tiles: u16 = current_level.player_spawn_left as u16;
 
@@ -118,6 +121,7 @@ impl GameState {
 			enemy_ids: Vec::new(),
 			respawn_cooldown_frames: 0,
 			camera_baseline_max_bottom_world: None,
+			audio,
 			tick: 0,
 		};
 
@@ -144,16 +148,13 @@ impl GameState {
 	}
 
 	pub fn kill_player(&mut self, player_id: EntityId) {
-		// TODOs:
-		// Play Death Music
-		// Reduce number of lives and check before respwaning
-		// println!("kill_player {}", player_id);
-
 		if let Some(respawn_state) = self.respawn_states.get_mut(player_id) {
 			respawn_state.respawn_cooldown_frames = self.respawn_cooldown_frames;
 		}
 
+		self.audio.play_sfx_and_wait(SfxId::Player1Died);
 		self.respawn_cooldown_frames = 20;
+
 		self.respawn_player(player_id);
 	}
 
