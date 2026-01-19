@@ -10,7 +10,10 @@ mod tile;
 
 use crate::{
 	game::game_state::GameState,
-	platform::{audio::AudioEngine, render::backend::RenderBackend},
+	platform::{
+		audio::{AudioEngine, backend::MusicId},
+		render::backend::RenderBackend,
+	},
 };
 
 #[cfg(feature = "pc")]
@@ -42,6 +45,10 @@ fn main() {
 	};
 
 	let mut state = GameState::new(level, audio);
+
+	if state.settings.is_background_music_enabled {
+		state.audio.play_music(MusicId::World1, true);
+	}
 
 	state.spawn_level_entities();
 	let player_id = state.get_player_id();

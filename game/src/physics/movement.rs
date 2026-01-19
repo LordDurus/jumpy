@@ -174,7 +174,9 @@ pub fn move_and_collide(game_state: &mut GameState) {
 				CollisionOutcome::Stomped(target_id) => {
 					//TODO: Calc Damage remove id needed
 					game_state.remove_entity(target_id);
-					game_state.audio.play_sfx(SfxId::Stomp);
+					if game_state.settings.are_sound_effects_enabled {
+						game_state.audio.play_sfx(SfxId::Stomp);
+					}
 				}
 				CollisionOutcome::Damaged { source: _ } => {
 					if is_player {
@@ -243,7 +245,9 @@ pub fn move_and_collide(game_state: &mut GameState) {
 							if should_fire {
 								let jumped = try_jump(game_state, entity_id);
 								if jumped {
-									game_state.audio.play_sfx(SfxId::Jump);
+									if game_state.settings.are_sound_effects_enabled {
+										game_state.audio.play_sfx(SfxId::Jump);
+									}
 								}
 							}
 						}

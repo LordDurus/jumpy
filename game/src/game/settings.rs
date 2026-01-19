@@ -7,6 +7,8 @@ pub struct Settings {
 	pub stomp_bounce_multiplier: f32,
 	pub bounce_separator: f32,
 	pub camera_bottom_padding_tiles: u8,
+	pub is_background_music_enabled: bool,
+	pub are_sound_effects_enabled: bool,
 }
 
 impl Settings {
@@ -20,6 +22,8 @@ impl Settings {
 			gravity: 0.35,
 			bounce_separator: 0.5,
 			camera_bottom_padding_tiles: 2,
+			is_background_music_enabled: false,
+			are_sound_effects_enabled: true,
 		};
 	}
 }

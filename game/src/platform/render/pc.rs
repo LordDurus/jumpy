@@ -6,6 +6,7 @@
 mod pc_platform;
 
 use crate::{
+	assets::get_gfx_root,
 	common::coords::{PixelSize, Pointf32, Size, clamp_camera_to_level_world, get_screen, visible_tile_bounds},
 	game::{
 		game_state::{EntityKind, GameState},
@@ -21,8 +22,6 @@ use crate::{
 	},
 	tile::TileKind,
 };
-
-use crate::assets::get_gfx_root;
 
 use sdl2::{
 	EventPump,
