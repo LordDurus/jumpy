@@ -14,6 +14,7 @@ use crate::{
 	},
 	platform::{
 		RenderBackend,
+		audio::backend::LocomotionAnim,
 		input::InputState,
 		render::{
 			common::RenderCommon,
@@ -37,6 +38,14 @@ pub struct PcRenderer {
 	canvas: Canvas<Window>,
 	event_pump: EventPump,
 	common: RenderCommon,
+
+	slime_blue_walk_texture: Texture<'static>,
+	slime_blue_run_texture: Texture<'static>,
+	slime_undead_walk_texture: Texture<'static>,
+	slime_undead_run_texture: Texture<'static>,
+	slime_lava_walk_texture: Texture<'static>,
+	slime_lava_run_texture: Texture<'static>,
+
 	pub frame_index: u32,
 	pub atlas_tile_width_pixels: u32,
 	#[allow(dead_code)]
@@ -57,15 +66,37 @@ impl Drop for PcRenderer {
 }
 
 impl PcRenderer {
+	fn get_slime_texture(&self, kind: EntityKind, anim: LocomotionAnim) -> &sdl2::render::Texture<'static> {
+		match (kind, anim) {
+			(EntityKind::SlimeBlue, LocomotionAnim::Walk) => {
+				return &self.slime_blue_walk_texture;
+			}
+			(EntityKind::SlimeBlue, LocomotionAnim::Run) => {
+				return &self.slime_blue_run_texture;
+			}
+			(EntityKind::SlimeUndead, LocomotionAnim::Walk) => {
+				return &self.slime_undead_walk_texture;
+			}
+			(EntityKind::SlimeUndead, LocomotionAnim::Run) => {
+				return &self.slime_undead_run_texture;
+			}
+			(EntityKind::SlimeLava, LocomotionAnim::Walk) => {
+				return &self.slime_lava_walk_texture;
+			}
+			(EntityKind::SlimeLava, LocomotionAnim::Run) => {
+				return &self.slime_lava_run_texture;
+			}
+			_ => {
+				panic!("get_slime_texture called for non-slime entity kind {:?}", kind);
+			}
+		}
+	}
+
 	fn draw_filled_rect(&mut self, x: i32, y: i32, w: u32, h: u32, color: Color) {
 		self.canvas.set_draw_color(color);
 		let rect = Rect::new(x, y, w, h);
 		let _ = self.canvas.fill_rect(rect);
 		return;
-	}
-
-	fn get_render_scale(&self) -> f32 {
-		return self.render_scale as f32;
 	}
 
 	fn draw_filled_circle(&mut self, circle_x: i32, circle_y: i32, radius: i32, color: Color) {
@@ -362,8 +393,98 @@ impl PcRenderer {
 
 			let scale_left: i32 = screen.left;
 			let scale_top: i32 = screen.top;
-			let width: u32 = ((half_width * 2.0) * scale).round() as u32;
-			let height: u32 = ((half_height * 2.0) * scale).round() as u32;
+			let mut width: u32 = ((half_width * 2.0) * scale).round() as u32;
+			let mut height: u32 = ((half_height * 2.0) * scale).round() as u32;
+
+			if entity_kind == EntityKind::SlimeBlue || entity_kind == EntityKind::SlimeUndead || entity_kind == EntityKind::SlimeLava {
+				width = width * scale as u32;
+				height = height * scale as u32;
+
+				// println!("entity id {} raw kind {}", id, kind);
+				let vel = game_state.velocities.get(id).copied().unwrap_or_default();
+				let abs_vx: f32 = vel.x.abs();
+
+				let anim = if abs_vx >= 3.0 { LocomotionAnim::Run } else { LocomotionAnim::Walk };
+
+				let frame_index: u32 = (_frame_index / 6) % 8;
+				let row_index: u32 = 2;
+
+				let src_left_pixels: i32 = (frame_index as i32) * 64;
+				let src_top_pixels: i32 = (row_index as i32) * 64;
+				let src = Rect::new(src_left_pixels, src_top_pixels, 64, 64);
+
+				let dest_width_pixels_u32: u32 = width.max(1);
+				let dest_height_pixels_u32: u32 = height.max(1);
+
+				// anchor point on the physics body: bottom-center
+				let entity_bottom_center_world_x: f32 = pos.x;
+				let entity_bottom_center_world_y: f32 = pos.y + half_height;
+
+				let entity_bottom_center_screen_left: i32 = ((entity_bottom_center_world_x - camera_left) * scale).round() as i32;
+				let entity_bottom_center_screen_top: i32 = ((entity_bottom_center_world_y - camera_top) * scale).round() as i32;
+
+				// anchor point inside the sprite frame (tune once)
+				let anchor_left_frac: f32 = 32.0 / 64.0;
+				let anchor_top_frac: f32 = 40.0 / 64.0;
+
+				let sprite_feet_left_pixels: i32 = (dest_width_pixels_u32 as f32 * anchor_left_frac).round() as i32;
+				let sprite_feet_top_pixels: i32 = (dest_height_pixels_u32 as f32 * anchor_top_frac).round() as i32;
+
+				let dest_left_pixels: i32 = entity_bottom_center_screen_left - sprite_feet_left_pixels;
+				let dest_top_pixels: i32 = entity_bottom_center_screen_top - sprite_feet_top_pixels;
+
+				let dest = Rect::new(dest_left_pixels, dest_top_pixels, dest_width_pixels_u32, dest_height_pixels_u32);
+
+				/*
+				if _frame_index % 60 == 0 {
+					println!("slime id={} half_w={} half_h={} width_px={} height_px={}", id, half_width, half_height, width, height);
+				}
+				*/
+
+				let flip_horizontal: bool = vel.x > 0.0;
+
+				match (entity_kind, anim) {
+					(EntityKind::SlimeBlue, LocomotionAnim::Walk) => {
+						let _ = self
+							.canvas
+							.copy_ex(&self.slime_blue_walk_texture, src, dest, 0.0, None, flip_horizontal, false)
+							.unwrap();
+					}
+					(EntityKind::SlimeBlue, LocomotionAnim::Run) => {
+						let _ = self
+							.canvas
+							.copy_ex(&self.slime_blue_run_texture, src, dest, 0.0, None, flip_horizontal, false)
+							.unwrap();
+					}
+					(EntityKind::SlimeUndead, LocomotionAnim::Walk) => {
+						let _ = self
+							.canvas
+							.copy_ex(&self.slime_undead_walk_texture, src, dest, 0.0, None, flip_horizontal, false)
+							.unwrap();
+					}
+					(EntityKind::SlimeUndead, LocomotionAnim::Run) => {
+						let _ = self
+							.canvas
+							.copy_ex(&self.slime_undead_run_texture, src, dest, 0.0, None, flip_horizontal, false)
+							.unwrap();
+					}
+					(EntityKind::SlimeLava, LocomotionAnim::Walk) => {
+						let _ = self
+							.canvas
+							.copy_ex(&self.slime_lava_walk_texture, src, dest, 0.0, None, flip_horizontal, false)
+							.unwrap();
+					}
+					(EntityKind::SlimeLava, LocomotionAnim::Run) => {
+						let _ = self
+							.canvas
+							.copy_ex(&self.slime_lava_run_texture, src, dest, 0.0, None, flip_horizontal, false)
+							.unwrap();
+					}
+					_ => {}
+				}
+
+				continue;
+			}
 
 			if entity_kind == EntityKind::MovingPlatform {
 				let width_pixels: f32 = *game_state.widths.get(id).unwrap_or(&16) as f32;
@@ -388,11 +509,13 @@ impl PcRenderer {
 			}
 
 			let color: Color = match entity_kind {
-				EntityKind::Empty => Color::RGB(0, 0, 0),              // not set (black)
-				EntityKind::Player => Color::RGB(255, 255, 255),       // player (white)
-				EntityKind::Slime => Color::RGB(64, 160, 255),         // slime (blue)
-				EntityKind::Imp => Color::RGB(64, 200, 64),            // imp (green)
-				EntityKind::MovingPlatform => Color::RGB(255, 255, 0), // platform (yellow)
+				EntityKind::Empty => Color::RGB(0, 0, 0),
+				EntityKind::Imp => Color::RGB(64, 200, 64),
+				EntityKind::MovingPlatform => Color::RGB(255, 255, 0),
+				EntityKind::SlimeBlue => Color::RGB(64, 160, 255),
+				EntityKind::SlimeLava => Color::RGB(255, 0, 0),
+				EntityKind::SlimeUndead => Color::RGB(255, 255, 255),
+				EntityKind::Player => Color::RGB(255, 255, 255),
 			};
 
 			match style {
@@ -421,7 +544,7 @@ impl RenderBackend for PcRenderer {
 	}
 
 	fn get_render_scale(&self) -> f32 {
-		return self.get_render_scale();
+		return self.render_scale as f32;
 	}
 
 	fn new() -> Self {
@@ -470,21 +593,37 @@ impl RenderBackend for PcRenderer {
 		}
 
 		let canvas = window.into_canvas().accelerated().present_vsync().build().unwrap();
-
 		let event_pump = sdl.event_pump().unwrap();
+		let texture_creator = leak_texture_creator(&canvas);
 
-		let creator_box = Box::new(canvas.texture_creator());
-		let texture_creator: &'static sdl2::render::TextureCreator<sdl2::video::WindowContext> = Box::leak(creator_box);
-
-		let bg_path: PathBuf = get_gfx_root().join("pc").join("bg_parallax_forest.png");
-		let mut bg_texture = texture_creator.load_texture(bg_path).expect("failed to load bg_parallax_forest.png");
-
+		// background
+		let bg_path = gfx_pc_path(&["background", "bg_parallax_forest.png"]);
+		let mut bg_texture = load_texture(texture_creator, bg_path);
 		bg_texture.set_blend_mode(BlendMode::Blend);
 		bg_texture.set_alpha_mod(208);
 
-		// let tile_path: PathBuf = get_asset_root().join("pc").join("tiles.png");
-		let tile_path: PathBuf = get_gfx_root().join("pc").join("tiles64.png");
-		let tile_texture = texture_creator.load_texture(tile_path).expect("failed to load the tiles png");
+		// tiles
+		let tile_path = gfx_pc_path(&["tiles", "tiles64.png"]);
+		let tile_texture = load_texture(texture_creator, tile_path);
+
+		// slimes
+		let slime_blue_walk_path = gfx_pc_path(&["slime", "blue", "walk_body.png"]);
+		let slime_blue_walk_tex = load_texture(texture_creator, slime_blue_walk_path);
+
+		let slime_blue_run_path = gfx_pc_path(&["slime", "blue", "run_body.png"]);
+		let slime_blue_run_tex = load_texture(texture_creator, slime_blue_run_path);
+
+		let slime_undead_walk_path = gfx_pc_path(&["slime", "undead", "walk_body.png"]);
+		let slime_undead_walk_tex = load_texture(texture_creator, slime_undead_walk_path);
+
+		let slime_undead_run_path = gfx_pc_path(&["slime", "undead", "run_body.png"]);
+		let slime_undead_run_tex = load_texture(texture_creator, slime_undead_run_path);
+
+		let slime_lava_walk_path = gfx_pc_path(&["slime", "lava", "walk_body.png"]);
+		let slime_lava_walk_tex = load_texture(texture_creator, slime_lava_walk_path);
+
+		let slime_lava_run_path = gfx_pc_path(&["slime", "lava", "run_body.png"]);
+		let slime_lava_run_tex = load_texture(texture_creator, slime_lava_run_path);
 
 		return PcRenderer {
 			canvas,
@@ -498,6 +637,12 @@ impl RenderBackend for PcRenderer {
 			atlas_tile_height_pixels: 64,
 			tile_texture: Some(tile_texture),
 			render_scale: 4,
+			slime_blue_run_texture: slime_blue_run_tex,
+			slime_blue_walk_texture: slime_blue_walk_tex,
+			slime_lava_walk_texture: slime_lava_walk_tex,
+			slime_lava_run_texture: slime_lava_run_tex,
+			slime_undead_run_texture: slime_undead_run_tex,
+			slime_undead_walk_texture: slime_undead_walk_tex,
 		};
 	}
 
@@ -522,4 +667,26 @@ impl RenderBackend for PcRenderer {
 	fn commit(&mut self) {
 		self.canvas.present();
 	}
+}
+
+fn leak_texture_creator(canvas: &sdl2::render::Canvas<sdl2::video::Window>) -> &'static sdl2::render::TextureCreator<sdl2::video::WindowContext> {
+	let creator_box = Box::new(canvas.texture_creator());
+	let texture_creator: &'static sdl2::render::TextureCreator<sdl2::video::WindowContext> = Box::leak(creator_box);
+	return texture_creator;
+}
+
+fn load_texture(texture_creator: &'static sdl2::render::TextureCreator<sdl2::video::WindowContext>, path: PathBuf) -> sdl2::render::Texture<'static> {
+	let path_string = path.to_string_lossy().to_string();
+	let texture = texture_creator
+		.load_texture(&path)
+		.unwrap_or_else(|_| panic!("failed to load texture: {}", path_string));
+	return texture;
+}
+
+fn gfx_pc_path(parts: &[&str]) -> PathBuf {
+	let mut path = get_gfx_root().join("pc");
+	for p in parts {
+		path = path.join(p);
+	}
+	return path;
 }

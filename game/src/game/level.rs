@@ -248,39 +248,32 @@ impl Level {
 			entities.push(entity);
 		}
 
-		/*
-				println!("-- entities loaded --");
-				for (i, e) in entities.iter().enumerate() {
-					let kind_name = match e.kind {
-						1 => "Player",
-						2 => "Slime",
-						3 => "Imp",
-						4 => "MovingPlatform",
-						_ => "Empty",
-					};
+		println!("-- entities loaded --");
+		for (i, e) in entities.iter().enumerate() {
+			let kind_name = EntityKind::str_from_u8(e.kind);
 
-					println!(
-						" {}: kind={}({}) style={} top={} left={} health_regen_rate={} invulnerability_time={} width={} height={} speed={} strength={} luck={} hit_points={} range_min={} range_max={} gravity={}",
-						i,
-						e.kind,
-						kind_name,
-						e.render_style,
-						e.top,
-						e.left,
-						e.health_regen_rate,
-						e.invulnerability_time,
-						e.width,
-						e.height,
-						e.speed,
-						e.strength,
-						e.luck,
-						e.hit_points,
-						e.range_min,
-						e.range_max,
-						e.gravity_multiplier
-					);
-				}
-		*/
+			println!(
+				" {}: kind={}({}) style={} top={} left={} health_regen_rate={} invulnerability_time={} width={} height={} speed={} strength={} luck={} hit_points={} range_min={} range_max={} gravity={}",
+				i,
+				e.kind,
+				kind_name,
+				e.render_style,
+				e.top,
+				e.left,
+				e.health_regen_rate,
+				e.invulnerability_time,
+				e.width,
+				e.height,
+				e.speed,
+				e.strength,
+				e.luck,
+				e.hit_points,
+				e.range_min,
+				e.range_max,
+				e.gravity_multiplier
+			);
+		}
+
 		let mut player_spawn_top: f32 = 0.0;
 		let mut player_spawn_left: f32 = 0.0;
 		let mut found_spawn: bool = false;

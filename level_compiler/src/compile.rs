@@ -141,7 +141,9 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 				range_max,
 			} => {
 				let resolved_kind: u8 = match enemy_kind.as_str() {
-					"slime" => EntityKind::Slime as u8,
+					"slime_blue" => EntityKind::SlimeBlue as u8,
+					"slime_undead" => EntityKind::SlimeUndead as u8,
+					"slime_lava" => EntityKind::SlimeLava as u8,
 					"imp" => EntityKind::Imp as u8,
 					_ => return Err(format!("unknown enemy kind '{}'", enemy_kind)),
 				};

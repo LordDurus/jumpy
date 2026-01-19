@@ -30,15 +30,21 @@ pub struct JumpState {
 pub enum EntityKind {
 	Empty = 0,
 	Player = 1,
-	Slime = 2,
+	SlimeBlue = 2,
 	Imp = 3,
 	MovingPlatform = 4,
+	SlimeUndead = 5,
+	SlimeLava = 6,
 }
 
 impl EntityKind {
 	#[inline(always)]
 	pub fn is_enemy(kind: u8) -> bool {
-		kind == EntityKind::Slime as u8 || kind == EntityKind::Imp as u8
+		kind == EntityKind::SlimeBlue as u8
+			|| kind == EntityKind::SlimeUndead as u8
+			|| kind == EntityKind::SlimeLava as u8
+			|| kind == EntityKind::Imp as u8
+			|| kind == EntityKind::SlimeUndead as u8
 	}
 
 	#[inline(always)]
@@ -46,12 +52,40 @@ impl EntityKind {
 		kind == EntityKind::Player as u8
 	}
 
+	#[allow(dead_code)]
+	pub fn as_str(self) -> &'static str {
+		match self {
+			EntityKind::Empty => "Empty",
+			EntityKind::Player => "Player",
+			EntityKind::SlimeBlue => "SlimeBlue",
+			EntityKind::SlimeUndead => "SlimeUndead",
+			EntityKind::SlimeLava => "SlimeLava",
+			EntityKind::Imp => "Imp",
+			EntityKind::MovingPlatform => "MovingPlatform",
+		}
+	}
+
+	pub fn str_from_u8(v: u8) -> &'static str {
+		match v {
+			0 => "Empty",
+			1 => "Player",
+			2 => "SlimeBlue",
+			3 => "Imp",
+			4 => "MovingPlatform",
+			5 => "SlimeUndead",
+			6 => "SlimeLava",
+			_ => "Empty",
+		}
+	}
+
 	pub fn from_u8(v: u8) -> EntityKind {
 		match v {
 			1 => EntityKind::Player,
-			2 => EntityKind::Slime,
+			2 => EntityKind::SlimeBlue,
 			3 => EntityKind::Imp,
 			4 => EntityKind::MovingPlatform,
+			5 => EntityKind::SlimeUndead,
+			6 => EntityKind::SlimeLava,
 			_ => EntityKind::Empty,
 		}
 	}

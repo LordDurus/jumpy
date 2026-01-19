@@ -73,7 +73,7 @@ entities
 		strength = 15
 	}
 
-	enemy "slime"
+	enemy "slime_blue"
 	{
 		top = 20
 		left = 3
@@ -84,14 +84,14 @@ entities
 		attack_power = 1
 		hit_points = 1
 		render_style = 2
-		width = .5
-		height = .5
-		speed = 4
+		width = .6
+		height = .6
+		speed = 1
 		luck = 5
 		strength = 5
 	}
 	
-	enemy "slime"
+	enemy "slime_undead"
 	{
 		top = 20
 		left = 4
@@ -102,14 +102,14 @@ entities
 		attack_power = 1
 		hit_points = 1
 		render_style = 2
-		width = .5
-		height = .5
-		speed = 4
+		width = .6
+		height = .6
+		speed = 1
 		luck = 5
 		strength = 5
 	}
 	
-	enemy "slime"
+	enemy "slime_lava"
 	{
 		top = 20
 		left = 5
@@ -120,9 +120,9 @@ entities
 		attack_power = 1
 		hit_points = 1
 		render_style = 2
-		width = .5
-		height = .5
-		speed = 4
+		width = .6
+		height = .6
+		speed = 1
 		luck = 5
 		strength = 5
 	}

@@ -99,9 +99,11 @@ pub struct CompiledLevel {
 #[allow(dead_code)]
 pub enum EntityKind {
 	Player = 1,
-	Slime = 2,
+	SlimeBlue = 2,
 	Imp = 3,
 	MovingPlatform = 4,
+	SlimeUndead = 5,
+	SlimeLava = 6,
 }
 
 #[repr(u8)]

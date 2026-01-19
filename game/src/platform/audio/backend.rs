@@ -37,3 +37,9 @@ pub trait AudioEngine {
 	fn stop(&mut self, handle: AudioHandle);
 	fn stop_music(&mut self);
 }
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum LocomotionAnim {
+	Walk,
+	Run,
+}
