@@ -10,7 +10,7 @@ use crate::{
 	common::coords::{PixelSize, Pointf32, Size, clamp_camera_to_level_world, get_screen, visible_tile_bounds},
 	engine_math::Vec2,
 	game::{
-		game_state::{EntityId, EntityKind, GameState},
+		game_state::{EntityKind, GameState},
 		level::Level,
 	},
 	platform::{
@@ -70,24 +70,6 @@ impl Drop for PcRenderer {
 }
 
 impl PcRenderer {
-	fn get_slime_texture(&self, kind: EntityKind, anim: LocomotionAnim) -> &sdl2::render::Texture<'static> {
-		match (kind, anim) {
-			(EntityKind::SlimeBlue, LocomotionAnim::Walk) => return &self.slime_blue_walk_texture,
-			(EntityKind::SlimeBlue, LocomotionAnim::Run) => return &self.slime_blue_run_texture,
-			(EntityKind::SlimeBlue, LocomotionAnim::Death) => return &self.slime_blue_death_texture,
-
-			(EntityKind::SlimeUndead, LocomotionAnim::Walk) => return &self.slime_undead_walk_texture,
-			(EntityKind::SlimeUndead, LocomotionAnim::Run) => return &self.slime_undead_run_texture,
-			(EntityKind::SlimeUndead, LocomotionAnim::Death) => return &self.slime_undead_death_texture,
-
-			(EntityKind::SlimeLava, LocomotionAnim::Walk) => return &self.slime_lava_walk_texture,
-			(EntityKind::SlimeLava, LocomotionAnim::Run) => return &self.slime_lava_run_texture,
-			(EntityKind::SlimeLava, LocomotionAnim::Death) => return &self.slime_lava_death_texture,
-
-			_ => panic!("get_slime_texture called for non-slime entity kind {:?}", kind),
-		}
-	}
-
 	fn get_slime_texture_key(&self, kind: EntityKind, anim: LocomotionAnim) -> SlimeTextureKey {
 		match (kind, anim) {
 			(EntityKind::SlimeBlue, LocomotionAnim::Walk) => return SlimeTextureKey::BlueWalk,
@@ -413,7 +395,6 @@ impl PcRenderer {
 			if entity_kind == EntityKind::SlimeBlue || entity_kind == EntityKind::SlimeUndead || entity_kind == EntityKind::SlimeLava {
 				let death_timer: u16 = game_state.death_timers.get(id).copied().unwrap_or(0);
 				if death_timer > 0 {
-					// println!("Draw death");
 					self.draw_death_entity(game_state, entity_kind, pos, half_height, camera_left, camera_top, scale, death_timer);
 					continue;
 				}
@@ -431,7 +412,6 @@ impl PcRenderer {
 					LocomotionAnim::Walk
 				};
 
-				// death sheet is 10 frames (based on your image). walk/run are 8.
 				let frame_count: u32 = if anim == LocomotionAnim::Death { 10 } else { 8 };
 				let frame_index: u32 = (_frame_index / 6) % frame_count;
 

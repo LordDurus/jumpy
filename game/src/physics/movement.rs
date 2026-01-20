@@ -190,28 +190,13 @@ pub fn move_and_collide(game_state: &mut GameState) {
 					}
 
 					let chain: u16 = game_state.stomp_chains.get(player_id).copied().unwrap_or(0);
-					let bonus: u16 = stomp_bonus(chain).min(game_state.settings.stomp_bonus_cap as u16);
+					let bonus: u16 = stomp_bonus(chain, game_state.settings.stomp_chain_gain_per_stomp as u16).min(game_state.settings.stomp_bonus_cap as u16);
 					let base_stomp_damage = game_state.base_stomp_damages.get(player_id).copied().unwrap_or(2);
 					let damage: u16 = base_stomp_damage + bonus;
 					let hit_points = game_state.hit_points.get(target_id).copied().unwrap_or(1);
 
-					println!("hit_points={}, damage={}", hit_points, damage);
-
 					if damage >= hit_points {
-						// game_state.remove_entity(target_id);
-
-						println!(
-							"killing enemy id={}, kind={}",
-							target_id,
-							EntityKind::from_u8(*game_state.entity_kinds.get(target_id).unwrap_or(&0)).as_str()
-						);
-
 						game_state.start_enemy_death(target_id, DeathAnim::SlimeFlatten);
-
-						println!(
-							"after start_enemy_death: death_timer={}",
-							game_state.death_timers.get(target_id).copied().unwrap_or(0)
-						);
 
 						if game_state.settings.are_sound_effects_enabled {
 							game_state.audio.play_sfx(SfxId::Stomp);
@@ -806,8 +791,10 @@ fn resolve_entity_collisions(
 }
 
 #[inline(always)]
-pub fn stomp_bonus(chain: u16) -> u16 {
-	isqrt_u32(chain as u32) as u16
+pub fn stomp_bonus(chain: u16, stomp_chain_gain_per_stomp: u16) -> u16 {
+	let scaled: u32 = (chain as u32).saturating_mul(stomp_chain_gain_per_stomp as u32);
+	return isqrt_u32(scaled) as u16;
+	//isqrt_u32(chain as u32) as u16
 }
 
 #[inline(always)]

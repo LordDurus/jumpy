@@ -1,9 +1,4 @@
-use crate::{
-	GameState,
-	engine_math::Vec2,
-	game::game_state::{EntityId, EntityKind},
-	platform::render::input::InputState,
-};
+use crate::{GameState, engine_math::Vec2, game::game_state::EntityKind, platform::render::input::InputState};
 
 pub trait RenderBackend {
 	fn screen_size(&self) -> (i32, i32);

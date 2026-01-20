@@ -12,7 +12,9 @@ pub type EntityId = u32;
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum DeathAnim {
+	#[allow(dead_code)]
 	None = 0,
+
 	SlimeFlatten = 1,
 }
 
@@ -416,7 +418,6 @@ impl GameState {
 
 		self.death_anims.set(id, anim as u8);
 
-		// settings-driven duration (add this to Settings)
 		let frames: u16 = self.settings.enemy_death_frames as u16;
 		self.death_timers.set(id, frames);
 
