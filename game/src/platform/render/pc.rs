@@ -8,8 +8,9 @@ mod pc_platform;
 use crate::{
 	assets::get_gfx_root,
 	common::coords::{PixelSize, Pointf32, Size, clamp_camera_to_level_world, get_screen, visible_tile_bounds},
+	engine_math::Vec2,
 	game::{
-		game_state::{EntityKind, GameState},
+		game_state::{EntityId, EntityKind, GameState},
 		level::Level,
 	},
 	platform::{
@@ -41,10 +42,13 @@ pub struct PcRenderer {
 
 	slime_blue_walk_texture: Texture<'static>,
 	slime_blue_run_texture: Texture<'static>,
+	slime_blue_death_texture: Texture<'static>,
 	slime_undead_walk_texture: Texture<'static>,
 	slime_undead_run_texture: Texture<'static>,
+	slime_undead_death_texture: Texture<'static>,
 	slime_lava_walk_texture: Texture<'static>,
 	slime_lava_run_texture: Texture<'static>,
+	slime_lava_death_texture: Texture<'static>,
 
 	pub frame_index: u32,
 	pub atlas_tile_width_pixels: u32,
@@ -68,27 +72,37 @@ impl Drop for PcRenderer {
 impl PcRenderer {
 	fn get_slime_texture(&self, kind: EntityKind, anim: LocomotionAnim) -> &sdl2::render::Texture<'static> {
 		match (kind, anim) {
-			(EntityKind::SlimeBlue, LocomotionAnim::Walk) => {
-				return &self.slime_blue_walk_texture;
-			}
-			(EntityKind::SlimeBlue, LocomotionAnim::Run) => {
-				return &self.slime_blue_run_texture;
-			}
-			(EntityKind::SlimeUndead, LocomotionAnim::Walk) => {
-				return &self.slime_undead_walk_texture;
-			}
-			(EntityKind::SlimeUndead, LocomotionAnim::Run) => {
-				return &self.slime_undead_run_texture;
-			}
-			(EntityKind::SlimeLava, LocomotionAnim::Walk) => {
-				return &self.slime_lava_walk_texture;
-			}
-			(EntityKind::SlimeLava, LocomotionAnim::Run) => {
-				return &self.slime_lava_run_texture;
-			}
-			_ => {
-				panic!("get_slime_texture called for non-slime entity kind {:?}", kind);
-			}
+			(EntityKind::SlimeBlue, LocomotionAnim::Walk) => return &self.slime_blue_walk_texture,
+			(EntityKind::SlimeBlue, LocomotionAnim::Run) => return &self.slime_blue_run_texture,
+			(EntityKind::SlimeBlue, LocomotionAnim::Death) => return &self.slime_blue_death_texture,
+
+			(EntityKind::SlimeUndead, LocomotionAnim::Walk) => return &self.slime_undead_walk_texture,
+			(EntityKind::SlimeUndead, LocomotionAnim::Run) => return &self.slime_undead_run_texture,
+			(EntityKind::SlimeUndead, LocomotionAnim::Death) => return &self.slime_undead_death_texture,
+
+			(EntityKind::SlimeLava, LocomotionAnim::Walk) => return &self.slime_lava_walk_texture,
+			(EntityKind::SlimeLava, LocomotionAnim::Run) => return &self.slime_lava_run_texture,
+			(EntityKind::SlimeLava, LocomotionAnim::Death) => return &self.slime_lava_death_texture,
+
+			_ => panic!("get_slime_texture called for non-slime entity kind {:?}", kind),
+		}
+	}
+
+	fn get_slime_texture_key(&self, kind: EntityKind, anim: LocomotionAnim) -> SlimeTextureKey {
+		match (kind, anim) {
+			(EntityKind::SlimeBlue, LocomotionAnim::Walk) => return SlimeTextureKey::BlueWalk,
+			(EntityKind::SlimeBlue, LocomotionAnim::Run) => return SlimeTextureKey::BlueRun,
+			(EntityKind::SlimeBlue, LocomotionAnim::Death) => return SlimeTextureKey::BlueDeath,
+
+			(EntityKind::SlimeUndead, LocomotionAnim::Walk) => return SlimeTextureKey::UndeadWalk,
+			(EntityKind::SlimeUndead, LocomotionAnim::Run) => return SlimeTextureKey::UndeadRun,
+			(EntityKind::SlimeUndead, LocomotionAnim::Death) => return SlimeTextureKey::UndeadDeath,
+
+			(EntityKind::SlimeLava, LocomotionAnim::Walk) => return SlimeTextureKey::LavaWalk,
+			(EntityKind::SlimeLava, LocomotionAnim::Run) => return SlimeTextureKey::LavaRun,
+			(EntityKind::SlimeLava, LocomotionAnim::Death) => return SlimeTextureKey::LavaDeath,
+
+			_ => panic!("get_slime_texture_key called for non-slime {:?}", kind),
 		}
 	}
 
@@ -393,95 +407,87 @@ impl PcRenderer {
 
 			let scale_left: i32 = screen.left;
 			let scale_top: i32 = screen.top;
-			let mut width: u32 = ((half_width * 2.0) * scale).round() as u32;
-			let mut height: u32 = ((half_height * 2.0) * scale).round() as u32;
+			let width: u32 = ((half_width * 2.0) * scale).round() as u32;
+			let height: u32 = ((half_height * 2.0) * scale).round() as u32;
 
 			if entity_kind == EntityKind::SlimeBlue || entity_kind == EntityKind::SlimeUndead || entity_kind == EntityKind::SlimeLava {
-				width = width * scale as u32;
-				height = height * scale as u32;
+				let death_timer: u16 = game_state.death_timers.get(id).copied().unwrap_or(0);
+				if death_timer > 0 {
+					// println!("Draw death");
+					self.draw_death_entity(game_state, entity_kind, pos, half_height, camera_left, camera_top, scale, death_timer);
+					continue;
+				}
 
-				// println!("entity id {} raw kind {}", id, kind);
-				let vel = game_state.velocities.get(id).copied().unwrap_or_default();
+				let vel: Vec2 = game_state.velocities.get(id).copied().unwrap_or_default();
 				let abs_vx: f32 = vel.x.abs();
 
-				let anim = if abs_vx >= 3.0 { LocomotionAnim::Run } else { LocomotionAnim::Walk };
+				let is_dying: bool = game_state.death_timers.get(id).copied().unwrap_or(0) > 0;
 
-				let frame_index: u32 = (_frame_index / 6) % 8;
-				let row_index: u32 = 2;
+				let anim: LocomotionAnim = if is_dying {
+					LocomotionAnim::Death
+				} else if abs_vx >= 3.0 {
+					LocomotionAnim::Run
+				} else {
+					LocomotionAnim::Walk
+				};
+
+				// death sheet is 10 frames (based on your image). walk/run are 8.
+				let frame_count: u32 = if anim == LocomotionAnim::Death { 10 } else { 8 };
+				let frame_index: u32 = (_frame_index / 6) % frame_count;
+
+				// row_index: keep what you were doing for walk/run. for death you probably want row 0.
+				let row_index: u32 = if anim == LocomotionAnim::Death { 0 } else { 2 };
 
 				let src_left_pixels: i32 = (frame_index as i32) * 64;
 				let src_top_pixels: i32 = (row_index as i32) * 64;
-				let src = Rect::new(src_left_pixels, src_top_pixels, 64, 64);
+				let src: Rect = Rect::new(src_left_pixels, src_top_pixels, 64, 64);
 
-				let dest_width_pixels_u32: u32 = width.max(1);
-				let dest_height_pixels_u32: u32 = height.max(1);
+				let sprite_world_scale: f32 = game_state.enemy_sprite_scale as f32;
+				let dest_width_pixels: u32 = (64.0 * sprite_world_scale * scale).round() as u32;
+				let dest_height_pixels: u32 = (64.0 * sprite_world_scale * scale).round() as u32;
 
-				// anchor point on the physics body: bottom-center
+				// anchor point on physics body: bottom-center
 				let entity_bottom_center_world_x: f32 = pos.x;
 				let entity_bottom_center_world_y: f32 = pos.y + half_height;
 
 				let entity_bottom_center_screen_left: i32 = ((entity_bottom_center_world_x - camera_left) * scale).round() as i32;
 				let entity_bottom_center_screen_top: i32 = ((entity_bottom_center_world_y - camera_top) * scale).round() as i32;
 
-				// anchor point inside the sprite frame (tune once)
 				let anchor_left_frac: f32 = 32.0 / 64.0;
 				let anchor_top_frac: f32 = 40.0 / 64.0;
 
-				let sprite_feet_left_pixels: i32 = (dest_width_pixels_u32 as f32 * anchor_left_frac).round() as i32;
-				let sprite_feet_top_pixels: i32 = (dest_height_pixels_u32 as f32 * anchor_top_frac).round() as i32;
+				let sprite_feet_left_pixels: i32 = (dest_width_pixels as f32 * anchor_left_frac).round() as i32;
+				let sprite_feet_top_pixels: i32 = (dest_height_pixels as f32 * anchor_top_frac).round() as i32;
 
 				let dest_left_pixels: i32 = entity_bottom_center_screen_left - sprite_feet_left_pixels;
 				let dest_top_pixels: i32 = entity_bottom_center_screen_top - sprite_feet_top_pixels;
 
-				let dest = Rect::new(dest_left_pixels, dest_top_pixels, dest_width_pixels_u32, dest_height_pixels_u32);
-
-				/*
-				if _frame_index % 60 == 0 {
-					println!("slime id={} half_w={} half_h={} width_px={} height_px={}", id, half_width, half_height, width, height);
-				}
-				*/
+				let dest: Rect = Rect::new(dest_left_pixels, dest_top_pixels, dest_width_pixels, dest_height_pixels);
 
 				let flip_horizontal: bool = vel.x > 0.0;
 
-				match (entity_kind, anim) {
-					(EntityKind::SlimeBlue, LocomotionAnim::Walk) => {
-						let _ = self
-							.canvas
-							.copy_ex(&self.slime_blue_walk_texture, src, dest, 0.0, None, flip_horizontal, false)
-							.unwrap();
-					}
-					(EntityKind::SlimeBlue, LocomotionAnim::Run) => {
-						let _ = self
-							.canvas
-							.copy_ex(&self.slime_blue_run_texture, src, dest, 0.0, None, flip_horizontal, false)
-							.unwrap();
-					}
-					(EntityKind::SlimeUndead, LocomotionAnim::Walk) => {
-						let _ = self
-							.canvas
-							.copy_ex(&self.slime_undead_walk_texture, src, dest, 0.0, None, flip_horizontal, false)
-							.unwrap();
-					}
-					(EntityKind::SlimeUndead, LocomotionAnim::Run) => {
-						let _ = self
-							.canvas
-							.copy_ex(&self.slime_undead_run_texture, src, dest, 0.0, None, flip_horizontal, false)
-							.unwrap();
-					}
-					(EntityKind::SlimeLava, LocomotionAnim::Walk) => {
-						let _ = self
-							.canvas
-							.copy_ex(&self.slime_lava_walk_texture, src, dest, 0.0, None, flip_horizontal, false)
-							.unwrap();
-					}
-					(EntityKind::SlimeLava, LocomotionAnim::Run) => {
-						let _ = self
-							.canvas
-							.copy_ex(&self.slime_lava_run_texture, src, dest, 0.0, None, flip_horizontal, false)
-							.unwrap();
-					}
-					_ => {}
+				// let tex: &sdl2::render::Texture<'static> = self.get_slime_texture(entity_kind, anim);
+
+				// let _ = self.canvas.copy_ex(tex, src, dest, 0.0, None, flip_horizontal, false).unwrap();
+
+				let key: SlimeTextureKey = self.get_slime_texture_key(entity_kind, anim);
+
+				// key is Copy, so no borrow of self remains here
+
+				let _ = match key {
+					SlimeTextureKey::BlueWalk => self.canvas.copy_ex(&self.slime_blue_walk_texture, src, dest, 0.0, None, flip_horizontal, false),
+					SlimeTextureKey::BlueRun => self.canvas.copy_ex(&self.slime_blue_run_texture, src, dest, 0.0, None, flip_horizontal, false),
+					SlimeTextureKey::BlueDeath => self.canvas.copy_ex(&self.slime_blue_death_texture, src, dest, 0.0, None, flip_horizontal, false),
+
+					SlimeTextureKey::UndeadWalk => self.canvas.copy_ex(&self.slime_undead_walk_texture, src, dest, 0.0, None, flip_horizontal, false),
+					SlimeTextureKey::UndeadRun => self.canvas.copy_ex(&self.slime_undead_run_texture, src, dest, 0.0, None, flip_horizontal, false),
+					SlimeTextureKey::UndeadDeath => self.canvas.copy_ex(&self.slime_undead_death_texture, src, dest, 0.0, None, flip_horizontal, false),
+
+					SlimeTextureKey::LavaWalk => self.canvas.copy_ex(&self.slime_lava_walk_texture, src, dest, 0.0, None, flip_horizontal, false),
+					SlimeTextureKey::LavaRun => self.canvas.copy_ex(&self.slime_lava_run_texture, src, dest, 0.0, None, flip_horizontal, false),
+					SlimeTextureKey::LavaDeath => self.canvas.copy_ex(&self.slime_lava_death_texture, src, dest, 0.0, None, flip_horizontal, false),
 				}
+				.unwrap();
 
 				continue;
 			}
@@ -625,6 +631,15 @@ impl RenderBackend for PcRenderer {
 		let slime_lava_run_path = gfx_pc_path(&["slime", "lava", "run_body.png"]);
 		let slime_lava_run_tex = load_texture(texture_creator, slime_lava_run_path);
 
+		let slime_blue_death_path: PathBuf = gfx_pc_path(&["slime", "blue", "death_body.png"]);
+		let slime_blue_death_texture = texture_creator.load_texture(slime_blue_death_path).expect("failed to load slime_blue_death.png");
+
+		let slime_undead_death_path: PathBuf = gfx_pc_path(&["slime", "undead", "death_body.png"]);
+		let slime_undead_death_texture = texture_creator.load_texture(slime_undead_death_path).expect("failed to load slime_undead_death.png");
+
+		let slime_lava_death_path: PathBuf = gfx_pc_path(&["slime", "lava", "death_body.png"]);
+		let slime_lava_death_texture = texture_creator.load_texture(slime_lava_death_path).expect("failed to load slime_lava_death.png");
+
 		return PcRenderer {
 			canvas,
 			event_pump,
@@ -639,10 +654,13 @@ impl RenderBackend for PcRenderer {
 			render_scale: 4,
 			slime_blue_run_texture: slime_blue_run_tex,
 			slime_blue_walk_texture: slime_blue_walk_tex,
+			slime_blue_death_texture: slime_blue_death_texture,
 			slime_lava_walk_texture: slime_lava_walk_tex,
 			slime_lava_run_texture: slime_lava_run_tex,
+			slime_lava_death_texture: slime_lava_death_texture,
 			slime_undead_run_texture: slime_undead_run_tex,
 			slime_undead_walk_texture: slime_undead_walk_tex,
+			slime_undead_death_texture: slime_undead_death_texture,
 		};
 	}
 
@@ -662,6 +680,84 @@ impl RenderBackend for PcRenderer {
 
 	fn draw_level(&mut self, game_state: &GameState) {
 		self.draw_level_internal(game_state);
+	}
+
+	fn draw_death_entity(
+		&mut self,
+		game_state: &GameState,
+		entity_kind: EntityKind,
+		pos: &Vec2,
+		half_height: f32,
+		camera_left: f32,
+		camera_top: f32,
+		scale: f32,
+		death_timer: u16,
+	) {
+		// 64x64 frames in the death sheet
+		let frame_size_pixels: i32 = 64;
+
+		// how long death lasts total
+		let total: u16 = game_state.settings.enemy_death_frames.max(1) as u16;
+
+		// how many frames are in the sheet (tune this once)
+		let frame_count: u32 = 10;
+
+		// elapsed frames since death started
+		let elapsed: u16 = total.saturating_sub(death_timer);
+
+		// spread elapsed over frame_count
+		let frame_index: u32 = ((elapsed as u32) * frame_count / (total as u32)).min(frame_count - 1);
+
+		/*
+		let row_index: u32 = match entity_kind {
+			EntityKind::SlimeBlue => 0,
+			EntityKind::SlimeUndead => 1,
+			EntityKind::SlimeLava => 2,
+			_ => 0,
+		};
+		*/
+
+		let row_index: u32 = 0;
+
+		let src_left_pixels: i32 = (frame_index as i32) * frame_size_pixels;
+		let src_top_pixels: i32 = (row_index as i32) * frame_size_pixels;
+		let src = Rect::new(src_left_pixels, src_top_pixels, frame_size_pixels as u32, frame_size_pixels as u32);
+
+		// let dest_width_pixels_u32: u32 = ((half_width * 2.0) * scale).round().max(1.0) as u32;
+		// let dest_height_pixels_u32: u32 = ((half_height * 2.0) * scale).round().max(1.0) as u32;
+
+		let sprite_world_scale: f32 = game_state.enemy_sprite_scale as f32;
+		let dest_width_pixels_u32: u32 = (64.0 * sprite_world_scale * scale).round().max(1.0) as u32;
+		let dest_height_pixels_u32: u32 = (64.0 * sprite_world_scale * scale).round().max(1.0) as u32;
+
+		// physics anchor: bottom-center
+		let entity_bottom_center_world_x: f32 = pos.x;
+		let entity_bottom_center_world_y: f32 = pos.y + half_height;
+
+		let entity_bottom_center_screen_left: i32 = ((entity_bottom_center_world_x - camera_left) * scale).round() as i32;
+		let entity_bottom_center_screen_top: i32 = ((entity_bottom_center_world_y - camera_top) * scale).round() as i32;
+
+		// tune these once for your death sheet
+		let anchor_left_frac: f32 = 32.0 / 64.0;
+		let anchor_top_frac: f32 = 40.0 / 64.0;
+
+		let anchor_left_pixels: i32 = (dest_width_pixels_u32 as f32 * anchor_left_frac).round() as i32;
+		let anchor_top_pixels: i32 = (dest_height_pixels_u32 as f32 * anchor_top_frac).round() as i32;
+
+		let dest_left_pixels: i32 = entity_bottom_center_screen_left - anchor_left_pixels;
+		let dest_top_pixels: i32 = entity_bottom_center_screen_top - anchor_top_pixels;
+
+		let dest = Rect::new(dest_left_pixels, dest_top_pixels, dest_width_pixels_u32, dest_height_pixels_u32);
+
+		// pick texture based on kind (or reuse one texture sheet)
+		let tex = match entity_kind {
+			EntityKind::SlimeBlue => &self.slime_blue_death_texture,
+			EntityKind::SlimeUndead => &self.slime_undead_death_texture,
+			EntityKind::SlimeLava => &self.slime_lava_death_texture,
+			_ => &self.slime_blue_death_texture,
+		};
+
+		let _ = self.canvas.copy_ex(tex, src, dest, 0.0, None, false, false).unwrap();
 	}
 
 	fn commit(&mut self) {
@@ -689,4 +785,17 @@ fn gfx_pc_path(parts: &[&str]) -> PathBuf {
 		path = path.join(p);
 	}
 	return path;
+}
+
+#[derive(Clone, Copy)]
+enum SlimeTextureKey {
+	BlueWalk,
+	BlueRun,
+	BlueDeath,
+	UndeadWalk,
+	UndeadRun,
+	UndeadDeath,
+	LavaWalk,
+	LavaRun,
+	LavaDeath,
 }

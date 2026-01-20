@@ -100,7 +100,7 @@ entities
 		gravity_multiplier = 1.00
 		jump_multiplier = 0.25
 		attack_power = 1
-		hit_points = 1
+		hit_points = 4
 		render_style = 2
 		width = .6
 		height = .6
@@ -108,7 +108,7 @@ entities
 		luck = 5
 		strength = 5
 	}
-	
+		
 	enemy "slime_lava"
 	{
 		top = 20

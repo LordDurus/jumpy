@@ -1,6 +1,6 @@
 use crate::{
 	engine_math::Vec2,
-	game::game_state::{EntityId, EntityKind, GameState},
+	game::game_state::{DeathAnim, EntityId, EntityKind, GameState},
 	physics::collision::{HitSide, classify_aabb_hit_side, resolve_ceiling_collision, resolve_floor_collision, resolve_wall_collision},
 	platform::audio::SfxId,
 };
@@ -56,6 +56,17 @@ pub struct Collider {
 }
 
 #[inline(always)]
+fn dead_profile() -> CollisionProfile {
+	return CollisionProfile {
+		top: face(false, 0, false),
+		right: face(false, 0, false),
+		bottom: face(false, 0, false),
+		left: face(false, 0, false),
+		stompable: false,
+	};
+}
+
+#[inline(always)]
 pub fn move_and_collide(game_state: &mut GameState) {
 	let tile_width: f32 = game_state.level.tile_width as f32;
 	let tile_height: f32 = game_state.level.tile_height as f32;
@@ -102,6 +113,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 		let kind: EntityKind = EntityKind::from_u8(kind_u8);
 		let (half_width, half_height) = game_state.get_entity_half_values(id);
 		let delta_x: f32 = *delta_x_by_ids.get(&id).unwrap_or(&0.0);
+		let dying: bool = game_state.is_dying(id);
 
 		colliders.push(Collider {
 			id,
@@ -110,7 +122,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 			right: pos.x + half_width,
 			top: pos.y - half_height,
 			bottom: pos.y + half_height,
-			profile: profile_for_kind(kind),
+			profile: if dying { dead_profile() } else { profile_for_kind(kind) },
 			delta_x,
 		});
 	}
@@ -172,10 +184,44 @@ pub fn move_and_collide(game_state: &mut GameState) {
 			match outcome {
 				CollisionOutcome::None => {}
 				CollisionOutcome::Stomped(target_id) => {
-					//TODO: Calc Damage remove id needed
-					game_state.remove_entity(target_id);
-					if game_state.settings.are_sound_effects_enabled {
-						game_state.audio.play_sfx(SfxId::Stomp);
+					if kind == EntityKind::Player {
+						let chain: u16 = game_state.stomp_chains.get(entity_id).copied().unwrap_or(0);
+						game_state.stomp_chains.set(entity_id, chain.saturating_add(1));
+					}
+
+					let chain: u16 = game_state.stomp_chains.get(player_id).copied().unwrap_or(0);
+					let bonus: u16 = stomp_bonus(chain).min(game_state.settings.stomp_bonus_cap as u16);
+					let base_stomp_damage = game_state.base_stomp_damages.get(player_id).copied().unwrap_or(2);
+					let damage: u16 = base_stomp_damage + bonus;
+					let hit_points = game_state.hit_points.get(target_id).copied().unwrap_or(1);
+
+					println!("hit_points={}, damage={}", hit_points, damage);
+
+					if damage >= hit_points {
+						// game_state.remove_entity(target_id);
+
+						println!(
+							"killing enemy id={}, kind={}",
+							target_id,
+							EntityKind::from_u8(*game_state.entity_kinds.get(target_id).unwrap_or(&0)).as_str()
+						);
+
+						game_state.start_enemy_death(target_id, DeathAnim::SlimeFlatten);
+
+						println!(
+							"after start_enemy_death: death_timer={}",
+							game_state.death_timers.get(target_id).copied().unwrap_or(0)
+						);
+
+						if game_state.settings.are_sound_effects_enabled {
+							game_state.audio.play_sfx(SfxId::Stomp);
+						}
+
+						if game_state.settings.are_sound_effects_enabled {
+							game_state.audio.play_sfx(SfxId::Stomp);
+						}
+					} else {
+						game_state.hit_points.set(target_id, hit_points - damage);
 					}
 				}
 				CollisionOutcome::Damaged { source: _ } => {
@@ -211,14 +257,17 @@ pub fn move_and_collide(game_state: &mut GameState) {
 				let on_wall_right = game_state.on_wall_right(entity_id);
 				let grounded_now: bool = game_state.is_grounded_now(entity_id);
 
-				if grounded_now && game_state.camera_baseline_max_bottom_world.is_none() {
-					let (_half_width, half_height) = game_state.get_entity_half_values(entity_id);
-					if let Some(pos) = game_state.positions.get(entity_id) {
-						let tile_height_world: f32 = game_state.level.tile_height as f32;
-						let pad_world: f32 = game_state.settings.camera_bottom_padding_tiles as f32 * tile_height_world;
+				if grounded_now {
+					game_state.stomp_chains.set(entity_id, 0);
+					if game_state.camera_baseline_max_bottom_world.is_none() {
+						let (_half_width, half_height) = game_state.get_entity_half_values(entity_id);
+						if let Some(pos) = game_state.positions.get(entity_id) {
+							let tile_height_world: f32 = game_state.level.tile_height as f32;
+							let pad_world: f32 = game_state.settings.camera_bottom_padding_tiles as f32 * tile_height_world;
 
-						let ground_world_y: f32 = pos.y + half_height;
-						game_state.camera_baseline_max_bottom_world = Some(ground_world_y + pad_world);
+							let ground_world_y: f32 = pos.y + half_height;
+							game_state.camera_baseline_max_bottom_world = Some(ground_world_y + pad_world);
+						}
 					}
 				}
 
@@ -633,17 +682,17 @@ fn resolve_entity_collisions(
 			let side_overlap: bool = !was_above && !was_below;
 
 			if side_overlap && collider.delta_x != 0.0 && (collider.profile.left.blocks || collider.profile.right.blocks) {
-				println!("shove actor out sideways...");
+				// println!("shove actor out sideways...");
 				// shove actor out sideways...
 				if collider.delta_x > 0.0 {
-					println!("  right");
+					// println!("  right");
 					position.x = collider.right + half_width;
 					velocity.x = 0.0;
 					continue 'pass;
 				}
 
 				if collider.delta_x < 0.0 {
-					println!("  left");
+					// println!("  left");
 					position.x = collider.left - half_width;
 					velocity.x = 0.0;
 					continue 'pass;
@@ -754,4 +803,20 @@ fn resolve_entity_collisions(
 	}
 
 	return CollisionOutcome::None;
+}
+
+#[inline(always)]
+pub fn stomp_bonus(chain: u16) -> u16 {
+	isqrt_u32(chain as u32) as u16
+}
+
+#[inline(always)]
+fn isqrt_u32(n: u32) -> u32 {
+	let mut x: u32 = n;
+	let mut y: u32 = (x + 1) >> 1;
+	while y < x {
+		x = y;
+		y = (x + n / x) >> 1;
+	}
+	return x;
 }

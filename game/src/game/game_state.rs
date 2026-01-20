@@ -9,6 +9,13 @@ use crate::{
 
 pub type EntityId = u32;
 
+#[repr(u8)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum DeathAnim {
+	None = 0,
+	SlimeFlatten = 1,
+}
+
 #[derive(Clone, Copy)]
 pub struct RespawnState {
 	pub last_grounded_pos: Vec2,
@@ -40,11 +47,7 @@ pub enum EntityKind {
 impl EntityKind {
 	#[inline(always)]
 	pub fn is_enemy(kind: u8) -> bool {
-		kind == EntityKind::SlimeBlue as u8
-			|| kind == EntityKind::SlimeUndead as u8
-			|| kind == EntityKind::SlimeLava as u8
-			|| kind == EntityKind::Imp as u8
-			|| kind == EntityKind::SlimeUndead as u8
+		kind == EntityKind::SlimeBlue as u8 || kind == EntityKind::SlimeUndead as u8 || kind == EntityKind::SlimeLava as u8 || kind == EntityKind::Imp as u8
 	}
 
 	#[inline(always)]
@@ -119,7 +122,13 @@ pub struct GameState {
 	pub respawn_states: ComponentStore<RespawnState>,
 	pub respawn_cooldown_frames: u8,
 	pub camera_baseline_max_bottom_world: Option<f32>,
+	pub base_stomp_damages: ComponentStore<u16>,
+	pub stomp_chains: ComponentStore<u16>,
+	pub hit_points: ComponentStore<u16>,
 	pub audio: Box<dyn AudioEngine>,
+	pub death_anims: ComponentStore<u8>,
+	pub death_timers: ComponentStore<u16>,
+	pub enemy_sprite_scale: u8,
 	next_entity_id: EntityId,
 }
 
@@ -155,6 +164,12 @@ impl GameState {
 			enemy_ids: Vec::new(),
 			respawn_cooldown_frames: 0,
 			camera_baseline_max_bottom_world: None,
+			stomp_chains: ComponentStore::new(),
+			hit_points: ComponentStore::new(),
+			base_stomp_damages: ComponentStore::new(),
+			death_anims: ComponentStore::new(),
+			death_timers: ComponentStore::new(),
+			enemy_sprite_scale: 1,
 			audio,
 			tick: 0,
 		};
@@ -325,6 +340,7 @@ impl GameState {
 		luck: u8,
 		range_min: f32,
 		range_max: f32,
+		hit_points: u16,
 	) -> EntityId {
 		let width: u8 = if width == 0 { 1 } else { width };
 		let height: u8 = if height == 0 { 1 } else { height };
@@ -343,8 +359,8 @@ impl GameState {
 		self.speeds.set(id, speed);
 		self.strengths.set(id, strength);
 		self.luck.set(id, luck);
-
 		self.jump_multipliers.set(id, jump_multiplier);
+		self.hit_points.set(id, hit_points);
 
 		if range_min > 0.0 {
 			self.range_mins.set(id, range_min);
@@ -367,6 +383,9 @@ impl GameState {
 				},
 			);
 
+			self.base_stomp_damages.set(id, 2);
+			self.stomp_chains.set(id, 0);
+
 			self.respawn_states.set(
 				id,
 				RespawnState {
@@ -382,6 +401,61 @@ impl GameState {
 		}
 
 		return id;
+	}
+
+	pub fn is_dying(&self, id: EntityId) -> bool {
+		let t: u16 = self.death_timers.get(id).copied().unwrap_or(0);
+		return t > 0;
+	}
+
+	pub fn start_enemy_death(&mut self, id: EntityId, anim: DeathAnim) {
+		// if already dying, don't restart
+		if self.is_dying(id) {
+			return;
+		}
+
+		self.death_anims.set(id, anim as u8);
+
+		// settings-driven duration (add this to Settings)
+		let frames: u16 = self.settings.enemy_death_frames as u16;
+		self.death_timers.set(id, frames);
+
+		// stop patrol/ai movement
+		self.patrolling.remove(id);
+		self.patrol_flips.remove(id);
+		self.bump_cooldowns.remove(id);
+
+		// optional: stop horizontal motion, keep vertical so it can fall
+		if let Some(v) = self.velocities.get_mut(id) {
+			v.x = 0.0;
+		}
+	}
+
+	pub fn tick_enemy_deaths(&mut self) {
+		let ids: Vec<EntityId> = self.death_timers.keys().collect();
+
+		for id in ids {
+			let t: u16 = self.death_timers.get(id).copied().unwrap_or(0);
+			if t == 0 {
+				continue;
+			}
+
+			let next: u16 = t - 1;
+			self.death_timers.set(id, next);
+
+			if next == 0 {
+				// option a: remove immediately
+				// self.remove_entity(id);
+
+				// option b (your plan): only remove once it hits ground
+				if self.is_grounded_now(id) {
+					self.remove_entity(id);
+				} else {
+					// keep it around until it lands, but don't re-run animation
+					// (leave death_anims as-is and death_timer at 0)
+				}
+			}
+		}
 	}
 
 	pub fn remove_entity(&mut self, id: EntityId) {
@@ -401,7 +475,10 @@ impl GameState {
 		self.patrolling.remove(id);
 		self.jump_states.remove(id);
 		self.respawn_states.remove(id);
-
+		self.stomp_chains.remove(id);
+		self.base_stomp_damages.remove(id);
+		self.death_anims.remove(id);
+		self.death_timers.remove(id);
 		// linear scan is fine. I’ll have maybe dozens of enemies, not millions.
 		self.enemy_ids.retain(|&e| e != id);
 
@@ -437,6 +514,7 @@ impl GameState {
 				e.luck,
 				range_min_x,
 				range_max,
+				e.hit_points,
 			);
 
 			if e.gravity_multiplier > 0 {

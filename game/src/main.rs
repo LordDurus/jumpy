@@ -113,6 +113,7 @@ fn main() {
 		physics::movement::patrol(&mut state);
 		physics::gravity::apply(&mut state);
 		physics::movement::move_and_collide(&mut state);
+		state.tick_enemy_deaths();
 
 		renderer.begin_frame();
 		renderer.draw_level(&state);

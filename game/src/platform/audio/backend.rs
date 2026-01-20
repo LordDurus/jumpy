@@ -42,4 +42,5 @@ pub trait AudioEngine {
 pub enum LocomotionAnim {
 	Walk,
 	Run,
+	Death,
 }

@@ -9,6 +9,9 @@ pub struct Settings {
 	pub camera_bottom_padding_tiles: u8,
 	pub is_background_music_enabled: bool,
 	pub are_sound_effects_enabled: bool,
+	pub stomp_chain_gain_per_stomp: u16,
+	pub stomp_bonus_cap: u8,
+	pub enemy_death_frames: u8,
 }
 
 impl Settings {
@@ -24,6 +27,9 @@ impl Settings {
 			camera_bottom_padding_tiles: 2,
 			is_background_music_enabled: false,
 			are_sound_effects_enabled: true,
+			stomp_chain_gain_per_stomp: 1,
+			stomp_bonus_cap: 5,
+			enemy_death_frames: 30,
 		};
 	}
 }

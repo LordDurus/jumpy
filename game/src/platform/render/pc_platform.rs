@@ -32,7 +32,6 @@ impl PcRenderer {
 		let tile_width_world: f32 = level.tile_width as f32;
 		let tile_height_world: f32 = level.tile_height as f32;
 
-		// destination tile size is based on world tile size, not atlas pixel size
 		let dest_width_pixels: u32 = (tile_width_world * scale).round() as u32;
 		let dest_height_pixels: u32 = (tile_height_world * scale).round() as u32;
 
