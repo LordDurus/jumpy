@@ -1,4 +1,7 @@
-use crate::{game::game_state::EntityKind, tile::TileKind};
+use crate::{
+	game::{game_state::EntityKind, triggers::LevelTrigger},
+	tile::TileKind,
+};
 use std::fs;
 
 pub const BYTES_PER_ENTITY: usize = 24;
@@ -24,18 +27,6 @@ pub struct LevelEntity {
 	pub luck: u8,
 	pub range_min: u16,
 	pub range_max: u16,
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub struct LevelTrigger {
-	pub kind: u8,
-	pub x: u16,
-	pub y: u16,
-	pub width: u16,
-	pub height: u16,
-	pub target: u16,
-	pub text_id: u16,
 }
 
 #[derive(Debug, Clone)]
@@ -315,16 +306,71 @@ impl Level {
 		let mut trigger_offset: usize = offset_triggers;
 		let mut triggers: Vec<LevelTrigger> = Vec::with_capacity(trigger_count);
 
-		for _ in 0..trigger_count {
+		for index in 0..trigger_count {
+			let kind: u8 = read_u8(&bytes, &mut trigger_offset)?;
+
+			// compiler wrote this, runtime doesn't care right now
+			let _gravity_multiplier: u8 = read_u8(&bytes, &mut trigger_offset)?;
+
+			let left_tiles: u16 = read_u16(&bytes, &mut trigger_offset)?;
+			let top_tiles: u16 = read_u16(&bytes, &mut trigger_offset)?;
+			let width_tiles: u16 = read_u16(&bytes, &mut trigger_offset)?;
+			let height_tiles: u16 = read_u16(&bytes, &mut trigger_offset)?;
+			let p0: u16 = read_u16(&bytes, &mut trigger_offset)?;
+			let p1: u16 = read_u16(&bytes, &mut trigger_offset)?;
+
 			triggers.push(LevelTrigger {
-				kind: read_u8(&bytes, &mut trigger_offset)?,
-				x: read_u16(&bytes, &mut trigger_offset)?,
-				y: read_u16(&bytes, &mut trigger_offset)?,
-				width: read_u16(&bytes, &mut trigger_offset)?,
-				height: read_u16(&bytes, &mut trigger_offset)?,
-				target: 0,
-				text_id: 0,
+				id: index as u16,
+				kind,
+				left_tiles,
+				top_tiles,
+				width_tiles,
+				height_tiles,
+				p0,
+				p1,
 			});
+		}
+
+		println!("-- triggers loaded --");
+		for (i, t) in triggers.iter().enumerate() {
+			match t.kind {
+				1 => {
+					// level_exit
+					println!(
+						" {}: kind={}, exit: world={} level={}, left={} top={} width={} height={}",
+						i,
+						t.kind,
+						t.p0, // world_id
+						t.p1, // level_id
+						t.left_tiles,
+						t.top_tiles,
+						t.width_tiles,
+						t.height_tiles
+					);
+				}
+
+				2 => {
+					// message
+					println!(
+						" {}: kind={}, msg: mode={} id={}, left={} top={} width={} height={}",
+						i,
+						t.kind,
+						t.p0, // activation_mode
+						t.p1, // message_id
+						t.left_tiles,
+						t.top_tiles,
+						t.width_tiles,
+						t.height_tiles
+					);
+				}
+
+				_ => {
+					println!(
+						" {}: unknown trigger kind {}, left={} top={} width={} height={}",
+						i, t.kind, t.left_tiles, t.top_tiles, t.width_tiles, t.height_tiles
+					);
+				}
+			}
 		}
 
 		let mut level = Level {

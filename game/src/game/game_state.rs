@@ -1,7 +1,7 @@
 use crate::{
 	ecs::component_store::ComponentStore,
 	engine_math::Vec2,
-	game::{Settings, level::Level},
+	game::{Settings, level::Level, message_table::MessageTable},
 	physics::collision,
 	platform::audio::{AudioEngine, SfxId},
 	tile::TileCollision,
@@ -130,14 +130,22 @@ pub struct GameState {
 	pub audio: Box<dyn AudioEngine>,
 	pub death_anims: ComponentStore<u8>,
 	pub death_timers: ComponentStore<u16>,
+	pub trigger_armed: Vec<bool>,
 	pub enemy_sprite_scale: u8,
 	next_entity_id: EntityId,
+	pub message_table: MessageTable,
 }
 
 impl GameState {
 	pub fn new(current_level: Level, audio: Box<dyn AudioEngine>) -> GameState {
 		let spawn_top_tiles: u16 = current_level.player_spawn_top as u16;
 		let spawn_left_tiles: u16 = current_level.player_spawn_left as u16;
+		let settings = Settings::new();
+		let message_table: MessageTable = MessageTable::load(settings.language_code.as_str()).unwrap_or_else(|e| {
+			println!("message table load failed: {}", e);
+			// empty fallback
+			return MessageTable::load("en-us").unwrap();
+		});
 
 		let mut state = GameState {
 			level: current_level,
@@ -160,7 +168,7 @@ impl GameState {
 			patrolling: ComponentStore::new(),
 			patrol_flips: ComponentStore::new(),
 			bump_cooldowns: ComponentStore::new(),
-			settings: Settings::new(),
+			settings,
 			jump_states: ComponentStore::new(),
 			respawn_states: ComponentStore::new(),
 			enemy_ids: Vec::new(),
@@ -171,11 +179,16 @@ impl GameState {
 			base_stomp_damages: ComponentStore::new(),
 			death_anims: ComponentStore::new(),
 			death_timers: ComponentStore::new(),
+			trigger_armed: Vec::new(),
 			enemy_sprite_scale: 1,
 			audio,
+			message_table,
 			tick: 0,
 		};
 
+		let trigger_count: usize = state.level.triggers.len();
+		state.trigger_armed.clear();
+		state.trigger_armed.resize(trigger_count, false);
 		state.set_spawn_point_tiles(spawn_top_tiles, spawn_left_tiles);
 
 		return state;

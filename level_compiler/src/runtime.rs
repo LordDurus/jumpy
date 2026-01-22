@@ -107,9 +107,7 @@ pub enum EntityKind {
 }
 
 #[repr(u8)]
-#[allow(dead_code)]
 pub enum TriggerKind {
-	LevelExit = 0,
-	Message = 1,
-	Pickup = 2,
+	LevelExit = 1,
+	Message = 2,
 }

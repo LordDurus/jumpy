@@ -14,3 +14,8 @@ pub fn get_audio_root() -> PathBuf {
 	let root: PathBuf = get_asset_root().join("audio");
 	return root;
 }
+
+pub fn get_messages_root() -> PathBuf {
+	let root: PathBuf = get_asset_root().join("messages");
+	return root;
+}

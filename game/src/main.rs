@@ -30,7 +30,7 @@ type ActiveRenderer = crate::platform::render::psp::PspRenderer;
 
 #[cfg(feature = "pc")]
 fn main() {
-	let level = match game::level::Level::load_binary("../levels/debug.lvlb") {
+	let level = match game::level::Level::load_binary("../worlds/00/01.lvlb") {
 		Ok(l) => l,
 		Err(e) => {
 			eprintln!("level load failed: {}", e);
@@ -58,6 +58,8 @@ fn main() {
 	renderer.init();
 
 	loop {
+		use crate::game::triggers;
+
 		let input = renderer.poll_input();
 		if input.quit {
 			break;
@@ -88,7 +90,9 @@ fn main() {
 
 			js.jump_was_down = jump_down;
 		}
-
+		if triggers::handle_message_triggers(&mut state, jump_pressed) {
+			jump_pressed = false;
+		}
 		if jump_pressed {
 			if let Some(jump_state) = state.jump_states.get_mut(player_id) {
 				jump_state.jump_buffer_frames_left = state.settings.jump_buffer_frames_max;
@@ -113,6 +117,7 @@ fn main() {
 		physics::movement::patrol(&mut state);
 		physics::gravity::apply(&mut state);
 		physics::movement::move_and_collide(&mut state);
+
 		state.tick_enemy_deaths();
 
 		renderer.begin_frame();

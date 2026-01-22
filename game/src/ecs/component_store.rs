@@ -20,6 +20,12 @@ impl<T> ComponentStore<T> {
 
 	#[allow(dead_code)]
 	#[inline(always)]
+	pub fn clear(&mut self) {
+		self.data.clear();
+	}
+
+	#[allow(dead_code)]
+	#[inline(always)]
 	pub fn has(&self, id: EntityId) -> bool {
 		let idx: usize = id as usize;
 		if idx >= self.data.len() {

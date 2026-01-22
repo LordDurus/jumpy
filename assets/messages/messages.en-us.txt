@@ -1,0 +1,6 @@
+1=Press jump (space bar) to hop.
+2=Stomp enemies to build chain bonus.
+3=Press start (enter) to pause.
+4=Begin
+5=End
+6=You can jump off of walls.

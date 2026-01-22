@@ -242,9 +242,15 @@ pub fn load_level_from_str(text: &str) -> Result<LevelSource, String> {
 					let trigger_kind = parse_kind_string_after_keyword(line, "trigger", line_number)?;
 
 					let kind_enum = if trigger_kind == "level_exit" {
-						TriggerKindSource::LevelExit { target: String::new() }
+						TriggerKindSource::LevelExit {
+							target: String::new(),
+							level: String::new(),
+						}
 					} else if trigger_kind == "message" {
-						TriggerKindSource::Message { text_id: String::new() }
+						TriggerKindSource::Message {
+							text_id: String::new(),
+							activation_mode: 0,
+						}
 					} else {
 						return Err(format!("unknown trigger kind '{}' at line {}", trigger_kind, line_number));
 					};
@@ -263,10 +269,20 @@ pub fn load_level_from_str(text: &str) -> Result<LevelSource, String> {
 					trigger.width = parse_i32_value(line, "width", line_number)?;
 				} else if line.starts_with("height") {
 					trigger.height = parse_i32_value(line, "height", line_number)?;
+				} else if line.starts_with("level") {
+					let s: String = parse_string_value(line, "level", line_number)?;
+					match trigger.kind.as_mut() {
+						Some(TriggerKindSource::LevelExit { target: _, level }) => {
+							*level = s;
+						}
+						_ => {
+							return Err(format!("level not allowed for this trigger at line {}", line_number));
+						}
+					}
 				} else if line.starts_with("target") {
 					let s = parse_string_value(line, "target", line_number)?;
 					match trigger.kind.as_mut() {
-						Some(TriggerKindSource::LevelExit { target }) => {
+						Some(TriggerKindSource::LevelExit { target, level: _ }) => {
 							*target = s;
 						}
 						_ => {
@@ -281,6 +297,24 @@ pub fn load_level_from_str(text: &str) -> Result<LevelSource, String> {
 						}
 						_ => {
 							return Err(format!("text_id not allowed for this trigger at line {}", line_number));
+						}
+					}
+				} else if line.starts_with("mode") {
+					let s: String = parse_string_value(line, "mode", line_number)?;
+					let mode: u8 = if s.eq_ignore_ascii_case("action") {
+						1
+					} else if s.eq_ignore_ascii_case("auto") {
+						0
+					} else {
+						return Err(format!("invalid trigger mode '{}' at line {}", s, line_number));
+					};
+
+					match trigger.kind.as_mut() {
+						Some(TriggerKindSource::Message { activation_mode, .. }) => {
+							*activation_mode = mode;
+						}
+						_ => {
+							return Err(format!("mode not allowed for this trigger at line {}", line_number));
 						}
 					}
 				} else {

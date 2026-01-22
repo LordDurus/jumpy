@@ -1,0 +1,7 @@
+# stable ids (do not renumber existing ones)
+1=tutorial_press_jump
+2=tutorial_stomp
+3=tutorial_pause
+4=level_begin
+5=level_end
+6=tutorial_wall_jump

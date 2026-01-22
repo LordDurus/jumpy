@@ -167,3 +167,8 @@ impl From<NalgebraVector2<f32>> for Vec2 {
 		return Vec2 { x: v.x, y: v.y };
 	}
 }
+
+#[inline(always)]
+pub fn rects_overlap(a_left: f32, a_top: f32, a_width: f32, a_height: f32, b_left: f32, b_top: f32, b_width: f32, b_height: f32) -> bool {
+	a_left < b_left + b_width && a_left + a_width > b_left && a_top < b_top + b_height && a_top + a_height > b_top
+}

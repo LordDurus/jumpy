@@ -12,6 +12,7 @@ use crate::{
 	game::{
 		game_state::{EntityKind, GameState},
 		level::Level,
+		triggers::TriggerKind,
 	},
 	platform::{
 		RenderBackend,
@@ -70,6 +71,35 @@ impl Drop for PcRenderer {
 }
 
 impl PcRenderer {
+	#[allow(dead_code)]
+	fn draw_debug_triggers(&mut self, game_state: &GameState, cam_left_world: f32, cam_top_world: f32, scale: f32) {
+		use sdl2::{pixels::Color, rect::Rect};
+
+		let tile_width_world: f32 = game_state.level.tile_width as f32;
+		let tile_height_world: f32 = game_state.level.tile_height as f32;
+
+		for t in &game_state.level.triggers {
+			let left_world: f32 = (t.left_tiles as f32) * tile_width_world;
+			let top_world: f32 = (t.top_tiles as f32) * tile_height_world;
+			let width_world: f32 = (t.width_tiles as f32) * tile_width_world;
+			let height_world: f32 = (t.height_tiles as f32) * tile_height_world;
+
+			let left_pixels: i32 = ((left_world - cam_left_world) * scale).round() as i32;
+			let top_pixels: i32 = ((top_world - cam_top_world) * scale).round() as i32;
+			let width_pixels: u32 = (width_world * scale).round().max(1.0) as u32;
+			let height_pixels: u32 = (height_world * scale).round().max(1.0) as u32;
+
+			// pick different colors by kind (optional)
+			if t.kind == TriggerKind::Message as u8 {
+				self.canvas.set_draw_color(Color::RGBA(0, 255, 0, 255));
+			} else {
+				self.canvas.set_draw_color(Color::RGBA(255, 255, 0, 255));
+			}
+
+			let _ = self.canvas.draw_rect(Rect::new(left_pixels, top_pixels, width_pixels, height_pixels));
+		}
+	}
+
 	fn get_slime_texture_key(&self, kind: EntityKind, anim: LocomotionAnim) -> SlimeTextureKey {
 		match (kind, anim) {
 			(EntityKind::SlimeBlue, LocomotionAnim::Walk) => return SlimeTextureKey::BlueWalk,
@@ -360,7 +390,7 @@ impl PcRenderer {
 
 		self.frame_index = self.frame_index.wrapping_add(1);
 		self.draw_entities(game_state, tile_cols, cam_left_world as f32, cam_top_world as f32, scale, self.frame_index);
-
+		self.draw_debug_triggers(game_state, cam_left_world as f32, cam_top_world as f32, scale);
 		return;
 	}
 

@@ -1,4 +1,4 @@
-use crate::{binary_writer::serialize_level, runtime::*, source::*};
+use crate::{binary_writer::serialize_level, message_registry::MessageRegistry, runtime::*, source::*};
 
 use std::collections::HashMap;
 
@@ -16,6 +16,16 @@ pub fn compile_and_serialize(source: &LevelSource) -> Result<Vec<u8>, String> {
 	let compiled = compile_level(source)?;
 	let bytes = serialize_level(&compiled)?;
 	return Ok(bytes);
+}
+
+fn resolve_world_id(text: &str) -> Result<u16, String> {
+	let id: u16 = text.trim().parse::<u16>().map_err(|_| format!("invalid target world id '{}'", text))?;
+	return Ok(id);
+}
+
+fn resolve_world_level_id(text: &str) -> Result<u16, String> {
+	let id: u16 = text.trim().parse::<u16>().map_err(|_| format!("invalid target level id '{}'", text))?;
+	return Ok(id);
 }
 
 pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
@@ -43,8 +53,9 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 		}
 	}
 
-	let tile_palette = build_tile_palette();
+	let message_registry: MessageRegistry = MessageRegistry::load_from_file("../assets/messages/messages.ids.txt")?;
 
+	let tile_palette = build_tile_palette();
 	let layer_count = source.layers.len() as u8;
 	let tiles_per_layer = (width * height) as u32;
 	let tile_count_total = tiles_per_layer * layer_count as u32;
@@ -188,8 +199,9 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 		let height = trigger.height as u16;
 
 		let runtime = match &trigger.kind {
-			TriggerKindSource::LevelExit { target } => {
-				let level_id = resolve_level_id(target)?;
+			TriggerKindSource::LevelExit { target, level } => {
+				let world_id: u16 = resolve_world_id(target)?;
+				let level_id: u16 = resolve_world_level_id(level)?;
 				TriggerRuntime {
 					kind: TriggerKind::LevelExit as u8,
 					gravity_multiplier: 0,
@@ -197,21 +209,22 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 					top,
 					width,
 					height,
-					p0: level_id,
-					p1: 0,
+					p0: world_id,
+					p1: level_id,
 				}
 			}
-			TriggerKindSource::Message { text_id } => {
-				let msg_id = resolve_message_id(text_id)?;
+
+			TriggerKindSource::Message { text_id, activation_mode } => {
+				let msg_id: u16 = message_registry.resolve_message_id(text_id)?;
 				TriggerRuntime {
 					kind: TriggerKind::Message as u8,
 					gravity_multiplier: 0,
-					left: left,
-					top: top,
+					left,
+					top,
 					width,
 					height,
-					p0: msg_id,
-					p1: 0,
+					p0: *activation_mode as u16,
+					p1: msg_id,
 				}
 			}
 		};
@@ -298,22 +311,6 @@ fn resolve_background_id(name: &str) -> Result<u8, String> {
 	}
 
 	return Err(format!("unknown background '{}'", name));
-}
-
-fn resolve_level_id(target: &str) -> Result<u16, String> {
-	if target.eq_ignore_ascii_case("level_02") {
-		return Ok(2);
-	}
-
-	return Err(format!("unknown level target '{}'", target));
-}
-
-fn resolve_message_id(text_id: &str) -> Result<u16, String> {
-	if text_id.eq_ignore_ascii_case("tutorial_press_jump") {
-		return Ok(1);
-	}
-
-	return Err(format!("unknown message id '{}'", text_id));
 }
 
 fn gravity_to_fixed(g: f32) -> i16 {

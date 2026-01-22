@@ -12,6 +12,7 @@ pub struct Settings {
 	pub stomp_chain_gain_per_stomp: u16,
 	pub stomp_bonus_cap: u8,
 	pub enemy_death_frames: u8,
+	pub language_code: String,
 }
 
 impl Settings {
@@ -30,6 +31,7 @@ impl Settings {
 			stomp_chain_gain_per_stomp: 1,
 			stomp_bonus_cap: 5,
 			enemy_death_frames: 30,
+			language_code: String::from("en-us"),
 		};
 	}
 }

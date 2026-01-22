@@ -2,6 +2,7 @@ mod binary_writer;
 mod compile;
 mod entity_parse_state;
 mod layer_parse_state;
+mod message_registry;
 mod runtime;
 mod source;
 mod text_parse;
