@@ -1,5 +1,16 @@
 use crate::{entity_parse_state::EntityParseState, layer_parse_state::LayerParseState, source::*, trigger_parse_state::TriggerParseState};
 
+#[repr(u8)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum TriggerActivationMode {
+	Auto = 0,
+	Action = 1,
+	Up = 2,
+	Down = 3,
+	Left = 4,
+	Right = 5,
+}
+
 #[derive(Debug, PartialEq)]
 enum Section {
 	None,
@@ -245,6 +256,7 @@ pub fn load_level_from_str(text: &str) -> Result<LevelSource, String> {
 						TriggerKindSource::LevelExit {
 							target: String::new(),
 							level: String::new(),
+							activation_mode: 0,
 						}
 					} else if trigger_kind == "message" {
 						TriggerKindSource::Message {
@@ -272,7 +284,7 @@ pub fn load_level_from_str(text: &str) -> Result<LevelSource, String> {
 				} else if line.starts_with("level") {
 					let s: String = parse_string_value(line, "level", line_number)?;
 					match trigger.kind.as_mut() {
-						Some(TriggerKindSource::LevelExit { target: _, level }) => {
+						Some(TriggerKindSource::LevelExit { target: _, level, .. }) => {
 							*level = s;
 						}
 						_ => {
@@ -282,7 +294,7 @@ pub fn load_level_from_str(text: &str) -> Result<LevelSource, String> {
 				} else if line.starts_with("target") {
 					let s = parse_string_value(line, "target", line_number)?;
 					match trigger.kind.as_mut() {
-						Some(TriggerKindSource::LevelExit { target, level: _ }) => {
+						Some(TriggerKindSource::LevelExit { target, level: _, .. }) => {
 							*target = s;
 						}
 						_ => {
@@ -301,16 +313,23 @@ pub fn load_level_from_str(text: &str) -> Result<LevelSource, String> {
 					}
 				} else if line.starts_with("mode") {
 					let s: String = parse_string_value(line, "mode", line_number)?;
-					let mode: u8 = if s.eq_ignore_ascii_case("action") {
-						1
-					} else if s.eq_ignore_ascii_case("auto") {
-						0
-					} else {
-						return Err(format!("invalid trigger mode '{}' at line {}", s, line_number));
+					let mode: u8 = match s.as_str() {
+						"auto" => TriggerActivationMode::Auto as u8,
+						"action" => TriggerActivationMode::Action as u8,
+						"up" => TriggerActivationMode::Up as u8,
+						"down" => TriggerActivationMode::Down as u8,
+						"left" => TriggerActivationMode::Left as u8,
+						"right" => TriggerActivationMode::Right as u8,
+						_ => {
+							return Err(format!("Invalid trigger mode '{}' at line {}", s, line_number));
+						}
 					};
 
 					match trigger.kind.as_mut() {
 						Some(TriggerKindSource::Message { activation_mode, .. }) => {
+							*activation_mode = mode;
+						}
+						Some(TriggerKindSource::LevelExit { activation_mode, .. }) => {
 							*activation_mode = mode;
 						}
 						_ => {

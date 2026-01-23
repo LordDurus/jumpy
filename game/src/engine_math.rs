@@ -3,10 +3,11 @@
 // engine-owned math types. do not depend on platform math libs here.
 // convert at the edges (render/input) if needed.
 
+use crate::Level;
+use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+
 #[cfg(feature = "pc")]
 use nalgebra::Vector2 as NalgebraVector2;
-
-use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Vec2 {
@@ -171,4 +172,34 @@ impl From<NalgebraVector2<f32>> for Vec2 {
 #[inline(always)]
 pub fn rects_overlap(a_left: f32, a_top: f32, a_width: f32, a_height: f32, b_left: f32, b_top: f32, b_width: f32, b_height: f32) -> bool {
 	a_left < b_left + b_width && a_left + a_width > b_left && a_top < b_top + b_height && a_top + a_height > b_top
+}
+
+pub fn aabb_overlaps_solid_tiles(level: &Level, left: f32, right: f32, top: f32, bottom: f32) -> bool {
+	let a_width: f32 = right - left;
+	let a_height: f32 = bottom - top;
+
+	let tile_width_world: f32 = level.tile_width as f32;
+	let tile_height_world: f32 = level.tile_height as f32;
+
+	let start_tile_x: i32 = (left / tile_width_world).floor() as i32;
+	let end_tile_x: i32 = ((right - 0.001) / tile_width_world).floor() as i32;
+	let start_tile_y: i32 = (top / tile_height_world).floor() as i32;
+	let end_tile_y: i32 = ((bottom - 0.001) / tile_height_world).floor() as i32;
+
+	for ty in start_tile_y..=end_tile_y {
+		for tx in start_tile_x..=end_tile_x {
+			if !level.is_solid_at_tile(tx, ty) {
+				continue;
+			}
+
+			let tile_left: f32 = tx as f32 * tile_width_world;
+			let tile_top: f32 = ty as f32 * tile_height_world;
+
+			if rects_overlap(left, top, a_width, a_height, tile_left, tile_top, tile_width_world, tile_height_world) {
+				return true;
+			}
+		}
+	}
+
+	return false;
 }

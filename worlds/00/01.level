@@ -186,7 +186,19 @@ triggers
         width = 2
         height = 2        
 		target = "00"
-		level = "02"		
+		level = "02"
+		mode = "up"
+	}
+
+    trigger "level_exit"
+    {
+        top = 22
+        left = 1
+        width = 1
+        height = 2        
+		target = "00"
+		level = "02"
+		mode = "auto"
 	}
 
     trigger "message"
@@ -201,7 +213,7 @@ triggers
 	
 	trigger "message"
     {
-        top = 1
+        top = 5
         left = 3
         width = 1
         height = 1

@@ -12,6 +12,7 @@ use crate::{
 	game::{game_session::GameSession, game_state::GameState, level::Level},
 	platform::{
 		audio::{AudioEngine, backend::MusicId},
+		input::TriggerPresses,
 		render::backend::RenderBackend,
 	},
 };
@@ -38,14 +39,11 @@ fn main() {
 		Box::new(a)
 	};
 
-	// bootstrap: create a state so transition_to_level can steal audio.
-	// yes, this loads once here and once inside transition_to_level. it's fine for now.
 	let first_level_path: &str = "../worlds/00/01.lvlb";
 	let bootstrap_level: Level = Level::load_binary(first_level_path).expect("failed to load first level");
 	let mut state = GameState::new(bootstrap_level, audio);
 
-	// now do the real startup through the normal level transition path
-	game_session.transition_to_level(&mut state, &first_level_path);
+	game_session.transition_to_level(&mut state, first_level_path);
 
 	if state.settings.is_background_music_enabled {
 		state.audio.play_music(MusicId::World1, true);
@@ -53,6 +51,12 @@ fn main() {
 
 	let mut renderer = ActiveRenderer::new();
 	renderer.init();
+
+	let mut up_was_down: bool = false;
+	let mut down_was_down: bool = false;
+	let mut left_was_down: bool = false;
+	let mut right_was_down: bool = false;
+	let mut action_was_down: bool = false; // "action" is jump for now
 
 	loop {
 		use crate::game::triggers;
@@ -67,9 +71,16 @@ fn main() {
 			game_session.transition_to_level(&mut state, &next_level_name);
 		}
 
-		let player_id = state.get_player_id();
+		let Some(player_id) = state.try_get_player_id() else {
+			// no player yet; still tick/render so you can see what's going on
+			state.tick = state.tick.wrapping_add(1);
+			renderer.begin_frame();
+			renderer.draw_level(&state);
+			renderer.commit();
+			continue;
+		};
 
-		// left/right
+		// left/right movement (held)
 		let desired_x: f32 = if input.left && !input.right {
 			-2.0
 		} else if input.right && !input.left {
@@ -82,30 +93,50 @@ fn main() {
 			velocity.set_x(desired_x);
 		}
 
-		// jump edge detection must run every frame
+		// --- edge detection ---
 		let jump_down: bool = input.jump;
-
 		let mut jump_pressed: bool = false;
 		let mut jump_released: bool = false;
 
 		if let Some(js) = state.jump_states.get_mut(player_id) {
 			jump_pressed = jump_down && !js.jump_was_down;
 			jump_released = !jump_down && js.jump_was_down;
-
 			js.jump_was_down = jump_down;
 		}
 
-		// triggers should run before jump is consumed by gameplay
-		// message triggers can consume jump_pressed
-		if triggers::handle_message_triggers(&mut state, jump_pressed) {
-			jump_pressed = false;
+		// for now, "action" == jump button
+		let presses = TriggerPresses {
+			action_pressed: input.jump && !action_was_down, // or a dedicated action button later
+			up_pressed: input.up && !up_was_down,
+			down_pressed: input.down && !down_was_down,
+			left_pressed: input.left && !left_was_down,
+			right_pressed: input.right && !right_was_down,
+		};
+
+		/*
+		println!(
+			"action_pressed={} up_pressed={} down_pressed={} left_pressed={} right_pressed={}",
+			presses.action_pressed, presses.up_pressed, presses.down_pressed, presses.left_pressed, presses.right_pressed
+		);
+		*/
+
+		action_was_down = input.jump;
+		up_was_down = input.up;
+		down_was_down = input.down;
+		left_was_down = input.left;
+		right_was_down = input.right;
+
+		// --- triggers run before gameplay consumes jump ---
+		let mut jump_consumed_by_triggers: bool = false;
+
+		if triggers::handle_message_triggers(&mut state, presses) {
+			jump_consumed_by_triggers = true;
 		}
 
-		// (when you wire it) level exit triggers should set:
-		// game_session.pending_level_name = Some(...)
-		triggers::handle_level_exit_triggers(&mut game_session, &mut state, jump_pressed);
+		triggers::handle_level_exit_triggers(&mut game_session, &mut state, presses);
 
-		if jump_pressed {
+		// --- gameplay jump logic (only if not consumed) ---
+		if jump_pressed && !jump_consumed_by_triggers {
 			if let Some(jump_state) = state.jump_states.get_mut(player_id) {
 				jump_state.jump_buffer_frames_left = state.settings.jump_buffer_frames_max;
 			}
@@ -134,9 +165,4 @@ fn main() {
 		renderer.draw_level(&state);
 		renderer.commit();
 	}
-}
-
-#[cfg(not(feature = "pc"))]
-fn main() {
-	unimplemented!();
 }

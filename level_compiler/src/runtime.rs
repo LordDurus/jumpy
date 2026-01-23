@@ -80,6 +80,7 @@ pub struct TriggerRuntime {
 	pub height: u16,
 	pub p0: u16,
 	pub p1: u16,
+	pub activation_mode: u8,
 }
 
 impl TriggerRuntime {

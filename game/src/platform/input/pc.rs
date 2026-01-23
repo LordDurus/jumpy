@@ -8,6 +8,9 @@ use sdl2::{
 };
 
 pub fn poll(event_pump: &mut EventPump) -> InputState {
+	// make sure keyboard_state is current even when there are no events this frame
+	event_pump.pump_events();
+
 	let mut input = InputState::default();
 
 	for event in event_pump.poll_iter() {
@@ -21,8 +24,14 @@ pub fn poll(event_pump: &mut EventPump) -> InputState {
 	}
 
 	let keys = event_pump.keyboard_state();
+
 	input.left = keys.is_scancode_pressed(Scancode::Left) || keys.is_scancode_pressed(Scancode::A);
 	input.right = keys.is_scancode_pressed(Scancode::Right) || keys.is_scancode_pressed(Scancode::D);
+	input.up = keys.is_scancode_pressed(Scancode::Up) || keys.is_scancode_pressed(Scancode::W);
+	input.down = keys.is_scancode_pressed(Scancode::Down) || keys.is_scancode_pressed(Scancode::S);
 	input.jump = keys.is_scancode_pressed(Scancode::Space);
+
+	// println!("input {:?}", input);
+
 	return input;
 }

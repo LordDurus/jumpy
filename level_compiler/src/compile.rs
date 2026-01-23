@@ -1,4 +1,4 @@
-use crate::{binary_writer::serialize_level, message_registry::MessageRegistry, runtime::*, source::*};
+use crate::{binary_writer::serialize_level, message_registry::MessageRegistry, runtime::*, source::*, text_parse::TriggerActivationMode};
 
 use std::collections::HashMap;
 
@@ -199,7 +199,7 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 		let height = trigger.height as u16;
 
 		let runtime = match &trigger.kind {
-			TriggerKindSource::LevelExit { target, level } => {
+			TriggerKindSource::LevelExit { target, level, activation_mode } => {
 				let world_id: u16 = resolve_world_id(target)?;
 				let level_id: u16 = resolve_world_level_id(level)?;
 				TriggerRuntime {
@@ -211,6 +211,7 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 					height,
 					p0: world_id,
 					p1: level_id,
+					activation_mode: *activation_mode,
 				}
 			}
 
@@ -225,6 +226,7 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 					height,
 					p0: *activation_mode as u16,
 					p1: msg_id,
+					activation_mode: TriggerActivationMode::Action as u8,
 				}
 			}
 		};

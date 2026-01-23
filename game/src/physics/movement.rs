@@ -1,6 +1,9 @@
 use crate::{
-	engine_math::Vec2,
-	game::game_state::{DeathAnim, EntityId, EntityKind, GameState},
+	engine_math::{Vec2, aabb_overlaps_solid_tiles},
+	game::{
+		game_state::{DeathAnim, EntityId, EntityKind, GameState},
+		level::Level,
+	},
 	physics::collision::{HitSide, classify_aabb_hit_side, resolve_ceiling_collision, resolve_floor_collision, resolve_wall_collision},
 	platform::audio::SfxId,
 };
@@ -12,6 +15,7 @@ pub enum CollisionOutcome {
 	Damaged { source: EntityId },
 	HitWall,
 	HitWallEnemy,
+	Crushed { source: EntityId },
 }
 
 #[allow(dead_code)]
@@ -161,6 +165,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 			let pos_before_entities: Vec2 = position.clone();
 			let is_patrolling: bool = game_state.patrolling.get(entity_id).copied().unwrap_or(false);
 			let outcome: CollisionOutcome = resolve_entity_collisions(
+				&game_state.level,
 				&game_state.settings,
 				entity_id,
 				kind,
@@ -183,6 +188,12 @@ pub fn move_and_collide(game_state: &mut GameState) {
 
 			match outcome {
 				CollisionOutcome::None => {}
+				CollisionOutcome::Crushed { source: _ } => {
+					if is_player {
+						println!("Crushed");
+						game_state.kill_player(player_id);
+					}
+				}
 				CollisionOutcome::Stomped(target_id) => {
 					if kind == EntityKind::Player {
 						let chain: u16 = game_state.stomp_chains.get(entity_id).copied().unwrap_or(0);
@@ -536,6 +547,7 @@ fn profile_for_kind(kind: EntityKind) -> CollisionProfile {
 
 #[inline(always)]
 fn resolve_entity_collisions(
+	level: &Level,
 	settings: &crate::game::Settings,
 	entity_id: EntityId,
 	kind: EntityKind,
@@ -628,11 +640,22 @@ fn resolve_entity_collisions(
 
 						// only moving platforms should "carry/push" via delta_x
 						if collider.kind == EntityKind::MovingPlatform && collider.delta_x < 0.0 {
-							position.x += collider.delta_x;
+							let proposed_x: f32 = position.x + collider.delta_x;
+							let proposed_left: f32 = proposed_x - half_width;
+							let proposed_right: f32 = proposed_x + half_width;
+							let proposed_top: f32 = position.y - half_height;
+							let proposed_bottom: f32 = position.y + half_height;
+
+							if kind == EntityKind::Player {
+								if aabb_overlaps_solid_tiles(level, proposed_left, proposed_right, proposed_top, proposed_bottom) {
+									return CollisionOutcome::Crushed { source: collider.id };
+								}
+							}
+
+							position.x = proposed_x;
 							velocity.x = 0.0;
 							continue 'pass;
 						}
-
 						let actor_is_enemy: bool = kind != EntityKind::Player && kind != EntityKind::MovingPlatform;
 						let other_is_enemy: bool = collider.kind != EntityKind::Player && collider.kind != EntityKind::MovingPlatform;
 
@@ -651,7 +674,19 @@ fn resolve_entity_collisions(
 
 						// only moving platforms should "carry/push" via delta_x
 						if collider.kind == EntityKind::MovingPlatform && collider.delta_x > 0.0 {
-							position.x += collider.delta_x;
+							let proposed_x: f32 = position.x + collider.delta_x;
+							let proposed_left: f32 = proposed_x - half_width;
+							let proposed_right: f32 = proposed_x + half_width;
+							let proposed_top: f32 = position.y - half_height;
+							let proposed_bottom: f32 = position.y + half_height;
+
+							if kind == EntityKind::Player {
+								if aabb_overlaps_solid_tiles(level, proposed_left, proposed_right, proposed_top, proposed_bottom) {
+									return CollisionOutcome::Crushed { source: collider.id };
+								}
+							}
+
+							position.x = proposed_x;
 						}
 
 						velocity.x = 0.0;

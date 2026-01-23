@@ -4,6 +4,8 @@ pub struct InputState {
 	pub left: bool,
 	pub right: bool,
 	pub jump: bool,
+	pub up: bool,
+	pub down: bool,
 }
 
 #[allow(dead_code)]

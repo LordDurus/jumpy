@@ -77,6 +77,6 @@ pub struct TriggerSource {
 
 #[derive(Debug)]
 pub enum TriggerKindSource {
-	LevelExit { target: String, level: String },
+	LevelExit { target: String, level: String, activation_mode: u8 },
 	Message { text_id: String, activation_mode: u8 },
 }

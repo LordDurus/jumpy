@@ -62,6 +62,13 @@ fn get_gravity_from_file(v: u8) -> u8 {
 }
 
 impl Level {
+	#[inline(always)]
+	pub fn is_solid_at_tile(&self, tx: i32, ty: i32) -> bool {
+		let layer: u32 = self.get_action_layer_index() as u32;
+		let kind: TileKind = self.get_tile_at_layer(layer, tx, ty);
+		return kind.is_solid();
+	}
+
 	pub fn is_solid_tile_f32(&self, level_x: f32, level_y: f32) -> bool {
 		let tile_width: f32 = self.tile_width as f32;
 		let tile_height: f32 = self.tile_height as f32;
@@ -324,6 +331,7 @@ impl Level {
 			let height_tiles: u16 = read_u16(&bytes, &mut trigger_offset)?;
 			let p0: u16 = read_u16(&bytes, &mut trigger_offset)?;
 			let p1: u16 = read_u16(&bytes, &mut trigger_offset)?;
+			let activation_mode: u8 = read_u8(&bytes, &mut trigger_offset)?;
 
 			triggers.push(LevelTrigger {
 				id: index as u16,
@@ -334,49 +342,25 @@ impl Level {
 				height_tiles,
 				p0,
 				p1,
+				activation_mode,
 			});
 		}
 
 		println!("-- triggers loaded --");
 		for (i, t) in triggers.iter().enumerate() {
-			match t.kind {
-				1 => {
-					// level_exit
-					println!(
-						" {}: kind={}, exit: world={} level={}, left={} top={} width={} height={}",
-						i,
-						t.kind,
-						t.p0, // world_id
-						t.p1, // level_id
-						t.left_tiles,
-						t.top_tiles,
-						t.width_tiles,
-						t.height_tiles
-					);
-				}
-
-				2 => {
-					// message
-					println!(
-						" {}: kind={}, msg: mode={} id={}, left={} top={} width={} height={}",
-						i,
-						t.kind,
-						t.p0, // activation_mode
-						t.p1, // message_id
-						t.left_tiles,
-						t.top_tiles,
-						t.width_tiles,
-						t.height_tiles
-					);
-				}
-
-				_ => {
-					println!(
-						" {}: unknown trigger kind {}, left={} top={} width={} height={}",
-						i, t.kind, t.left_tiles, t.top_tiles, t.width_tiles, t.height_tiles
-					);
-				}
-			}
+			println!(
+				" {}: kind={}, exit: world={} level={}, left={} top={} width={} height={} mode={}, message_id={}",
+				i,
+				t.kind,
+				t.p0, // world_id
+				t.p1, // level_id
+				t.left_tiles,
+				t.top_tiles,
+				t.width_tiles,
+				t.height_tiles,
+				t.get_activation_mode(),
+				t.get_message_id()
+			);
 		}
 
 		let mut level = Level {

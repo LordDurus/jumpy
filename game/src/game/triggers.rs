@@ -4,10 +4,15 @@ use crate::{
 		game_session::GameSession,
 		game_state::{EntityId, GameState},
 	},
+	platform::input::TriggerPresses,
 };
 
-const TRIGGER_MODE_AUTO: u16 = 0;
-const TRIGGER_MODE_ACTION: u16 = 1;
+pub const TRIGGER_MODE_AUTO: u16 = 0;
+pub const TRIGGER_MODE_ACTION: u16 = 1;
+pub const TRIGGER_MODE_UP: u16 = 2;
+pub const TRIGGER_MODE_DOWN: u16 = 3;
+pub const TRIGGER_MODE_LEFT: u16 = 4;
+pub const TRIGGER_MODE_RIGHT: u16 = 5;
 
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -38,17 +43,44 @@ pub struct LevelTrigger {
 	pub top_tiles: u16,
 	pub width_tiles: u16,
 	pub height_tiles: u16,
+	pub activation_mode: u8,
 
 	// generic params from file (meaning depends on kind)
 	pub p0: u16,
 	pub p1: u16,
 }
 
+impl LevelTrigger {
+	// --- shared ---
+	#[inline(always)]
+	pub fn get_activation_mode(&self) -> u16 {
+		return self.activation_mode as u16;
+	}
+
+	// --- message ---
+	#[inline(always)]
+	pub fn get_message_id(&self) -> u16 {
+		return self.p1;
+	}
+
+	// --- level exit ---
+	#[inline(always)]
+	pub fn get_world_id(&self) -> u16 {
+		return self.p0;
+	}
+
+	#[inline(always)]
+	pub fn get_level_id(&self) -> u16 {
+		return self.p1;
+	}
+}
+
 /// returns true if an ACTION trigger consumed the action press (so caller should NOT jump)
-pub fn handle_message_triggers(game_state: &mut GameState, action_pressed: bool) -> bool {
+pub fn handle_message_triggers(game_state: &mut GameState, trigger_presses: TriggerPresses) -> bool {
 	let player_id: EntityId = game_state.get_player_id();
 
 	let Some(player_pos) = game_state.positions.get(player_id) else {
+		println!("[trigger] quit early");
 		return false;
 	};
 
@@ -97,7 +129,7 @@ pub fn handle_message_triggers(game_state: &mut GameState, action_pressed: bool)
 		}
 
 		let activation_mode: u16 = trigger.p0;
-		let message_id: u16 = trigger.p1;
+		let message_id: u16 = trigger.get_message_id();
 
 		if activation_mode == TRIGGER_MODE_AUTO {
 			if !game_state.trigger_armed[trigger_index] {
@@ -107,7 +139,7 @@ pub fn handle_message_triggers(game_state: &mut GameState, action_pressed: bool)
 				println!("{}", msg);
 			}
 		} else if activation_mode == TRIGGER_MODE_ACTION {
-			if action_pressed && !game_state.trigger_armed[trigger_index] {
+			if trigger_presses.action_pressed && !game_state.trigger_armed[trigger_index] {
 				game_state.trigger_armed[trigger_index] = true;
 
 				let msg: &str = game_state.message_table.get(message_id);
@@ -121,9 +153,8 @@ pub fn handle_message_triggers(game_state: &mut GameState, action_pressed: bool)
 	return consumed_action;
 }
 
-pub fn handle_level_exit_triggers(session: &mut GameSession, game_state: &mut GameState, _action_pressed: bool) {
+pub fn handle_level_exit_triggers(session: &mut GameSession, game_state: &mut GameState, presses: TriggerPresses) {
 	let player_id: EntityId = game_state.get_player_id();
-
 	let Some(player_pos) = game_state.positions.get(player_id) else {
 		return;
 	};
@@ -171,19 +202,38 @@ pub fn handle_level_exit_triggers(session: &mut GameSession, game_state: &mut Ga
 			continue;
 		}
 
-		// one-shot while overlapping
+		let mode: u16 = trigger.get_activation_mode();
+
+		// one-shot while overlapping for all modes
 		if game_state.trigger_armed[trigger_index] {
 			continue;
 		}
+
+		// println!("[trigger] mode={}", mode);
+		// auto fires immediately on overlap, others only fire on matching press
+		if mode != TRIGGER_MODE_AUTO && !should_fire(mode, presses) {
+			continue;
+		}
+
 		game_state.trigger_armed[trigger_index] = true;
 
-		let world_id: u16 = trigger.p0;
-		let level_id: u16 = trigger.p1;
-
-		// matches your current convention in main.rs
-		let next_level_name: String = format!("../worlds/{:02}/{:02}.lvlb", world_id, level_id);
-
+		let next_level_name: String = format!("../worlds/{:02}/{:02}.lvlb", trigger.get_world_id(), trigger.get_level_id());
 		session.pending_level_name = Some(next_level_name);
 		return;
 	}
+}
+
+#[inline(always)]
+fn should_fire(mode: u16, presses: TriggerPresses) -> bool {
+	let result: bool = match mode {
+		TRIGGER_MODE_AUTO => true,
+		TRIGGER_MODE_ACTION => presses.action_pressed,
+		TRIGGER_MODE_UP => presses.up_pressed,
+		TRIGGER_MODE_DOWN => presses.down_pressed,
+		TRIGGER_MODE_LEFT => presses.left_pressed,
+		TRIGGER_MODE_RIGHT => presses.right_pressed,
+		_ => false,
+	};
+
+	return result;
 }

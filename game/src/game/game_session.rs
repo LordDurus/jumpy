@@ -13,7 +13,6 @@ pub const MAX_PLAYERS: usize = 4;
 #[derive(Clone, Debug)]
 pub struct PlayerPersistentState {
 	pub hit_points: u16,
-	pub max_hit_points: u16,
 	pub inventory: Inventory,
 	// add more later: keys, coins, upgrades, etc.
 }
@@ -22,12 +21,12 @@ impl PlayerPersistentState {
 	pub fn new_default() -> PlayerPersistentState {
 		return PlayerPersistentState {
 			hit_points: 5,
-			max_hit_points: 5,
 			inventory: Inventory::new(),
 		};
 	}
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct Inventory {
 	// keep it simple for now

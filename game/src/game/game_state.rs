@@ -200,14 +200,14 @@ impl GameState {
 		return state;
 	}
 
+	pub fn try_get_player_id(&self) -> Option<EntityId> {
+		return self.player_ids[0];
+	}
+
 	pub fn take_audio(&mut self) -> Box<dyn AudioEngine> {
 		let replacement: Box<dyn AudioEngine> = Box::new(NullAudio::new());
 		let audio: Box<dyn AudioEngine> = core::mem::replace(&mut self.audio, replacement);
 		return audio;
-	}
-
-	pub fn try_get_player_id(&self) -> Option<EntityId> {
-		return self.player_ids[0];
 	}
 
 	pub fn get_player_id(&self) -> EntityId {
@@ -296,10 +296,6 @@ impl GameState {
 		if let Some(vel) = self.velocities.get_mut(player_id) {
 			*vel = Vec2::zero();
 		}
-	}
-
-	pub fn set_player(&mut self, id: EntityId) {
-		self.player_id = Some(id);
 	}
 
 	#[inline(always)]

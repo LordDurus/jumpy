@@ -10,7 +10,6 @@ use crate::{
 	common::coords::{PixelSize, Pointf32, Size, clamp_camera_to_level_world, get_screen, visible_tile_bounds},
 	engine_math::Vec2,
 	game::{
-		self,
 		game_state::{EntityKind, GameState},
 		level::Level,
 		triggers::TriggerKind,
