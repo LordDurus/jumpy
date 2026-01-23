@@ -10,6 +10,7 @@ use crate::{
 	common::coords::{PixelSize, Pointf32, Size, clamp_camera_to_level_world, get_screen, visible_tile_bounds},
 	engine_math::Vec2,
 	game::{
+		self,
 		game_state::{EntityKind, GameState},
 		level::Level,
 		triggers::TriggerKind,
@@ -73,6 +74,10 @@ impl Drop for PcRenderer {
 impl PcRenderer {
 	#[allow(dead_code)]
 	fn draw_debug_triggers(&mut self, game_state: &GameState, cam_left_world: f32, cam_top_world: f32, scale: f32) {
+		if !game_state.settings.show_triggers {
+			return;
+		}
+
 		use sdl2::{pixels::Color, rect::Rect};
 
 		let tile_width_world: f32 = game_state.level.tile_width as f32;

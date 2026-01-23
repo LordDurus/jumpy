@@ -1,4 +1,5 @@
 pub mod backend;
+pub mod null_audio;
 
 #[cfg(feature = "gba")]
 pub mod gba;

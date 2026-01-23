@@ -7,6 +7,10 @@ use crate::{
 	tile::TileCollision,
 };
 
+use crate::{game::game_session::GameSession, platform::audio::null_audio::NullAudio};
+
+pub const MAX_PLAYERS: usize = 4;
+
 pub type EntityId = u32;
 
 #[repr(u8)]
@@ -134,6 +138,7 @@ pub struct GameState {
 	pub enemy_sprite_scale: u8,
 	next_entity_id: EntityId,
 	pub message_table: MessageTable,
+	pub player_ids: [Option<EntityId>; MAX_PLAYERS],
 }
 
 impl GameState {
@@ -184,6 +189,7 @@ impl GameState {
 			audio,
 			message_table,
 			tick: 0,
+			player_ids: [None, None, None, None],
 		};
 
 		let trigger_count: usize = state.level.triggers.len();
@@ -192,6 +198,57 @@ impl GameState {
 		state.set_spawn_point_tiles(spawn_top_tiles, spawn_left_tiles);
 
 		return state;
+	}
+
+	pub fn take_audio(&mut self) -> Box<dyn AudioEngine> {
+		let replacement: Box<dyn AudioEngine> = Box::new(NullAudio::new());
+		let audio: Box<dyn AudioEngine> = core::mem::replace(&mut self.audio, replacement);
+		return audio;
+	}
+
+	pub fn try_get_player_id(&self) -> Option<EntityId> {
+		return self.player_ids[0];
+	}
+
+	pub fn get_player_id(&self) -> EntityId {
+		return self.player_ids[0].expect("player1 id not set");
+	}
+
+	pub fn set_player_id(&mut self, player_index: usize, id: EntityId) {
+		self.player_ids[player_index] = Some(id);
+		return;
+	}
+
+	pub fn apply_player_from_persistent(&mut self, session: &GameSession) {
+		for player_index in 0..MAX_PLAYERS {
+			let Some(id) = self.player_ids[player_index] else {
+				continue;
+			};
+
+			let p = session.player(player_index);
+
+			self.hit_points.set(id, p.hit_points);
+			// inventory later
+		}
+
+		return;
+	}
+
+	pub fn save_player_to_persistent(&self, session: &mut GameSession) {
+		for player_index in 0..MAX_PLAYERS {
+			let Some(id) = self.player_ids[player_index] else {
+				continue;
+			};
+
+			let hp: u16 = self.hit_points.get(id).copied().unwrap_or(1);
+
+			let p = session.player_mut(player_index);
+			p.hit_points = hp;
+
+			// inventory later
+		}
+
+		return;
 	}
 
 	pub fn set_spawn_point_tiles(&mut self, top_tiles: u16, left_tiles: u16) {
@@ -243,10 +300,6 @@ impl GameState {
 
 	pub fn set_player(&mut self, id: EntityId) {
 		self.player_id = Some(id);
-	}
-
-	pub fn get_player_id(&self) -> EntityId {
-		self.player_id.expect("player_id not set")
 	}
 
 	#[inline(always)]
@@ -539,7 +592,7 @@ impl GameState {
 			}
 
 			if EntityKind::is_player(e.kind) {
-				self.set_player(id);
+				self.set_player_id(0, id);
 			}
 		}
 

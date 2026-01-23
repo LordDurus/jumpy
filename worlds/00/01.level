@@ -186,7 +186,7 @@ triggers
         width = 2
         height = 2        
 		target = "00"
-		level = "01"		
+		level = "02"		
 	}
 
     trigger "message"

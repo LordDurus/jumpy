@@ -7,6 +7,12 @@ use std::fs;
 pub const BYTES_PER_ENTITY: usize = 24;
 pub const PLAYER_HALF_HEIGHT: f32 = 8.0;
 
+#[derive(Debug, Clone)]
+pub struct LevelReference {
+	pub world_id: u8,
+	pub level_id: u8,
+}
+
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct LevelEntity {
@@ -121,11 +127,11 @@ impl Level {
 
 		let bytes = fs::read(path).map_err(|e| e.to_string())?;
 		if bytes.len() < 4 {
-			return Err("file too small".to_string());
+			return Err("File too small".to_string());
 		}
 
 		if &bytes[0..4] != b"JLVL" {
-			return Err("bad magic (expected JLVL)".to_string());
+			return Err("Bad magic (expected JLVL)".to_string());
 		}
 
 		let mut offset: usize = 4;

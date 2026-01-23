@@ -1,3 +1,4 @@
+#[derive(Clone, Debug)]
 pub struct Settings {
 	pub gravity: f32,
 	pub coyote_frames_max: u8,
@@ -13,6 +14,7 @@ pub struct Settings {
 	pub stomp_bonus_cap: u8,
 	pub enemy_death_frames: u8,
 	pub language_code: String,
+	pub show_triggers: bool,
 }
 
 impl Settings {
@@ -32,6 +34,7 @@ impl Settings {
 			stomp_bonus_cap: 5,
 			enemy_death_frames: 30,
 			language_code: String::from("en-us"),
+			show_triggers: true,
 		};
 	}
 }
