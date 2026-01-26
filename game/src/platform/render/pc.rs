@@ -9,6 +9,8 @@ use crate::{
 	common::coords::{PixelSize, Pointf32, Size, clamp_camera_to_level_world, get_screen, visible_tile_bounds},
 	engine_math::Vec2,
 	game::{
+		self,
+		game_session::{self, GameSession},
 		game_state::{EntityKind, GameState},
 		level::Level,
 		triggers::TriggerKind,
@@ -123,8 +125,8 @@ impl PcRenderer {
 
 impl PcRenderer {
 	#[allow(dead_code)]
-	fn draw_debug_triggers(&mut self, game_state: &GameState, cam_left_world: f32, cam_top_world: f32, scale: f32) {
-		if !game_state.settings.show_triggers {
+	fn draw_debug_triggers(&mut self, game_state: &GameState, session: &GameSession, cam_left_world: f32, cam_top_world: f32, scale: f32) {
+		if !session.settings.show_triggers {
 			return;
 		}
 
@@ -432,8 +434,8 @@ impl PcRenderer {
 		return;
 	}
 
-	fn draw_level_internal(&mut self, game_state: &GameState) {
-		let (cam_left_world, cam_top_world) = self.common.compute_camera(self, game_state);
+	fn draw_level_internal(&mut self, game_state: &GameState, game_session: &GameSession) {
+		let (cam_left_world, cam_top_world) = self.common.compute_camera(self, game_state, game_session);
 		let scale: f32 = self.get_render_scale();
 
 		// background first, tiles on top
@@ -446,7 +448,7 @@ impl PcRenderer {
 
 		self.frame_index = self.frame_index.wrapping_add(1);
 		self.draw_entities(game_state, tile_cols, cam_left_world as f32, cam_top_world as f32, scale, self.frame_index);
-		self.draw_debug_triggers(game_state, cam_left_world as f32, cam_top_world as f32, scale);
+		self.draw_debug_triggers(game_state, game_session, cam_left_world as f32, cam_top_world as f32, scale);
 		return;
 	}
 
@@ -750,8 +752,8 @@ impl RenderBackend for PcRenderer {
 		self.canvas.clear();
 	}
 
-	fn draw_level(&mut self, game_state: &GameState) {
-		self.draw_level_internal(game_state);
+	fn draw_level(&mut self, game_state: &GameState, game_session: &GameSession) {
+		self.draw_level_internal(game_state, game_session);
 	}
 
 	fn draw_death_entity(
@@ -769,7 +771,7 @@ impl RenderBackend for PcRenderer {
 		let frame_size_pixels: i32 = 64;
 
 		// how long death lasts total
-		let total: u16 = game_state.settings.enemy_death_frames.max(1) as u16;
+		let total: u16 = 30;
 
 		// how many frames are in the sheet (tune this once)
 		let frame_count: u32 = 10;

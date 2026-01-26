@@ -4,6 +4,7 @@ use crate::{
 		Settings,
 		inventory::Inventory,
 		level::{Level, LevelReference},
+		message_table::MessageTable,
 	},
 };
 
@@ -28,11 +29,20 @@ pub struct GameSession {
 	pub pending_level_name: Option<String>,
 	pub settings: Settings,
 	pub inventory: Inventory,
-	pub rng_state: u32,
+	#[allow(dead_code)]
+	pub random_state_u32: u32,
+	pub random_state_u16: u16,
+	pub message_table: MessageTable,
 }
 
 impl GameSession {
 	pub fn new() -> GameSession {
+		let settings: Settings = Settings::new();
+		let message_table: MessageTable = MessageTable::load(settings.language_code.as_str()).unwrap_or_else(|e| {
+			println!("message table load failed: {}", e);
+			return MessageTable::load("en-us").unwrap();
+		});
+
 		return GameSession {
 			players: [
 				PlayerPersistentState::new_default(),
@@ -42,9 +52,11 @@ impl GameSession {
 			],
 			current_level_name: None,
 			pending_level_name: None,
-			settings: Settings::new(),
+			settings: settings,
 			inventory: Inventory::new(),
-			rng_state: 0x1234_5678,
+			random_state_u32: 0x1234_5678,
+			random_state_u16: 0xACE1,
+			message_table,
 		};
 	}
 	pub fn transition_to_level(&mut self, game_state: &mut GameState, level_name: &str) -> bool {
@@ -66,10 +78,7 @@ impl GameSession {
 		// 4) make a fresh state
 		let mut new_state = GameState::new(next_level, audio);
 
-		// 5) settings persist
-		new_state.settings = self.settings.clone();
-
-		// 6) spawn entities + apply player persistent
+		// 5) spawn entities + apply player persistent
 		new_state.spawn_level_entities();
 		new_state.apply_player_from_persistent(self);
 

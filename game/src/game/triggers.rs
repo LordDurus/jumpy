@@ -1,5 +1,5 @@
 use crate::{
-	engine_math::{random_u32, rects_overlap},
+	engine_math::{random_u16, rects_overlap},
 	game::{
 		game_session::GameSession,
 		game_state::{EntityId, GameState},
@@ -20,8 +20,29 @@ pub enum TriggerKind {
 	Empty = 0,
 	LevelExit = 1,
 	Message = 2,
-	RandomPickup = 3,
-	Pickup = 4,
+	Pickup = 3,
+}
+
+#[repr(u8)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum PickupKind {
+	Empty = 0,
+	Coin = 1,
+	Book = 2,
+	Key = 3,
+	Random = 4,
+}
+
+impl PickupKind {
+	pub fn from_u8(v: u8) -> PickupKind {
+		match v {
+			1 => PickupKind::Coin,
+			2 => PickupKind::Book,
+			3 => PickupKind::Key,
+			4 => PickupKind::Random,
+			_ => PickupKind::Empty,
+		}
+	}
 }
 
 impl TriggerKind {
@@ -29,8 +50,7 @@ impl TriggerKind {
 		match v {
 			1 => TriggerKind::LevelExit,
 			2 => TriggerKind::Message,
-			3 => TriggerKind::RandomPickup,
-			4 => TriggerKind::Pickup,
+			3 => TriggerKind::Pickup,
 			_ => TriggerKind::Empty,
 		}
 	}
@@ -79,7 +99,7 @@ impl LevelTrigger {
 }
 
 /// returns true if an ACTION trigger consumed the action press (so caller should NOT jump)
-pub fn handle_message_triggers(game_state: &mut GameState, trigger_presses: TriggerPresses) -> bool {
+pub fn handle_message_triggers(session: &GameSession, game_state: &mut GameState, trigger_presses: TriggerPresses) -> bool {
 	let player_id: EntityId = game_state.get_player_id();
 
 	let Some(player_pos) = game_state.positions.get(player_id) else {
@@ -137,14 +157,14 @@ pub fn handle_message_triggers(game_state: &mut GameState, trigger_presses: Trig
 			if !game_state.trigger_armed[trigger_index] {
 				game_state.trigger_armed[trigger_index] = true;
 
-				let msg: &str = game_state.message_table.get(message_id);
+				let msg: &str = session.message_table.get(message_id);
 				println!("{}", msg);
 			}
 		} else if activation_mode == TRIGGER_MODE_ACTION {
 			if trigger_presses.action_pressed && !game_state.trigger_armed[trigger_index] {
 				game_state.trigger_armed[trigger_index] = true;
 
-				let msg: &str = game_state.message_table.get(message_id);
+				let msg: &str = session.message_table.get(message_id);
 				println!("{}", msg);
 
 				consumed_action = true;
@@ -246,7 +266,7 @@ pub fn handle_pickup_triggers(session: &mut GameSession, game_state: &mut GameSt
 
 	for trigger in &game_state.level.triggers {
 		let kind: TriggerKind = TriggerKind::from_u8(trigger.kind);
-		if kind != TriggerKind::Pickup && kind != TriggerKind::RandomPickup {
+		if kind != TriggerKind::Pickup {
 			continue;
 		}
 
@@ -295,18 +315,21 @@ pub fn handle_pickup_triggers(session: &mut GameSession, game_state: &mut GameSt
 
 		match kind {
 			TriggerKind::Pickup => {
+				let pickup_kind = PickupKind::from_u8(trigger.p0 as u8);
 				// p0 = pickup type, p1 = value
-				apply_pickup(session, trigger.p0, trigger.p1);
-			}
-			TriggerKind::RandomPickup => {
-				let roll: u32 = random_u32(&mut session.rng_state) % 3;
+				match pickup_kind {
+					PickupKind::Coin => {
+						apply_pickup(session, trigger.p0, trigger.p1);
+					}
+					PickupKind::Random => {
+						// coin only for now
+						let value = random_u16(&mut session.random_state_u16);
+						apply_pickup(session, 1, value);
+					}
 
-				if roll == 0 {
-					apply_pickup(session, 1, 1); // coin +1
-				} else if roll == 1 {
-					apply_pickup(session, 2, 1); // key id 1
-				} else {
-					apply_pickup(session, 3, 1); // book id 1
+					_ => {
+						panic!("Unknown pickup kind: {:?}", pickup_kind);
+					}
 				}
 			}
 			_ => {}

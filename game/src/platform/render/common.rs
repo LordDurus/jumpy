@@ -1,5 +1,8 @@
 use super::backend::RenderBackend;
-use crate::game::game_state::GameState;
+use crate::game::{
+	game_session::{self, GameSession},
+	game_state::GameState,
+};
 
 pub struct RenderCommon;
 
@@ -7,7 +10,7 @@ impl RenderCommon {
 	pub fn new() -> RenderCommon {
 		return RenderCommon;
 	}
-	pub fn compute_camera<B: RenderBackend>(&self, backend: &B, game_state: &GameState) -> (i32, i32) {
+	pub fn compute_camera<B: RenderBackend>(&self, backend: &B, game_state: &GameState, game_session: &GameSession) -> (i32, i32) {
 		let (screen_width_pixels, screen_height_pixels) = backend.screen_size();
 		let scale: f32 = backend.get_render_scale();
 
@@ -64,7 +67,7 @@ impl RenderCommon {
 			let (_half_width, half_height) = game_state.get_entity_half_values(focus_id.unwrap());
 			let player_bottom_world: f32 = focus_top + half_height;
 
-			let pad_world: f32 = game_state.settings.camera_bottom_padding_tiles as f32 * tile_height;
+			let pad_world: f32 = game_session.settings.camera_bottom_padding_tiles as f32 * tile_height;
 
 			let effective_max_bottom_world: f32 = baseline_max_bottom_world.max(player_bottom_world + pad_world);
 			let max_camera_top: f32 = (effective_max_bottom_world - screen_height).max(0.0);

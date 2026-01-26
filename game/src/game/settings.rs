@@ -12,7 +12,6 @@ pub struct Settings {
 	pub are_sound_effects_enabled: bool,
 	pub stomp_chain_gain_per_stomp: u16,
 	pub stomp_bonus_cap: u8,
-	pub enemy_death_frames: u8,
 	pub language_code: String,
 	pub show_triggers: bool,
 }
@@ -32,7 +31,6 @@ impl Settings {
 			are_sound_effects_enabled: false,
 			stomp_chain_gain_per_stomp: 1,
 			stomp_bonus_cap: 5,
-			enemy_death_frames: 30,
 			language_code: String::from("en-us"),
 			show_triggers: true,
 		};

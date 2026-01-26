@@ -45,7 +45,7 @@ fn main() {
 
 	game_session.transition_to_level(&mut state, first_level_path);
 
-	if state.settings.is_background_music_enabled {
+	if game_session.settings.is_background_music_enabled {
 		state.audio.play_music(MusicId::World1, true);
 	}
 
@@ -77,7 +77,7 @@ fn main() {
 			// no player yet; still tick/render so you can see what's going on
 			state.tick = state.tick.wrapping_add(1);
 			renderer.begin_frame();
-			renderer.draw_level(&state);
+			renderer.draw_level(&state, &game_session);
 			renderer.commit();
 			continue;
 		};
@@ -115,13 +115,6 @@ fn main() {
 			right_pressed: input.right && !right_was_down,
 		};
 
-		/*
-		println!(
-			"action_pressed={} up_pressed={} down_pressed={} left_pressed={} right_pressed={}",
-			presses.action_pressed, presses.up_pressed, presses.down_pressed, presses.left_pressed, presses.right_pressed
-		);
-		*/
-
 		action_was_down = input.jump;
 		up_was_down = input.up;
 		down_was_down = input.down;
@@ -131,7 +124,7 @@ fn main() {
 		// --- triggers run before gameplay consumes jump ---
 		let mut jump_consumed_by_triggers: bool = false;
 
-		if triggers::handle_message_triggers(&mut state, presses) {
+		if triggers::handle_message_triggers(&game_session, &mut state, presses) {
 			jump_consumed_by_triggers = true;
 		}
 
@@ -144,14 +137,14 @@ fn main() {
 		// --- gameplay jump logic (only if not consumed) ---
 		if jump_pressed && !jump_consumed_by_triggers {
 			if let Some(jump_state) = state.jump_states.get_mut(player_id) {
-				jump_state.jump_buffer_frames_left = state.settings.jump_buffer_frames_max;
+				jump_state.jump_buffer_frames_left = game_session.settings.jump_buffer_frames_max;
 			}
 		}
 
 		if jump_released {
 			if let Some(velocity) = state.velocities.get_mut(player_id) {
 				if velocity.y < 0.0 {
-					velocity.y *= state.settings.jump_cut_multiplier;
+					velocity.y *= game_session.settings.jump_cut_multiplier;
 				}
 			}
 			if let Some(jump_state) = state.jump_states.get_mut(player_id) {
@@ -162,13 +155,13 @@ fn main() {
 		state.tick = state.tick.wrapping_add(1);
 
 		physics::movement::patrol(&mut state);
-		physics::gravity::apply(&mut state);
-		physics::movement::move_and_collide(&mut state);
+		physics::gravity::apply(&mut state, &game_session);
+		physics::movement::move_and_collide(&mut state, &game_session);
 
 		state.tick_enemy_deaths();
 
 		renderer.begin_frame();
-		renderer.draw_level(&state);
+		renderer.draw_level(&state, &game_session);
 		renderer.commit();
 	}
 }

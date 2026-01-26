@@ -1,4 +1,4 @@
-use crate::{GameState, engine_math::Vec2, game::game_state::EntityKind, platform::render::input::InputState};
+use crate::{GameSession, GameState, engine_math::Vec2, game::game_state::EntityKind, platform::render::input::InputState};
 
 pub trait RenderBackend {
 	fn screen_size(&self) -> (i32, i32);
@@ -12,8 +12,7 @@ pub trait RenderBackend {
 	fn poll_input(&mut self) -> InputState;
 	fn begin_frame(&mut self);
 
-	// top-level: stays 1-parameter
-	fn draw_level(&mut self, world: &GameState);
+	fn draw_level(&mut self, world: &GameState, game_session: &GameSession);
 
 	fn draw_death_entity(
 		&mut self,

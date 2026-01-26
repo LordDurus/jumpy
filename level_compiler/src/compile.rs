@@ -214,7 +214,22 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 					activation_mode: *activation_mode,
 				}
 			}
+			TriggerKindSource::Pickup { pickup, amount, activation_mode } => {
+				let pickup_type_id: u16 = resolve_pickup_type_id(pickup)?;
+				let value: u16 = u16::try_from(*amount).map_err(|_| format!("pickup amount out of range: {}", amount))?;
 
+				TriggerRuntime {
+					kind: TriggerKind::Pickup as u8,
+					gravity_multiplier: 0,
+					left,
+					top,
+					width,
+					height,
+					p0: pickup_type_id,
+					p1: value,
+					activation_mode: *activation_mode,
+				}
+			}
 			TriggerKindSource::Message { text_id, activation_mode } => {
 				let msg_id: u16 = message_registry.resolve_message_id(text_id)?;
 				TriggerRuntime {
@@ -335,4 +350,14 @@ fn gravity_multiplier_to_q4_4(v: f32) -> Result<u8, String> {
 
 	let scaled = (v * 16.0).round() as i32;
 	return Ok(scaled as u8);
+}
+
+fn resolve_pickup_type_id(text: &str) -> Result<u16, String> {
+	match text.trim() {
+		"coin" => return Ok(1),
+		"key" => return Ok(2),
+		"book" => return Ok(3),
+		"random" => return Ok(4),
+		_ => return Err(format!("unknown pickup type '{}'", text)),
+	}
 }

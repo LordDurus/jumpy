@@ -1,6 +1,7 @@
 use crate::{
 	engine_math::{Vec2, aabb_overlaps_solid_tiles},
 	game::{
+		game_session::GameSession,
 		game_state::{DeathAnim, EntityId, EntityKind, GameState},
 		level::Level,
 	},
@@ -71,7 +72,7 @@ fn dead_profile() -> CollisionProfile {
 }
 
 #[inline(always)]
-pub fn move_and_collide(game_state: &mut GameState) {
+pub fn move_and_collide(game_state: &mut GameState, game_session: &GameSession) {
 	let tile_width: f32 = game_state.level.tile_width as f32;
 	let tile_height: f32 = game_state.level.tile_height as f32;
 	let level_width_pixels: f32 = (game_state.level.width as f32) * tile_width;
@@ -166,7 +167,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 			let is_patrolling: bool = game_state.patrolling.get(entity_id).copied().unwrap_or(false);
 			let outcome: CollisionOutcome = resolve_entity_collisions(
 				&game_state.level,
-				&game_state.settings,
+				&game_session.settings,
 				entity_id,
 				kind,
 				is_patrolling,
@@ -191,7 +192,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 				CollisionOutcome::Crushed { source: _ } => {
 					if is_player {
 						println!("Crushed");
-						game_state.kill_player(player_id);
+						game_state.kill_player(game_session, player_id);
 					}
 				}
 				CollisionOutcome::Stomped(target_id) => {
@@ -201,7 +202,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 					}
 
 					let chain: u16 = game_state.stomp_chains.get(player_id).copied().unwrap_or(0);
-					let bonus: u16 = stomp_bonus(chain, game_state.settings.stomp_chain_gain_per_stomp as u16).min(game_state.settings.stomp_bonus_cap as u16);
+					let bonus: u16 = stomp_bonus(chain, game_session.settings.stomp_chain_gain_per_stomp as u16).min(game_session.settings.stomp_bonus_cap as u16);
 					let base_stomp_damage = game_state.base_stomp_damages.get(player_id).copied().unwrap_or(2);
 					let damage: u16 = base_stomp_damage + bonus;
 					let hit_points = game_state.hit_points.get(target_id).copied().unwrap_or(1);
@@ -209,11 +210,11 @@ pub fn move_and_collide(game_state: &mut GameState) {
 					if damage >= hit_points {
 						game_state.start_enemy_death(target_id, DeathAnim::SlimeFlatten);
 
-						if game_state.settings.are_sound_effects_enabled {
+						if game_session.settings.are_sound_effects_enabled {
 							game_state.audio.play_sfx(SfxId::Stomp);
 						}
 
-						if game_state.settings.are_sound_effects_enabled {
+						if game_session.settings.are_sound_effects_enabled {
 							game_state.audio.play_sfx(SfxId::Stomp);
 						}
 					} else {
@@ -224,7 +225,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 					if is_player {
 						//TODO: Calc Damage kill player if needed.
 						println!("Damaged");
-						game_state.kill_player(player_id);
+						game_state.kill_player(game_session, player_id);
 					}
 				}
 				CollisionOutcome::HitWall => {
@@ -254,12 +255,12 @@ pub fn move_and_collide(game_state: &mut GameState) {
 				let grounded_now: bool = game_state.is_grounded_now(entity_id);
 
 				if grounded_now {
-					game_state.stomp_chains.set(entity_id, 0);
+					let coyote_frames_max = game_state.stomp_chains.set(entity_id, 0);
 					if game_state.camera_baseline_max_bottom_world.is_none() {
 						let (_half_width, half_height) = game_state.get_entity_half_values(entity_id);
 						if let Some(pos) = game_state.positions.get(entity_id) {
 							let tile_height_world: f32 = game_state.level.tile_height as f32;
-							let pad_world: f32 = game_state.settings.camera_bottom_padding_tiles as f32 * tile_height_world;
+							let pad_world: f32 = game_session.settings.camera_bottom_padding_tiles as f32 * tile_height_world;
 
 							let ground_world_y: f32 = pos.y + half_height;
 							game_state.camera_baseline_max_bottom_world = Some(ground_world_y + pad_world);
@@ -270,7 +271,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 				if let Some(jump_state) = game_state.jump_states.get_mut(entity_id) {
 					// coyote update (your existing code)
 					if grounded_now {
-						jump_state.coyote_frames_left = game_state.settings.coyote_frames_max;
+						jump_state.coyote_frames_left = game_session.settings.coyote_frames_max;
 					} else if jump_state.coyote_frames_left > 0 {
 						jump_state.coyote_frames_left -= 1;
 					}
@@ -288,9 +289,9 @@ pub fn move_and_collide(game_state: &mut GameState) {
 							let should_fire: bool = true;
 
 							if should_fire {
-								let jumped = try_jump(game_state, entity_id);
+								let jumped = try_jump(game_state, game_session, entity_id);
 								if jumped {
-									if game_state.settings.are_sound_effects_enabled {
+									if game_session.settings.are_sound_effects_enabled {
 										game_state.audio.play_sfx(SfxId::Jump);
 									}
 								}
@@ -358,7 +359,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 
 			if out {
 				if is_player {
-					game_state.kill_player(player_id);
+					game_state.kill_player(game_session, player_id);
 					continue;
 				} else {
 					game_state.remove_entity(entity_id);
@@ -369,7 +370,7 @@ pub fn move_and_collide(game_state: &mut GameState) {
 	}
 }
 
-pub fn try_jump(game_state: &mut GameState, entity_id: EntityId) -> bool {
+pub fn try_jump(game_state: &mut GameState, game_session: &GameSession, entity_id: EntityId) -> bool {
 	let grounded: bool = game_state.is_grounded_now(entity_id);
 	let on_left: bool = game_state.on_wall_left(entity_id);
 	let on_right: bool = game_state.on_wall_right(entity_id);
@@ -385,7 +386,7 @@ pub fn try_jump(game_state: &mut GameState, entity_id: EntityId) -> bool {
 	let jump_multiplier_u8: u8 = game_state.jump_multipliers.get(entity_id).copied().unwrap_or(1);
 	let jump_multiplier: f32 = jump_multiplier_u8 as f32;
 
-	let jump_velocity: f32 = game_state.settings.jump_velocity * jump_multiplier;
+	let jump_velocity: f32 = game_session.settings.jump_velocity * jump_multiplier;
 
 	if let Some(velocity) = game_state.velocities.get_mut(entity_id) {
 		velocity.y = jump_velocity;

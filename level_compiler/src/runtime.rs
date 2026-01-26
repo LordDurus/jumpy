@@ -107,4 +107,5 @@ pub enum EntityKind {
 pub enum TriggerKind {
 	LevelExit = 1,
 	Message = 2,
+	Pickup = 3,
 }

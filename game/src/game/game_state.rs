@@ -1,7 +1,7 @@
 use crate::{
 	ecs::component_store::ComponentStore,
 	engine_math::Vec2,
-	game::{Settings, inventory::Inventory, level::Level, message_table::MessageTable},
+	game::level::Level,
 	physics::collision,
 	platform::audio::{AudioEngine, SfxId},
 	tile::TileCollision,
@@ -123,7 +123,6 @@ pub struct GameState {
 	pub bump_cooldowns: ComponentStore<u8>,
 	pub enemy_ids: Vec<EntityId>,
 	pub tick: u32,
-	pub settings: Settings,
 	pub jump_states: ComponentStore<JumpState>,
 	pub respawn_states: ComponentStore<RespawnState>,
 	pub respawn_cooldown_frames: u8,
@@ -137,7 +136,6 @@ pub struct GameState {
 	pub trigger_armed: Vec<bool>,
 	pub enemy_sprite_scale: u8,
 	next_entity_id: EntityId,
-	pub message_table: MessageTable,
 	pub player_ids: [Option<EntityId>; MAX_PLAYERS],
 }
 
@@ -145,12 +143,6 @@ impl GameState {
 	pub fn new(current_level: Level, audio: Box<dyn AudioEngine>) -> GameState {
 		let spawn_top_tiles: u16 = current_level.player_spawn_top as u16;
 		let spawn_left_tiles: u16 = current_level.player_spawn_left as u16;
-		let settings = Settings::new();
-		let message_table: MessageTable = MessageTable::load(settings.language_code.as_str()).unwrap_or_else(|e| {
-			println!("message table load failed: {}", e);
-			// empty fallback
-			return MessageTable::load("en-us").unwrap();
-		});
 
 		let mut state = GameState {
 			level: current_level,
@@ -173,7 +165,6 @@ impl GameState {
 			patrolling: ComponentStore::new(),
 			patrol_flips: ComponentStore::new(),
 			bump_cooldowns: ComponentStore::new(),
-			settings,
 			jump_states: ComponentStore::new(),
 			respawn_states: ComponentStore::new(),
 			enemy_ids: Vec::new(),
@@ -187,7 +178,6 @@ impl GameState {
 			trigger_armed: Vec::new(),
 			enemy_sprite_scale: 1,
 			audio,
-			message_table,
 			tick: 0,
 			player_ids: [None, None, None, None],
 		};
@@ -264,12 +254,12 @@ impl GameState {
 		return;
 	}
 
-	pub fn kill_player(&mut self, player_id: EntityId) {
+	pub fn kill_player(&mut self, game_session: &GameSession, player_id: EntityId) {
 		if let Some(respawn_state) = self.respawn_states.get_mut(player_id) {
 			respawn_state.respawn_cooldown_frames = self.respawn_cooldown_frames;
 		}
 
-		if self.settings.are_sound_effects_enabled {
+		if game_session.settings.are_sound_effects_enabled {
 			self.audio.play_sfx_and_wait(SfxId::Player1Died);
 		}
 		self.respawn_cooldown_frames = 20;
@@ -476,7 +466,7 @@ impl GameState {
 
 		self.death_anims.set(id, anim as u8);
 
-		let frames: u16 = self.settings.enemy_death_frames as u16;
+		let frames: u16 = 30;
 		self.death_timers.set(id, frames);
 
 		// stop patrol/ai movement
