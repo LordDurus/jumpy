@@ -94,8 +94,6 @@ impl PcRenderer {
 			return;
 		}
 
-		print!("background_id={}", background_id);
-
 		self.bg_id = background_id;
 		let file_name = parse_background_id(background_id);
 		let bg_path = gfx_pc_path(&["background", file_name]);

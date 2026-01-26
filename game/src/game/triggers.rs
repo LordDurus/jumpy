@@ -80,7 +80,6 @@ pub fn handle_message_triggers(game_state: &mut GameState, trigger_presses: Trig
 	let player_id: EntityId = game_state.get_player_id();
 
 	let Some(player_pos) = game_state.positions.get(player_id) else {
-		println!("[trigger] quit early");
 		return false;
 	};
 

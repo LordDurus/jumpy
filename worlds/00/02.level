@@ -64,19 +64,6 @@ entities
 		luck = 5
 		strength = 15
 	}
-
-	platform "horizontal"
-	{
-		top = 20
-		left = 15
-		width = 4
-		height = 1
-		speed = 3
-		range_min = 2
-		range_max = 20
-		gravity_multiplier = 0.00
-		render_style = 4
-	}
 }
 
 triggers

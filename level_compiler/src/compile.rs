@@ -234,15 +234,6 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 		triggers_runtime.push(runtime);
 	}
 
-	let trigger_bytes: u32 = triggers_runtime.len() as u32 * TriggerRuntime::BYTE_SIZE;
-
-	println!(
-		"trigger_count={} trigger_bytes={} per_trigger={}",
-		triggers_runtime.len(),
-		trigger_bytes,
-		TriggerRuntime::BYTE_SIZE
-	);
-
 	let background_id = resolve_background_id(&source.header.background)?;
 	let gravity_fixed = gravity_to_fixed(source.header.gravity);
 
@@ -308,15 +299,11 @@ fn build_tile_palette() -> HashMap<char, u8> {
 }
 
 fn resolve_background_id(name: &str) -> Result<u8, String> {
-	println!("name='{}'", name);
-
 	if name.to_ascii_lowercase().eq_ignore_ascii_case("bg_library_stone") {
-		println!("  1");
 		return Ok(1);
 	}
 
 	if name.to_ascii_lowercase().eq_ignore_ascii_case("bg_parallax_forest") {
-		println!("  1");
 		return Ok(2);
 	}
 

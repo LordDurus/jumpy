@@ -85,13 +85,6 @@ pub fn serialize_level(compiled: &CompiledLevel) -> Result<Vec<u8>, String> {
 		return Err(format!("entity bytes mismatch: expected {} got {}", expected_entities_bytes, actual_entities_bytes));
 	}
 
-	println!(
-		"entity_count={} entity_bytes={} per_entity={}",
-		compiled.entities.len(),
-		actual_entities_bytes,
-		actual_entities_bytes / (compiled.entities.len() as u32)
-	);
-
 	return Ok(buffer);
 }
 

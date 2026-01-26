@@ -83,10 +83,6 @@ pub struct TriggerRuntime {
 	pub activation_mode: u8,
 }
 
-impl TriggerRuntime {
-	pub const BYTE_SIZE: u32 = 14;
-}
-
 #[derive(Debug)]
 pub struct CompiledLevel {
 	pub header: FileHeader,
