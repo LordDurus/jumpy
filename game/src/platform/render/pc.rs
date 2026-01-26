@@ -102,10 +102,12 @@ impl PcRenderer {
 
 		let bg_texture = load_texture(&self.texture_creator, bg_path);
 		self.bg_texture = Some(bg_texture);
+		// let _ = sdl2::hint::set("SDL_RENDER_SCALE_QUALITY", "0"); // nearest
 
-		// make the background look far way
-		// self.bg_texture.set_blend_mode(BlendMode::Blend);
-		//self.bg_texture.set_alpha_mod(208);
+		if let Some(background) = self.bg_texture.as_mut() {
+			background.set_blend_mode(BlendMode::Blend);
+			background.set_alpha_mod(208);
+		}
 
 		// optional: set parallax rules per background id
 		if background_id == BACKGROUND_ID_LIBRARY_STONE {
@@ -307,13 +309,14 @@ impl PcRenderer {
 			return;
 		};
 
-		let q = bg.query();
-		if q.width == 0 || q.height == 0 {
+		let query = bg.query();
+		if query.width == 0 || query.height == 0 {
 			return;
 		}
 
-		let bg_tile_width_pixels: i32 = (q.width as f32 * scale).round() as i32;
-		let bg_tile_height_pixels: i32 = (q.height as f32 * scale).round() as i32;
+		let bg_tile_width_pixels: i32 = query.width as i32;
+		let bg_tile_height_pixels: i32 = query.height as i32;
+
 		if bg_tile_width_pixels <= 0 || bg_tile_height_pixels <= 0 {
 			return;
 		}
