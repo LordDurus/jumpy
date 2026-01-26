@@ -137,6 +137,10 @@ fn main() {
 
 		triggers::handle_level_exit_triggers(&mut game_session, &mut state, presses);
 
+		if triggers::handle_pickup_triggers(&mut game_session, &mut state, presses) {
+			jump_consumed_by_triggers = true;
+		}
+
 		// --- gameplay jump logic (only if not consumed) ---
 		if jump_pressed && !jump_consumed_by_triggers {
 			if let Some(jump_state) = state.jump_states.get_mut(player_id) {

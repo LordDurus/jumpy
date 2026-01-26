@@ -203,3 +203,14 @@ pub fn aabb_overlaps_solid_tiles(level: &Level, left: f32, right: f32, top: f32,
 
 	return false;
 }
+
+#[inline(always)]
+pub fn random_u32(state: &mut u32) -> u32 {
+	// xorshift32
+	let mut x: u32 = *state;
+	x ^= x << 13;
+	x ^= x >> 17;
+	x ^= x << 5;
+	*state = x;
+	return x;
+}

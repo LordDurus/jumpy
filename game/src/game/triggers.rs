@@ -1,5 +1,5 @@
 use crate::{
-	engine_math::rects_overlap,
+	engine_math::{random_u32, rects_overlap},
 	game::{
 		game_session::GameSession,
 		game_state::{EntityId, GameState},
@@ -16,11 +16,12 @@ pub const TRIGGER_MODE_RIGHT: u16 = 5;
 
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[allow(dead_code)]
 pub enum TriggerKind {
 	Empty = 0,
 	LevelExit = 1,
 	Message = 2,
+	RandomPickup = 3,
+	Pickup = 4,
 }
 
 impl TriggerKind {
@@ -28,6 +29,8 @@ impl TriggerKind {
 		match v {
 			1 => TriggerKind::LevelExit,
 			2 => TriggerKind::Message,
+			3 => TriggerKind::RandomPickup,
+			4 => TriggerKind::Pickup,
 			_ => TriggerKind::Empty,
 		}
 	}
@@ -220,6 +223,117 @@ pub fn handle_level_exit_triggers(session: &mut GameSession, game_state: &mut Ga
 		session.pending_level_name = Some(next_level_name);
 		return;
 	}
+}
+
+pub fn handle_pickup_triggers(session: &mut GameSession, game_state: &mut GameState, presses: TriggerPresses) -> bool {
+	let mut consumed_action: bool = false;
+	let player_id: EntityId = game_state.get_player_id();
+	let Some(player_pos) = game_state.positions.get(player_id) else {
+		return false;
+	};
+
+	let (player_half_width, player_half_height) = game_state.get_entity_half_values(player_id);
+
+	let player_left_world: f32 = player_pos.x - player_half_width;
+	let player_top_world: f32 = player_pos.y - player_half_height;
+	let player_width_world: f32 = player_half_width * 2.0;
+	let player_height_world: f32 = player_half_height * 2.0;
+
+	let tile_width_world: f32 = game_state.level.tile_width as f32;
+	let tile_height_world: f32 = game_state.level.tile_height as f32;
+
+	let armed_len: usize = game_state.trigger_armed.len();
+
+	for trigger in &game_state.level.triggers {
+		let kind: TriggerKind = TriggerKind::from_u8(trigger.kind);
+		if kind != TriggerKind::Pickup && kind != TriggerKind::RandomPickup {
+			continue;
+		}
+
+		let trigger_index: usize = trigger.id as usize;
+		if trigger_index >= armed_len {
+			continue;
+		}
+
+		// already consumed -> never fire again
+		if game_state.trigger_armed[trigger_index] {
+			continue;
+		}
+
+		let trig_left_world: f32 = (trigger.left_tiles as f32) * tile_width_world;
+		let trig_top_world: f32 = (trigger.top_tiles as f32) * tile_height_world;
+		let trig_width_world: f32 = (trigger.width_tiles as f32) * tile_width_world;
+		let trig_height_world: f32 = (trigger.height_tiles as f32) * tile_height_world;
+
+		let is_overlapping: bool = rects_overlap(
+			player_left_world,
+			player_top_world,
+			player_width_world,
+			player_height_world,
+			trig_left_world,
+			trig_top_world,
+			trig_width_world,
+			trig_height_world,
+		);
+
+		if !is_overlapping {
+			// NOTE: pickups are one-shot, so we do NOT clear trigger_armed here
+			continue;
+		}
+
+		let mode: u16 = trigger.get_activation_mode();
+		if mode != TRIGGER_MODE_AUTO && !should_fire(mode, presses) {
+			continue;
+		}
+
+		// consume
+		game_state.trigger_armed[trigger_index] = true;
+
+		if mode == TRIGGER_MODE_ACTION {
+			consumed_action = true;
+		}
+
+		match kind {
+			TriggerKind::Pickup => {
+				// p0 = pickup type, p1 = value
+				apply_pickup(session, trigger.p0, trigger.p1);
+			}
+			TriggerKind::RandomPickup => {
+				let roll: u32 = random_u32(&mut session.rng_state) % 3;
+
+				if roll == 0 {
+					apply_pickup(session, 1, 1); // coin +1
+				} else if roll == 1 {
+					apply_pickup(session, 2, 1); // key id 1
+				} else {
+					apply_pickup(session, 3, 1); // book id 1
+				}
+			}
+			_ => {}
+		}
+	}
+
+	return consumed_action;
+}
+
+#[inline(always)]
+fn apply_pickup(session: &mut GameSession, pickup_type: u16, value: u16) {
+	if pickup_type == 1 {
+		session.inventory.add_coins(value);
+		return;
+	}
+
+	if pickup_type == 2 {
+		session.inventory.add_key(value);
+		return;
+	}
+
+	if pickup_type == 3 {
+		session.inventory.add_book(value, 200);
+		return;
+	}
+
+	return;
 }
 
 #[inline(always)]

@@ -1,7 +1,7 @@
 use crate::{
 	ecs::component_store::ComponentStore,
 	engine_math::Vec2,
-	game::{Settings, level::Level, message_table::MessageTable},
+	game::{Settings, inventory::Inventory, level::Level, message_table::MessageTable},
 	physics::collision,
 	platform::audio::{AudioEngine, SfxId},
 	tile::TileCollision,
@@ -226,9 +226,7 @@ impl GameState {
 			};
 
 			let p = session.player(player_index);
-
 			self.hit_points.set(id, p.hit_points);
-			// inventory later
 		}
 
 		return;
@@ -244,8 +242,6 @@ impl GameState {
 
 			let p = session.player_mut(player_index);
 			p.hit_points = hp;
-
-			// inventory later
 		}
 
 		return;

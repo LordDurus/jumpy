@@ -2,6 +2,7 @@ use crate::{
 	GameState,
 	game::{
 		Settings,
+		inventory::Inventory,
 		level::{Level, LevelReference},
 	},
 };
@@ -13,30 +14,11 @@ pub const MAX_PLAYERS: usize = 4;
 #[derive(Clone, Debug)]
 pub struct PlayerPersistentState {
 	pub hit_points: u16,
-	pub inventory: Inventory,
-	// add more later: keys, coins, upgrades, etc.
 }
 
 impl PlayerPersistentState {
 	pub fn new_default() -> PlayerPersistentState {
-		return PlayerPersistentState {
-			hit_points: 5,
-			inventory: Inventory::new(),
-		};
-	}
-}
-
-#[allow(dead_code)]
-#[derive(Clone, Debug)]
-pub struct Inventory {
-	// keep it simple for now
-	pub coins: u16,
-	pub keys: u8,
-}
-
-impl Inventory {
-	pub fn new() -> Inventory {
-		return Inventory { coins: 0, keys: 0 };
+		return PlayerPersistentState { hit_points: 5 };
 	}
 }
 
@@ -44,8 +26,9 @@ pub struct GameSession {
 	pub players: [PlayerPersistentState; MAX_PLAYERS],
 	pub current_level_name: Option<String>,
 	pub pending_level_name: Option<String>,
-	// keep settings here too if you want them to persist
 	pub settings: Settings,
+	pub inventory: Inventory,
+	pub rng_state: u32,
 }
 
 impl GameSession {
@@ -60,6 +43,8 @@ impl GameSession {
 			current_level_name: None,
 			pending_level_name: None,
 			settings: Settings::new(),
+			inventory: Inventory::new(),
+			rng_state: 0x1234_5678,
 		};
 	}
 	pub fn transition_to_level(&mut self, game_state: &mut GameState, level_name: &str) -> bool {

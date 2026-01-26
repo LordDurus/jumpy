@@ -68,5 +68,14 @@ entities
 
 triggers
 {
-	
+	trigger "coin"
+    {
+        top = 21
+        left = 0
+        width = 1
+        height = 2        
+		target = "00"
+		level = "02"
+		mode = "action"
+	}
 }
