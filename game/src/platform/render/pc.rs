@@ -1,6 +1,5 @@
-// const RENDER_SCALE: f32 = 4.0;
-// const WINDOW_WIDTH: u32 = 640;
-// const WINDOW_HEIGHT: u32 = 360;
+pub const BACKGROUND_ID_LIBRARY_STONE: u8 = 1;
+pub const BACKGROUND_PARALLAX_FOREST: u8 = 2;
 
 #[path = "pc_platform.rs"]
 mod pc_platform;
@@ -36,6 +35,19 @@ use sdl2::{
 };
 use std::path::PathBuf;
 
+#[derive(Clone, Copy)]
+enum SlimeTextureKey {
+	BlueWalk,
+	BlueRun,
+	BlueDeath,
+	UndeadWalk,
+	UndeadRun,
+	UndeadDeath,
+	LavaWalk,
+	LavaRun,
+	LavaDeath,
+}
+
 pub struct PcRenderer {
 	canvas: Canvas<Window>,
 	event_pump: EventPump,
@@ -56,17 +68,56 @@ pub struct PcRenderer {
 	#[allow(dead_code)]
 	pub atlas_tile_height_pixels: u32,
 
+	// texture_creator: sdl2::render::TextureCreator<sdl2::video::WindowContext>,
+	texture_creator: &'static sdl2::render::TextureCreator<sdl2::video::WindowContext>,
+
 	// bg parallax
 	bg_texture: Option<Texture<'static>>,
+	bg_id: u8,
+
 	tile_texture: Option<Texture<'static>>,
 	bg_parallax_x: f32,
 	bg_parallax_y: f32,
 	render_scale: u32,
+	//pub fn get_background_file_name(background_id: u8) -> &'static str),
 }
 
 impl Drop for PcRenderer {
 	fn drop(&mut self) {
 		save_window_settings(self.canvas.window());
+	}
+}
+
+impl PcRenderer {
+	pub fn set_level_background(&mut self, background_id: u8) {
+		if self.bg_texture.is_some() && self.bg_id == background_id {
+			return;
+		}
+
+		print!("background_id={}", background_id);
+
+		self.bg_id = background_id;
+		let file_name = parse_background_id(background_id);
+		let bg_path = gfx_pc_path(&["background", file_name]);
+
+		let bg_texture = load_texture(&self.texture_creator, bg_path);
+		self.bg_texture = Some(bg_texture);
+
+		// make the background look far way
+		// self.bg_texture.set_blend_mode(BlendMode::Blend);
+		//self.bg_texture.set_alpha_mod(208);
+
+		// optional: set parallax rules per background id
+		if background_id == BACKGROUND_ID_LIBRARY_STONE {
+			self.bg_parallax_x = 0.35;
+			self.bg_parallax_y = 0.15;
+		} else if background_id == BACKGROUND_PARALLAX_FOREST {
+			self.bg_parallax_x = 0.35;
+			self.bg_parallax_y = 0.15;
+		} else {
+			self.bg_parallax_x = 0.0;
+			self.bg_parallax_y = 0.0;
+		}
 	}
 }
 
@@ -614,39 +665,43 @@ impl RenderBackend for PcRenderer {
 
 		let canvas = window.into_canvas().accelerated().present_vsync().build().unwrap();
 		let event_pump = sdl.event_pump().unwrap();
+
 		let texture_creator = leak_texture_creator(&canvas);
+		// let texture_creator = canvas.texture_creator();
 
 		// background
-		let bg_path = gfx_pc_path(&["background", "bg_parallax_forest.png"]);
-		let mut bg_texture = load_texture(texture_creator, bg_path);
-		bg_texture.set_blend_mode(BlendMode::Blend);
-		bg_texture.set_alpha_mod(208);
+		// let bg_path = gfx_pc_path(&["background", "bg_parallax_forest.png"]);
+		// let mut bg_texture = load_texture(texture_creator, bg_path);
+		// let mut bg_texture = texture_creator.load_texture(&bg_path).expect("failed bg");
+		// bg_texture.set_blend_mode(BlendMode::Blend);
+		// bg_texture.set_alpha_mod(208);
 
 		// tiles
 		let tile_path = gfx_pc_path(&["tiles", "tiles64.png"]);
-		let tile_texture = load_texture(texture_creator, tile_path);
+		let tile_texture = load_texture(&texture_creator, tile_path);
 
 		// slimes
 		let slime_blue_walk_path = gfx_pc_path(&["slime", "blue", "walk_body.png"]);
-		let slime_blue_walk_tex = load_texture(texture_creator, slime_blue_walk_path);
+		let slime_blue_walk_tex = load_texture(&texture_creator, slime_blue_walk_path);
 
 		let slime_blue_run_path = gfx_pc_path(&["slime", "blue", "run_body.png"]);
-		let slime_blue_run_tex = load_texture(texture_creator, slime_blue_run_path);
+		let slime_blue_run_tex = load_texture(&texture_creator, slime_blue_run_path);
 
 		let slime_undead_walk_path = gfx_pc_path(&["slime", "undead", "walk_body.png"]);
-		let slime_undead_walk_tex = load_texture(texture_creator, slime_undead_walk_path);
+		let slime_undead_walk_tex = load_texture(&texture_creator, slime_undead_walk_path);
 
 		let slime_undead_run_path = gfx_pc_path(&["slime", "undead", "run_body.png"]);
-		let slime_undead_run_tex = load_texture(texture_creator, slime_undead_run_path);
+		let slime_undead_run_tex = load_texture(&texture_creator, slime_undead_run_path);
 
 		let slime_lava_walk_path = gfx_pc_path(&["slime", "lava", "walk_body.png"]);
-		let slime_lava_walk_tex = load_texture(texture_creator, slime_lava_walk_path);
+		let slime_lava_walk_tex = load_texture(&texture_creator, slime_lava_walk_path);
 
 		let slime_lava_run_path = gfx_pc_path(&["slime", "lava", "run_body.png"]);
-		let slime_lava_run_tex = load_texture(texture_creator, slime_lava_run_path);
+		let slime_lava_run_tex = load_texture(&texture_creator, slime_lava_run_path);
 
 		let slime_blue_death_path: PathBuf = gfx_pc_path(&["slime", "blue", "death_body.png"]);
-		let slime_blue_death_texture = texture_creator.load_texture(slime_blue_death_path).expect("failed to load slime_blue_death.png");
+		//let slime_blue_death_texture = texture_creator.load_texture(slime_blue_death_path).expect("failed to load slime_blue_death.png");
+		let slime_blue_death_texture = load_texture(&texture_creator, slime_blue_death_path);
 
 		let slime_undead_death_path: PathBuf = gfx_pc_path(&["slime", "undead", "death_body.png"]);
 		let slime_undead_death_texture = texture_creator.load_texture(slime_undead_death_path).expect("failed to load slime_undead_death.png");
@@ -659,7 +714,7 @@ impl RenderBackend for PcRenderer {
 			event_pump,
 			common: RenderCommon::new(),
 			frame_index: 0,
-			bg_texture: Some(bg_texture),
+			bg_texture: None,
 			bg_parallax_x: 0.35,
 			bg_parallax_y: 0.15,
 			atlas_tile_width_pixels: 64,
@@ -675,6 +730,8 @@ impl RenderBackend for PcRenderer {
 			slime_undead_run_texture: slime_undead_run_tex,
 			slime_undead_walk_texture: slime_undead_walk_tex,
 			slime_undead_death_texture: slime_undead_death_texture,
+			texture_creator,
+			bg_id: 0, // Todo: set this
 		};
 	}
 
@@ -721,15 +778,6 @@ impl RenderBackend for PcRenderer {
 
 		// spread elapsed over frame_count
 		let frame_index: u32 = ((elapsed as u32) * frame_count / (total as u32)).min(frame_count - 1);
-
-		/*
-		let row_index: u32 = match entity_kind {
-			EntityKind::SlimeBlue => 0,
-			EntityKind::SlimeUndead => 1,
-			EntityKind::SlimeLava => 2,
-			_ => 0,
-		};
-		*/
 
 		let row_index: u32 = 0;
 
@@ -779,19 +827,13 @@ impl RenderBackend for PcRenderer {
 	}
 }
 
+/*
 fn leak_texture_creator(canvas: &sdl2::render::Canvas<sdl2::video::Window>) -> &'static sdl2::render::TextureCreator<sdl2::video::WindowContext> {
 	let creator_box = Box::new(canvas.texture_creator());
 	let texture_creator: &'static sdl2::render::TextureCreator<sdl2::video::WindowContext> = Box::leak(creator_box);
 	return texture_creator;
 }
-
-fn load_texture(texture_creator: &'static sdl2::render::TextureCreator<sdl2::video::WindowContext>, path: PathBuf) -> sdl2::render::Texture<'static> {
-	let path_string = path.to_string_lossy().to_string();
-	let texture = texture_creator
-		.load_texture(&path)
-		.unwrap_or_else(|_| panic!("failed to load texture: {}", path_string));
-	return texture;
-}
+*/
 
 fn gfx_pc_path(parts: &[&str]) -> PathBuf {
 	let mut path = get_gfx_root().join("pc");
@@ -801,15 +843,24 @@ fn gfx_pc_path(parts: &[&str]) -> PathBuf {
 	return path;
 }
 
-#[derive(Clone, Copy)]
-enum SlimeTextureKey {
-	BlueWalk,
-	BlueRun,
-	BlueDeath,
-	UndeadWalk,
-	UndeadRun,
-	UndeadDeath,
-	LavaWalk,
-	LavaRun,
-	LavaDeath,
+fn load_texture<'a>(texture_creator: &'a sdl2::render::TextureCreator<sdl2::video::WindowContext>, path: PathBuf) -> sdl2::render::Texture<'a> {
+	let path_string = path.to_string_lossy().to_string();
+	let texture = texture_creator
+		.load_texture(&path)
+		.unwrap_or_else(|_| panic!("failed to load texture: {}", path_string));
+	return texture;
+}
+
+fn parse_background_id(background_id: u8) -> &'static str {
+	match background_id {
+		BACKGROUND_ID_LIBRARY_STONE => "bg_library_stone.png",
+		BACKGROUND_PARALLAX_FOREST => "bg_parallax_forest.png",
+		_ => panic!("Unknown id: {}", background_id),
+	}
+}
+
+fn leak_texture_creator(canvas: &sdl2::render::Canvas<sdl2::video::Window>) -> &'static sdl2::render::TextureCreator<sdl2::video::WindowContext> {
+	let creator_box = Box::new(canvas.texture_creator());
+	let texture_creator: &'static sdl2::render::TextureCreator<sdl2::video::WindowContext> = Box::leak(creator_box);
+	return texture_creator;
 }

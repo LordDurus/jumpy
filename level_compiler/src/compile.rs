@@ -308,8 +308,16 @@ fn build_tile_palette() -> HashMap<char, u8> {
 }
 
 fn resolve_background_id(name: &str) -> Result<u8, String> {
-	if name.eq_ignore_ascii_case("sky_blue") {
-		return Ok(0);
+	println!("name='{}'", name);
+
+	if name.to_ascii_lowercase().eq_ignore_ascii_case("bg_library_stone") {
+		println!("  1");
+		return Ok(1);
+	}
+
+	if name.to_ascii_lowercase().eq_ignore_ascii_case("bg_parallax_forest") {
+		println!("  1");
+		return Ok(2);
 	}
 
 	return Err(format!("unknown background '{}'", name));

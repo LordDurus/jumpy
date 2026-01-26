@@ -48,9 +48,8 @@ pub struct Level {
 	pub player_spawn_top: f32,
 	pub player_spawn_left: f32,
 	pub entities: Vec<LevelEntity>,
-
-	#[allow(dead_code)]
 	pub triggers: Vec<LevelTrigger>,
+	pub background_id: u8,
 }
 
 #[inline(always)]
@@ -159,7 +158,8 @@ impl Level {
 		let trigger_count = read_u16(&bytes, &mut offset)? as usize;
 
 		let _gravity_fixed = read_i16(&bytes, &mut offset)?;
-		let _background_id = read_u8(&bytes, &mut offset)?;
+		let background_id = read_u8(&bytes, &mut offset)?;
+
 		let _gravity = read_u8(&bytes, &mut offset)?;
 
 		let _reserved0 = read_u8(&bytes, &mut offset)?;
@@ -376,6 +376,7 @@ impl Level {
 			player_spawn_left,
 			entities: entities,
 			triggers: triggers,
+			background_id,
 		};
 
 		level.floor_y = level.compute_floor_y();

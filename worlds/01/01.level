@@ -8,7 +8,7 @@ header
     tile_width = 16
 	tile_height = 16
     gravity = 1.0
-    background = "sky_blue"	
+    background = "bg_parallax_forest"	
 }
 
 layers

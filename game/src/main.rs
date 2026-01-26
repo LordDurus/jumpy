@@ -51,6 +51,7 @@ fn main() {
 
 	let mut renderer = ActiveRenderer::new();
 	renderer.init();
+	renderer.set_level_background(state.level.background_id);
 
 	let mut up_was_down: bool = false;
 	let mut down_was_down: bool = false;
@@ -69,6 +70,7 @@ fn main() {
 		// if triggers requested a level change last frame, do it now
 		if let Some(next_level_name) = game_session.pending_level_name.take() {
 			game_session.transition_to_level(&mut state, &next_level_name);
+			renderer.set_level_background(state.level.background_id);
 		}
 
 		let Some(player_id) = state.try_get_player_id() else {
