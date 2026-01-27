@@ -9,7 +9,12 @@ mod platform;
 mod tile;
 
 use crate::{
-	game::{game_session::GameSession, game_state::GameState, level::Level},
+	game::{
+		book::{BookId, BookSlug, reader::BookReader},
+		game_session::GameSession,
+		game_state::GameState,
+		level::Level,
+	},
 	platform::{
 		audio::{AudioEngine, backend::MusicId},
 		input::TriggerPresses,
@@ -18,10 +23,22 @@ use crate::{
 };
 
 #[cfg(feature = "pc")]
+use crate::game::book::reader_pc;
+
+#[cfg(feature = "pc")]
+use crate::game::book::reader_pc::PcBookTextSource;
+
+#[cfg(feature = "pc")]
 use crate::platform::audio::pc::PcAudio;
 
 #[cfg(feature = "pc")]
 type ActiveRenderer = crate::platform::render::pc::PcRenderer;
+
+#[cfg(feature = "pc")]
+pub type ActiveBookTextSource = reader_pc::PcBookTextSource;
+
+#[cfg(feature = "gba")]
+pub type ActiveBookTextSource = book_reader_gba::GbaBookTextSource;
 
 #[cfg(feature = "gba")]
 type ActiveRenderer = crate::platform::render::gba::GbaRenderer;
@@ -32,6 +49,9 @@ type ActiveRenderer = crate::platform::render::psp::PspRenderer;
 #[cfg(feature = "pc")]
 fn main() {
 	let mut game_session = GameSession::new();
+
+	#[cfg(feature = "pc")]
+	let book_reader = BookReader::new(PcBookTextSource::new(), 25);
 
 	let audio: Box<dyn AudioEngine> = {
 		let mut a = PcAudio::new();
@@ -80,19 +100,24 @@ fn main() {
 
 		if read_pressed {
 			read_was_down = true;
-			let tom_sawyer_book_id: u16 = 100;
-			let tom_sawyer_slug: &str = "tom_sawyer";
 
-			if let Some(b) = game_session.inventory.get_book(tom_sawyer_book_id) {
-				let full_text: String = crate::game::book_reader::BookReader::load_book_text(tom_sawyer_slug).unwrap();
-				let page: String = crate::game::book_reader::BookReader::page_text(&full_text, b.current_page, 900);
+			let book_id: BookId = 100;
+			let book_slug: BookSlug = "tom_sawyer";
 
-				println!("--- tom_sawyer page {}/{} ---", b.current_page, b.total_pages);
-				println!("{}", page);
-
-				let _ = game_session.inventory.advance_book_page(tom_sawyer_book_id);
-			} else {
+			let Some(b) = game_session.inventory.get_book(book_id) else {
 				println!("tom_sawyer not in inventory");
+				return;
+			};
+
+			let result = game_session.book_reader.read_page(book_slug, 0);
+			match result {
+				Ok((page, text)) => {
+					println!("reading tom_sawyer page {}/{}", page.page_index, page.total_pages);
+					println!("{}", text);
+				}
+				Err(e) => {
+					println!("read failed: {}", e);
+				}
 			}
 		}
 
