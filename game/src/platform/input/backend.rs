@@ -6,6 +6,8 @@ pub struct InputState {
 	pub jump: bool,
 	pub up: bool,
 	pub down: bool,
+	pub inventory: bool,
+	pub read: bool,
 }
 
 #[allow(dead_code)]

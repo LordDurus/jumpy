@@ -318,7 +318,7 @@ pub fn handle_pickup_triggers(session: &mut GameSession, game_state: &mut GameSt
 				let pickup_kind = PickupKind::from_u8(trigger.p0 as u8);
 				// p0 = pickup type, p1 = value
 				match pickup_kind {
-					PickupKind::Coin => {
+					PickupKind::Coin | PickupKind::Key | PickupKind::Book => {
 						apply_pickup(session, trigger.p0, trigger.p1);
 					}
 					PickupKind::Random => {

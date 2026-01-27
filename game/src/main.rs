@@ -58,6 +58,8 @@ fn main() {
 	let mut left_was_down: bool = false;
 	let mut right_was_down: bool = false;
 	let mut action_was_down: bool = false; // "action" is jump for now
+	let mut inventory_was_down: bool = false;
+	let mut read_was_down: bool = false;
 
 	loop {
 		use crate::game::triggers;
@@ -65,6 +67,33 @@ fn main() {
 		let input = renderer.poll_input();
 		if input.quit {
 			break;
+		}
+
+		let inventory_pressed: bool = input.inventory && !inventory_was_down;
+		let read_pressed: bool = input.read && !read_was_down;
+
+		if inventory_pressed {
+			inventory_was_down = true;
+			print_inventory(&game_session.inventory);
+			continue;
+		}
+
+		if read_pressed {
+			read_was_down = true;
+			let tom_sawyer_book_id: u16 = 100;
+			let tom_sawyer_slug: &str = "tom_sawyer";
+
+			if let Some(b) = game_session.inventory.get_book(tom_sawyer_book_id) {
+				let full_text: String = crate::game::book_reader::BookReader::load_book_text(tom_sawyer_slug).unwrap();
+				let page: String = crate::game::book_reader::BookReader::page_text(&full_text, b.current_page, 900);
+
+				println!("--- tom_sawyer page {}/{} ---", b.current_page, b.total_pages);
+				println!("{}", page);
+
+				let _ = game_session.inventory.advance_book_page(tom_sawyer_book_id);
+			} else {
+				println!("tom_sawyer not in inventory");
+			}
 		}
 
 		// if triggers requested a level change last frame, do it now
@@ -120,6 +149,8 @@ fn main() {
 		down_was_down = input.down;
 		left_was_down = input.left;
 		right_was_down = input.right;
+		inventory_was_down = input.inventory;
+		read_was_down = input.read;
 
 		// --- triggers run before gameplay consumes jump ---
 		let mut jump_consumed_by_triggers: bool = false;
@@ -164,4 +195,21 @@ fn main() {
 		renderer.draw_level(&state, &game_session);
 		renderer.commit();
 	}
+}
+
+fn print_inventory(inv: &crate::game::inventory::Inventory) {
+	println!("--- inventory ---");
+	println!("coins={}", inv.coins);
+
+	println!("keys={}", inv.keys.len());
+	for k in &inv.keys {
+		println!(" key id={} used={}", k.key_id, k.is_used);
+	}
+
+	println!("books={}", inv.books.len());
+	for b in &inv.books {
+		println!(" book id={} page={}/{}", b.book_id, b.current_page, b.total_pages);
+	}
+
+	return;
 }

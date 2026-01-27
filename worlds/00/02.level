@@ -68,6 +68,7 @@ entities
 
 triggers
 {
+	
 	trigger "pickup"
     {
         top = 22
@@ -75,18 +76,7 @@ triggers
         width = 1
         height = 2        
 		mode = "action"
-		pickup = "coin"
-		amount = 1
-	}
-		
-	trigger "pickup"
-    {
-        top = 22
-        left = 7
-        width = 1
-        height = 2
-		pickup = "random"
-		mode = "action"
+		pickup = "book:tom_sawyer"
 		amount = 1
 	}
 	
@@ -94,17 +84,6 @@ triggers
     {
         top = 22
         left = 5
-        width = 1
-        height = 2        
-		mode = "action"
-		pickup = "book:tom_sawyer"
-		amount = 1
-	}
-	
-		trigger "pickup"
-    {
-        top = 22
-        left = 7
         width = 1
         height = 2        
 		mode = "action"

@@ -19,3 +19,8 @@ pub fn get_messages_root() -> PathBuf {
 	let root: PathBuf = get_asset_root().join("messages");
 	return root;
 }
+
+pub fn get_books_root() -> PathBuf {
+	let root: PathBuf = get_asset_root().join("books");
+	return root;
+}
