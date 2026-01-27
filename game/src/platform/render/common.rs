@@ -1,8 +1,5 @@
 use super::backend::RenderBackend;
-use crate::game::{
-	game_session::{self, GameSession},
-	game_state::GameState,
-};
+use crate::game::{game_session::GameSession, game_state::GameState};
 
 pub struct RenderCommon;
 

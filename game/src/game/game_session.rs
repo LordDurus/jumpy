@@ -1,14 +1,7 @@
 use crate::{
 	GameState,
-	game::{
-		Settings,
-		inventory::Inventory,
-		level::{Level, LevelReference},
-		message_table::MessageTable,
-	},
+	game::{Settings, inventory::Inventory, level::Level, message_table::MessageTable},
 };
-
-use std::path::PathBuf; // this is not going to work on the gba
 
 pub const MAX_PLAYERS: usize = 4;
 

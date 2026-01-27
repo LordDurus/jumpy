@@ -7,11 +7,13 @@ use std::fs;
 pub const BYTES_PER_ENTITY: usize = 24;
 pub const PLAYER_HALF_HEIGHT: f32 = 8.0;
 
+/*
 #[derive(Debug, Clone)]
 pub struct LevelReference {
 	pub world_id: u8,
 	pub level_id: u8,
 }
+*/
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]

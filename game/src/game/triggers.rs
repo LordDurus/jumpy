@@ -315,7 +315,6 @@ pub fn handle_pickup_triggers(session: &mut GameSession, game_state: &mut GameSt
 
 		match kind {
 			TriggerKind::Pickup => {
-				println!("[trigger]: Pickup");
 				let pickup_kind = PickupKind::from_u8(trigger.p0 as u8);
 				// p0 = pickup type, p1 = value
 				match pickup_kind {
@@ -343,7 +342,7 @@ pub fn handle_pickup_triggers(session: &mut GameSession, game_state: &mut GameSt
 #[inline(always)]
 fn apply_pickup(session: &mut GameSession, pickup_type: u16, value: u16) {
 	if pickup_type == 1 {
-		println!("adding coins");
+		println!("adding coins({})", value);
 
 		session.inventory.add_coins(value);
 		return;
