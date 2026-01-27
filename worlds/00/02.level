@@ -90,4 +90,27 @@ triggers
 		amount = 1
 	}
 	
+	trigger "pickup"
+    {
+        top = 22
+        left = 5
+        width = 1
+        height = 2        
+		mode = "action"
+		pickup = "book:tom_sawyer"
+		amount = 1
+	}
+	
+		trigger "pickup"
+    {
+        top = 22
+        left = 7
+        width = 1
+        height = 2        
+		mode = "action"
+		pickup = "key:w01:l01"
+		amount = 1
+	}
+	
+	
 }

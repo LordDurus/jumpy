@@ -1,6 +1,9 @@
 use crate::{binary_writer::serialize_level, message_registry::MessageRegistry, runtime::*, source::*, text_parse::TriggerActivationMode};
 
-use std::collections::HashMap;
+use std::{
+	collections::HashMap,
+	path::{Path, PathBuf},
+};
 
 fn clamp_u8(value: i32) -> u8 {
 	if value < 0 {
@@ -53,7 +56,10 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 		}
 	}
 
-	let message_registry: MessageRegistry = MessageRegistry::load_from_file("../assets/messages/messages.ids.txt")?;
+	let message_ids_path: PathBuf = get_asset_root().join("messages").join("messages.ids.txt");
+	let message_registry: MessageRegistry = MessageRegistry::load_from_file(message_ids_path.to_str().ok_or("invalid message ids path")?)?;
+	let pickup_ids_path: PathBuf = get_asset_root().join("pickup-maps").join("pickups.ids.txt");
+	let pickup_ids: HashMap<String, u16> = load_ids_map(&pickup_ids_path)?;
 
 	let tile_palette = build_tile_palette();
 	let layer_count = source.layers.len() as u8;
@@ -216,7 +222,15 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 			}
 			TriggerKindSource::Pickup { pickup, amount, activation_mode } => {
 				let pickup_type_id: u16 = resolve_pickup_type_id(pickup)?;
-				let value: u16 = u16::try_from(*amount).map_err(|_| format!("pickup amount out of range: {}", amount))?;
+				let amount_u16: u16 = u16::try_from(*amount).map_err(|_| format!("pickup amount out of range: {}", amount))?;
+
+				let value: u16 = if pickup_type_id == 1 || pickup_type_id == 4 {
+					// coin/random -> p1 is amount
+					amount_u16
+				} else {
+					// key/book -> p1 is the mapped id for the full string ("book:tom_sawyer", "key:w01:l01")
+					*pickup_ids.get(pickup.trim()).ok_or_else(|| format!("unknown pickup id '{}'", pickup))?
+				};
 
 				TriggerRuntime {
 					kind: TriggerKind::Pickup as u8,
@@ -353,11 +367,46 @@ fn gravity_multiplier_to_q4_4(v: f32) -> Result<u8, String> {
 }
 
 fn resolve_pickup_type_id(text: &str) -> Result<u16, String> {
-	match text.trim() {
+	let trimmed: &str = text.trim();
+	let base: &str = trimmed.split(':').next().unwrap_or(trimmed);
+
+	match base {
 		"coin" => return Ok(1),
 		"key" => return Ok(2),
 		"book" => return Ok(3),
 		"random" => return Ok(4),
 		_ => return Err(format!("unknown pickup type '{}'", text)),
 	}
+}
+
+pub fn get_asset_root() -> PathBuf {
+	let root: PathBuf = Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("assets");
+	return root;
+}
+
+fn load_ids_map(path: &PathBuf) -> Result<HashMap<String, u16>, String> {
+	let text: String = std::fs::read_to_string(path).map_err(|e| format!("failed to read {:?}: {}", path, e))?;
+	let mut map: HashMap<String, u16> = HashMap::new();
+
+	for (i, raw) in text.lines().enumerate() {
+		let line_no: usize = i + 1;
+		let line: &str = raw.trim();
+
+		if line.is_empty() || line.starts_with('#') {
+			continue;
+		}
+
+		let mut parts = line.splitn(2, '=');
+		let key: &str = parts.next().unwrap_or("").trim();
+		let val: &str = parts.next().unwrap_or("").trim();
+
+		if key.is_empty() || val.is_empty() {
+			return Err(format!("invalid ids line at {:?}:{} -> '{}'", path, line_no, raw));
+		}
+
+		let id: u16 = val.parse::<u16>().map_err(|e| format!("invalid id at {:?}:{} -> '{}': {}", path, line_no, val, e))?;
+		map.insert(key.to_string(), id);
+	}
+
+	return Ok(map);
 }

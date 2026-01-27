@@ -1,0 +1,11 @@
+# types (optional, but nice to keep readable)
+coin=1
+random=4
+
+# keys
+key:w01:l01=200
+key:w01:l02=201
+
+# books
+book:tom_sawyer=100
+book:robinson_crusoe=101
