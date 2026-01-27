@@ -10,7 +10,7 @@ mod tile;
 
 use crate::{
 	game::{
-		book::{BookId, BookSlug, reader::BookReader},
+		book::{BookId, BookSlug},
 		game_session::GameSession,
 		game_state::GameState,
 		level::Level,
@@ -24,9 +24,6 @@ use crate::{
 
 #[cfg(feature = "pc")]
 use crate::game::book::reader_pc;
-
-#[cfg(feature = "pc")]
-use crate::game::book::reader_pc::PcBookTextSource;
 
 #[cfg(feature = "pc")]
 use crate::platform::audio::pc::PcAudio;
@@ -49,9 +46,6 @@ type ActiveRenderer = crate::platform::render::psp::PspRenderer;
 #[cfg(feature = "pc")]
 fn main() {
 	let mut game_session = GameSession::new();
-
-	#[cfg(feature = "pc")]
-	let book_reader = BookReader::new(PcBookTextSource::new(), 25);
 
 	let audio: Box<dyn AudioEngine> = {
 		let mut a = PcAudio::new();
@@ -84,7 +78,7 @@ fn main() {
 	loop {
 		use crate::game::triggers;
 
-		let input = renderer.poll_input();
+		let input: platform::input::InputState = renderer.poll_input();
 		if input.quit {
 			break;
 		}
@@ -98,27 +92,48 @@ fn main() {
 			continue;
 		}
 
+		if game_session.book_reading.is_open {
+			if input.quit {
+				break;
+			}
+
+			if input.escape {
+				game_session.book_reader.close_book(&mut game_session.book_reading);
+			}
+
+			if input.left || input.page_down {
+				let _ = game_session.book_reader.turn_book_page(&mut game_session.book_reading, -1);
+			}
+
+			if input.right || input.page_up {
+				let _ = game_session.book_reader.turn_book_page(&mut game_session.book_reading, 1);
+			}
+
+			renderer.begin_frame();
+			renderer.draw_level(&state, &game_session);
+
+			renderer.draw_book_overlay(&game_session);
+			renderer.commit();
+			continue;
+		}
+
 		if read_pressed {
 			read_was_down = true;
 
 			let book_id: BookId = 100;
 			let book_slug: BookSlug = "tom_sawyer";
 
-			let Some(b) = game_session.inventory.get_book(book_id) else {
+			let Some(_) = game_session.inventory.get_book(book_id) else {
 				println!("tom_sawyer not in inventory");
-				return;
+				continue;
 			};
 
-			let result = game_session.book_reader.read_page(book_slug, 0);
-			match result {
-				Ok((page, text)) => {
-					println!("reading tom_sawyer page {}/{}", page.page_index, page.total_pages);
-					println!("{}", text);
-				}
-				Err(e) => {
-					println!("read failed: {}", e);
-				}
+			// open the ui at page 0 (or the saved page later)
+			let result = game_session.book_reader.open_book(&mut game_session.book_reading, book_slug, 0);
+			if let Err(e) = result {
+				println!("open book failed: {}", e);
 			}
+			continue;
 		}
 
 		// if triggers requested a level change last frame, do it now

@@ -1,6 +1,12 @@
 use crate::{
 	ActiveBookTextSource, GameState,
-	game::{Settings, book::ActiveBookReader, inventory::Inventory, level::Level, message_table::MessageTable},
+	game::{
+		Settings,
+		book::{ActiveBookReader, reading_state::BookReadingState},
+		inventory::Inventory,
+		level::Level,
+		message_table::MessageTable,
+	},
 };
 
 pub const MAX_PLAYERS: usize = 4;
@@ -27,6 +33,7 @@ pub struct GameSession {
 	pub random_state_u16: u16,
 	pub message_table: MessageTable,
 	pub book_reader: ActiveBookReader,
+	pub book_reading: BookReadingState,
 }
 
 impl GameSession {
@@ -54,6 +61,7 @@ impl GameSession {
 			random_state_u16: 0xACE1,
 			message_table,
 			book_reader: ActiveBookReader::new(ActiveBookTextSource::new(), LINES_PER_PAGE),
+			book_reading: BookReadingState::closed(),
 		};
 	}
 	pub fn transition_to_level(&mut self, game_state: &mut GameState, level_name: &str) -> bool {

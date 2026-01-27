@@ -25,6 +25,7 @@ use crate::{
 	},
 	tile::TileKind,
 };
+use sdl2::ttf::{Font, Sdl2TtfContext};
 
 use sdl2::{
 	EventPump,
@@ -66,8 +67,10 @@ pub struct PcRenderer {
 
 	pub frame_index: u32,
 	pub atlas_tile_width_pixels: u32,
-	#[allow(dead_code)]
 	pub atlas_tile_height_pixels: u32,
+
+	pub ttf: &'static Sdl2TtfContext,
+	pub book_font: Font<'static, 'static>,
 
 	// texture_creator: sdl2::render::TextureCreator<sdl2::video::WindowContext>,
 	texture_creator: &'static sdl2::render::TextureCreator<sdl2::video::WindowContext>,
@@ -120,10 +123,69 @@ impl PcRenderer {
 			self.bg_parallax_y = 0.0;
 		}
 	}
-}
 
-impl PcRenderer {
-	#[allow(dead_code)]
+	pub fn draw_book_overlay(&mut self, session: &GameSession) {
+		let state = &session.book_reading;
+		if !state.is_open {
+			return;
+		}
+
+		let (screen_width_pixels, screen_height_pixels) = self.screen_size();
+
+		// --- dim background ---
+		self.canvas.set_blend_mode(sdl2::render::BlendMode::Blend);
+		self.canvas.set_draw_color(Color::RGBA(0, 0, 0, 180));
+		let _ = self.canvas.fill_rect(Rect::new(0, 0, screen_width_pixels as u32, screen_height_pixels as u32));
+
+		// --- panel ---
+		let panel_margin_pixels: i32 = 40;
+		let panel_left: i32 = panel_margin_pixels;
+		let panel_top: i32 = panel_margin_pixels;
+		let panel_width_pixels: u32 = screen_width_pixels as u32 - (panel_margin_pixels as u32 * 2);
+		let panel_height_pixels: u32 = screen_height_pixels as u32 - (panel_margin_pixels as u32 * 2);
+
+		self.canvas.set_draw_color(Color::RGBA(20, 20, 28, 235));
+		let _ = self.canvas.fill_rect(Rect::new(panel_left, panel_top, panel_width_pixels, panel_height_pixels));
+
+		// --- render text (simple: one line per row, clipped) ---
+		let padding_pixels: i32 = 18;
+		let text_left: i32 = panel_left + padding_pixels;
+		let mut text_top: i32 = panel_top + padding_pixels;
+
+		// header line
+		let header = format!("{}  page {}/{}", state.book_slug, state.page_index + 1, state.total_pages);
+		self.draw_book_text_line(text_left, text_top, &header);
+		text_top += 26;
+
+		// page body
+		for line in state.page_text.lines() {
+			if text_top > (panel_top + panel_height_pixels as i32 - padding_pixels - 26) {
+				break;
+			}
+			self.draw_book_text_line(text_left, text_top, line);
+			text_top += 22;
+		}
+	}
+
+	fn draw_book_text_line(&mut self, left: i32, top: i32, text: &str) {
+		// white text
+		let surface = self.book_font.render(text).blended(Color::RGBA(235, 235, 235, 255));
+		let surface = match surface {
+			Ok(s) => s,
+			Err(_) => return,
+		};
+
+		let texture = self.texture_creator.create_texture_from_surface(&surface);
+		let texture = match texture {
+			Ok(t) => t,
+			Err(_) => return,
+		};
+
+		let query = texture.query();
+		let destination = Rect::new(left, top, query.width, query.height);
+		let _ = self.canvas.copy(&texture, None, Some(destination));
+	}
+
 	fn draw_debug_triggers(&mut self, game_state: &GameState, session: &GameSession, cam_left_world: f32, cam_top_world: f32, scale: f32) {
 		if !session.settings.show_triggers {
 			return;
@@ -618,7 +680,7 @@ impl PcRenderer {
 
 impl RenderBackend for PcRenderer {
 	fn init(&mut self) {
-		// nothing special yet
+		// Nothing yet
 	}
 
 	fn get_render_scale(&self) -> f32 {
@@ -674,16 +736,6 @@ impl RenderBackend for PcRenderer {
 		let event_pump = sdl.event_pump().unwrap();
 
 		let texture_creator = leak_texture_creator(&canvas);
-		// let texture_creator = canvas.texture_creator();
-
-		// background
-		// let bg_path = gfx_pc_path(&["background", "bg_parallax_forest.png"]);
-		// let mut bg_texture = load_texture(texture_creator, bg_path);
-		// let mut bg_texture = texture_creator.load_texture(&bg_path).expect("failed bg");
-		// bg_texture.set_blend_mode(BlendMode::Blend);
-		// bg_texture.set_alpha_mod(208);
-
-		// tiles
 		let tile_path = gfx_pc_path(&["tiles", "tiles64.png"]);
 		let tile_texture = load_texture(&texture_creator, tile_path);
 
@@ -716,6 +768,12 @@ impl RenderBackend for PcRenderer {
 		let slime_lava_death_path: PathBuf = gfx_pc_path(&["slime", "lava", "death_body.png"]);
 		let slime_lava_death_texture = texture_creator.load_texture(slime_lava_death_path).expect("failed to load slime_lava_death.png");
 
+		let ttf_ctx: Sdl2TtfContext = sdl2::ttf::init().map_err(|e| e.to_string()).unwrap();
+		let ttf: &'static Sdl2TtfContext = Box::leak(Box::new(ttf_ctx));
+
+		let font_path = crate::assets::get_font_path("DejaVuSansMono.ttf");
+		let book_font = ttf.load_font(font_path, 16).map_err(|e| e.to_string()).unwrap();
+
 		return PcRenderer {
 			canvas,
 			event_pump,
@@ -738,7 +796,9 @@ impl RenderBackend for PcRenderer {
 			slime_undead_walk_texture: slime_undead_walk_tex,
 			slime_undead_death_texture: slime_undead_death_texture,
 			texture_creator,
-			bg_id: 0, // Todo: set this
+			bg_id: 0,
+			book_font,
+			ttf,
 		};
 	}
 

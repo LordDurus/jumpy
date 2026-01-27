@@ -1,10 +1,3 @@
-// use crate::{game::level::Level, platform::render::pc::PcRenderer, tile::TileKind};
-// use sdl2::render::Texture;
-
-// use super::PcRenderer;
-// use crate::{game::level::Level, platform::render::pc::PcRenderer, tile::TileKind};
-// use sdl2::render::Texture;
-
 use super::PcRenderer;
 use crate::{game::level::Level, platform::render::pc::PathBuf, tile::TileKind};
 

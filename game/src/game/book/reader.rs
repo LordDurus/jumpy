@@ -1,3 +1,5 @@
+use crate::{BookSlug, game::book::reading_state::BookReadingState};
+
 #[derive(Debug, Clone, Copy)]
 pub struct BookPage {
 	pub page_index: u16,
@@ -16,6 +18,52 @@ pub struct BookReader<S: BookTextSource> {
 impl<S: BookTextSource> BookReader<S> {
 	pub fn new(source: S, lines_per_page: usize) -> BookReader<S> {
 		return BookReader { source, lines_per_page };
+	}
+
+	pub fn open_book(&self, state: &mut BookReadingState, book_slug: BookSlug, start_page: u16) -> Result<(), String> {
+		let (page, text) = self.read_page(book_slug, start_page)?;
+
+		println!("Open Book: book_slug={}", book_slug);
+
+		state.is_open = true;
+		state.book_slug = book_slug.to_string();
+		state.page_index = page.page_index;
+		state.total_pages = page.total_pages;
+		state.page_text = text;
+
+		return Ok(());
+	}
+
+	pub fn close_book(&self, state: &mut BookReadingState) {
+		*state = BookReadingState::closed();
+	}
+
+	pub fn turn_book_page(&self, state: &mut BookReadingState, delta: i16) -> Result<(), String> {
+		if !state.is_open {
+			return Ok(()); // ignore silently
+		}
+
+		let mut new_page: i32 = state.page_index as i32 + delta as i32;
+
+		if new_page < 0 {
+			new_page = 0;
+		}
+
+		if new_page >= state.total_pages as i32 {
+			new_page = (state.total_pages as i32) - 1;
+		}
+
+		if new_page as u16 == state.page_index {
+			return Ok(()); // no-op
+		}
+
+		let (page, text) = self.read_page(&state.book_slug, new_page as u16)?;
+
+		state.page_index = page.page_index;
+		state.total_pages = page.total_pages;
+		state.page_text = text;
+
+		return Ok(());
 	}
 
 	pub fn read_page(&self, book_slug: &str, page_index: u16) -> Result<(BookPage, String), String> {

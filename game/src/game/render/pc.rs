@@ -5,6 +5,8 @@ use sdl2::{Sdl, render::Canvas, video::Window};
 pub struct PcRenderer {
 	canvas: Canvas<Window>,
 	sdl_context: Sdl,
+	ttf: sdl2::ttf::Sdl2TtfContext,
+	book_font: Font<'static, 'static>,
 }
 
 impl PcRenderer {

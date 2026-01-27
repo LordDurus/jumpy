@@ -24,3 +24,8 @@ pub fn get_books_root() -> PathBuf {
 	let root: PathBuf = get_asset_root().join("books");
 	return root;
 }
+
+pub fn get_font_path(file_name: &str) -> PathBuf {
+	let path: PathBuf = get_asset_root().join("fonts").join(file_name);
+	return path;
+}

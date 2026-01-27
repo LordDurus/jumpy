@@ -2,6 +2,7 @@ pub type BookId = u16;
 pub type BookSlug<'a> = &'a str;
 
 pub mod reader;
+pub mod reading_state;
 
 #[cfg(feature = "pc")]
 pub mod reader_pc;
@@ -20,3 +21,11 @@ pub type ActiveBookTextSource = book_reader_gba::GbaBookTextSource;
 // ---- unified reader type ----
 
 pub type ActiveBookReader = reader::BookReader<ActiveBookTextSource>;
+
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug)]
+pub struct Book {
+	pub book_id: BookId,
+	pub current_page: u16,
+	pub total_pages: u16,
+}

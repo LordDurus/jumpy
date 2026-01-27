@@ -1,13 +1,5 @@
-use crate::game::book::BookId;
+use crate::game::book::Book;
 pub type KeyId = u16;
-
-#[allow(dead_code)]
-#[derive(Clone, Copy, Debug)]
-pub struct Book {
-	pub book_id: BookId,
-	pub current_page: u16,
-	pub total_pages: u16,
-}
 
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug)]

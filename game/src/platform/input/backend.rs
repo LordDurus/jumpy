@@ -8,6 +8,9 @@ pub struct InputState {
 	pub down: bool,
 	pub inventory: bool,
 	pub read: bool,
+	pub escape: bool,
+	pub page_up: bool,
+	pub page_down: bool,
 }
 
 #[allow(dead_code)]
