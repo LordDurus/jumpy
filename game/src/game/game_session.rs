@@ -100,9 +100,11 @@ impl GameSession {
 	}
 }
 
+/*
 pub fn build_level_binary_path(level_ref: LevelReference) -> PathBuf {
 	let world_folder: String = format!("world_{:02}", level_ref.world_id);
 	let level_file: String = format!("level_{:02}.lvlb", level_ref.level_id);
 	let path: PathBuf = PathBuf::from("assets").join("levels").join(world_folder).join(level_file);
 	return path;
 }
+*/

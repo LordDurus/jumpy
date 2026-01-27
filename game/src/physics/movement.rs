@@ -255,7 +255,7 @@ pub fn move_and_collide(game_state: &mut GameState, game_session: &GameSession) 
 				let grounded_now: bool = game_state.is_grounded_now(entity_id);
 
 				if grounded_now {
-					let coyote_frames_max = game_state.stomp_chains.set(entity_id, 0);
+					// let coyote_frames_max = game_state.stomp_chains.set(entity_id, 0);
 					if game_state.camera_baseline_max_bottom_world.is_none() {
 						let (_half_width, half_height) = game_state.get_entity_half_values(entity_id);
 						if let Some(pos) = game_state.positions.get(entity_id) {

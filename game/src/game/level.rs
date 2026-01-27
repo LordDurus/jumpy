@@ -346,19 +346,49 @@ impl Level {
 
 		println!("-- triggers loaded --");
 		for (i, t) in triggers.iter().enumerate() {
-			println!(
-				" {}: kind={}, exit: world={} level={}, left={} top={} width={} height={} mode={}, message_id={}",
-				i,
-				t.kind,
-				t.p0, // world_id
-				t.p1, // level_id
-				t.left_tiles,
-				t.top_tiles,
-				t.width_tiles,
-				t.height_tiles,
-				t.get_activation_mode(),
-				t.get_message_id()
-			);
+			if t.kind == 3 {
+				println!(
+					" {}: kind={}, pickup_type_id={} value={}, left={} top={} width={} height={} mode={}",
+					i,
+					t.kind,
+					t.p0, // world_id
+					t.p1, // level_id
+					t.left_tiles,
+					t.top_tiles,
+					t.width_tiles,
+					t.height_tiles,
+					t.get_activation_mode()
+				);
+			} else if t.kind == 2 {
+				println!(
+					" {}: kind={}, pickup_type_id={} value={}, left={} top={} width={} height={} mode={}, message_id={}",
+					i,
+					t.kind,
+					t.p0, // world_id
+					t.p1, // level_id
+					t.left_tiles,
+					t.top_tiles,
+					t.width_tiles,
+					t.height_tiles,
+					t.get_activation_mode(),
+					t.get_message_id()
+				);
+			} else if t.kind == 1 {
+				println!(
+					" {}: kind={}, exit: world={} level={}, left={} top={} width={} height={} mode={}",
+					i,
+					t.kind,
+					t.p0, // world_id
+					t.p1, // level_id
+					t.left_tiles,
+					t.top_tiles,
+					t.width_tiles,
+					t.height_tiles,
+					t.get_activation_mode()
+				);
+			} else {
+				println!("{}: kind={} - Unknown kind", i, t.kind);
+			}
 		}
 
 		let mut level = Level {

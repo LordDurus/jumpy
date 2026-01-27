@@ -9,8 +9,7 @@ use crate::{
 	common::coords::{PixelSize, Pointf32, Size, clamp_camera_to_level_world, get_screen, visible_tile_bounds},
 	engine_math::Vec2,
 	game::{
-		self,
-		game_session::{self, GameSession},
+		game_session::GameSession,
 		game_state::{EntityKind, GameState},
 		level::Level,
 		triggers::TriggerKind,
@@ -136,6 +135,11 @@ impl PcRenderer {
 		let tile_height_world: f32 = game_state.level.tile_height as f32;
 
 		for t in &game_state.level.triggers {
+			let idx: usize = t.id as usize;
+			if idx < game_state.trigger_armed.len() && game_state.trigger_armed[idx] {
+				continue; // consumed -> don't draw
+			}
+
 			let left_world: f32 = (t.left_tiles as f32) * tile_width_world;
 			let top_world: f32 = (t.top_tiles as f32) * tile_height_world;
 			let width_world: f32 = (t.width_tiles as f32) * tile_width_world;

@@ -263,6 +263,12 @@ pub fn load_level_from_str(text: &str) -> Result<LevelSource, String> {
 							text_id: String::new(),
 							activation_mode: 0,
 						}
+					} else if trigger_kind == "pickup" {
+						TriggerKindSource::Pickup {
+							pickup: String::new(),
+							amount: 0,
+							activation_mode: 0,
+						}
 					} else {
 						return Err(format!("unknown trigger kind '{}' at line {}", trigger_kind, line_number));
 					};
@@ -332,8 +338,63 @@ pub fn load_level_from_str(text: &str) -> Result<LevelSource, String> {
 						Some(TriggerKindSource::LevelExit { activation_mode, .. }) => {
 							*activation_mode = mode;
 						}
+						Some(TriggerKindSource::Pickup { activation_mode, .. }) => {
+							*activation_mode = mode;
+						}
 						_ => {
 							return Err(format!("mode not allowed for this trigger at line {}", line_number));
+						}
+					}
+				} else if line.starts_with("mode") {
+					let s: String = parse_string_value(line, "mode", line_number)?;
+					let mode: u8 = match s.as_str() {
+						"auto" => TriggerActivationMode::Auto as u8,
+						"action" => TriggerActivationMode::Action as u8,
+						"up" => TriggerActivationMode::Up as u8,
+						"down" => TriggerActivationMode::Down as u8,
+						"left" => TriggerActivationMode::Left as u8,
+						"right" => TriggerActivationMode::Right as u8,
+						_ => {
+							return Err(format!("Invalid trigger mode '{}' at line {}", s, line_number));
+						}
+					};
+
+					match trigger.kind.as_mut() {
+						Some(TriggerKindSource::Message { activation_mode, .. }) => {
+							*activation_mode = mode;
+						}
+						Some(TriggerKindSource::LevelExit { activation_mode, .. }) => {
+							*activation_mode = mode;
+						}
+						Some(TriggerKindSource::Pickup { activation_mode, .. }) => {
+							*activation_mode = mode;
+						}
+						_ => {
+							return Err(format!("mode not allowed for this trigger at line {}", line_number));
+						}
+					}
+				} else if line.starts_with("pickup") {
+					let s: String = parse_string_value(line, "pickup", line_number)?;
+					match trigger.kind.as_mut() {
+						Some(TriggerKindSource::Pickup { pickup, .. }) => {
+							*pickup = s;
+						}
+						_ => {
+							return Err(format!("pickup not allowed for this trigger at line {}", line_number));
+						}
+					}
+				} else if line.starts_with("amount") {
+					let value_i32: i32 = parse_i32_value(line, "amount", line_number)?;
+					if value_i32 < 0 || value_i32 > (u16::MAX as i32) {
+						return Err(format!("amount out of range at line {}", line_number));
+					}
+
+					match trigger.kind.as_mut() {
+						Some(TriggerKindSource::Pickup { amount, .. }) => {
+							*amount = value_i32 as u16;
+						}
+						_ => {
+							return Err(format!("amount not allowed for this trigger at line {}", line_number));
 						}
 					}
 				} else {

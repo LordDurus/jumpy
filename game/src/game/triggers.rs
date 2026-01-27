@@ -37,8 +37,8 @@ impl PickupKind {
 	pub fn from_u8(v: u8) -> PickupKind {
 		match v {
 			1 => PickupKind::Coin,
-			2 => PickupKind::Book,
-			3 => PickupKind::Key,
+			2 => PickupKind::Key,
+			3 => PickupKind::Book,
 			4 => PickupKind::Random,
 			_ => PickupKind::Empty,
 		}
@@ -253,7 +253,6 @@ pub fn handle_pickup_triggers(session: &mut GameSession, game_state: &mut GameSt
 	};
 
 	let (player_half_width, player_half_height) = game_state.get_entity_half_values(player_id);
-
 	let player_left_world: f32 = player_pos.x - player_half_width;
 	let player_top_world: f32 = player_pos.y - player_half_height;
 	let player_width_world: f32 = player_half_width * 2.0;
@@ -310,11 +309,13 @@ pub fn handle_pickup_triggers(session: &mut GameSession, game_state: &mut GameSt
 		game_state.trigger_armed[trigger_index] = true;
 
 		if mode == TRIGGER_MODE_ACTION {
+			// todo remove trigger here
 			consumed_action = true;
 		}
 
 		match kind {
 			TriggerKind::Pickup => {
+				println!("[trigger]: Pickup");
 				let pickup_kind = PickupKind::from_u8(trigger.p0 as u8);
 				// p0 = pickup type, p1 = value
 				match pickup_kind {
@@ -342,6 +343,8 @@ pub fn handle_pickup_triggers(session: &mut GameSession, game_state: &mut GameSt
 #[inline(always)]
 fn apply_pickup(session: &mut GameSession, pickup_type: u16, value: u16) {
 	if pickup_type == 1 {
+		println!("adding coins");
+
 		session.inventory.add_coins(value);
 		return;
 	}
