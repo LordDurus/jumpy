@@ -154,7 +154,8 @@ impl PcRenderer {
 
 		// header line
 		let header = format!("{}  page {}/{}", state.book_slug, state.page_index + 1, state.total_pages);
-		self.draw_book_text_line(text_left, text_top, &header);
+		self.draw_book_header_right(panel_left, panel_top, panel_width_pixels, &header);
+		// self.draw_book_text_line(text_left, text_top, &header);
 		text_top += 26;
 
 		// page body
@@ -165,6 +166,19 @@ impl PcRenderer {
 			self.draw_book_text_line(text_left, text_top, line);
 			text_top += 22;
 		}
+	}
+
+	fn draw_book_header_right(&mut self, panel_left: i32, panel_top: i32, panel_width_pixels: u32, text: &str) {
+		let (text_width_pixels, _) = match self.book_font.size_of(text) {
+			Ok(v) => v,
+			Err(_) => return,
+		};
+
+		let padding_pixels: i32 = 16;
+		let left: i32 = panel_left + (panel_width_pixels as i32) - padding_pixels - (text_width_pixels as i32);
+		let top: i32 = panel_top + padding_pixels;
+
+		self.draw_book_text_line(left, top, text);
 	}
 
 	fn draw_book_text_line(&mut self, left: i32, top: i32, text: &str) {
