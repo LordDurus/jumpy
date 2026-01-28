@@ -166,7 +166,7 @@ entities
 	platform "horizontal"
 	{
 		top = 20
-		left = 15
+		left = 19
 		width = 4
 		height = 1
 		speed = 3

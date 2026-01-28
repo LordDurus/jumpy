@@ -71,7 +71,6 @@ fn dead_profile() -> CollisionProfile {
 	};
 }
 
-#[inline(always)]
 pub fn move_and_collide(game_state: &mut GameState, game_session: &GameSession) {
 	let tile_width: f32 = game_state.level.tile_width as f32;
 	let tile_height: f32 = game_state.level.tile_height as f32;
@@ -584,6 +583,9 @@ fn resolve_entity_collisions(
 			if collider.id == entity_id {
 				continue;
 			}
+			if is_ghost(&collider.profile) {
+				continue;
+			}
 
 			if right <= collider.left || left >= collider.right || bottom <= collider.top || top >= collider.bottom {
 				continue;
@@ -842,4 +844,17 @@ fn isqrt_u32(n: u32) -> u32 {
 		y = (x + n / x) >> 1;
 	}
 	return x;
+}
+
+#[inline(always)]
+fn is_ghost(profile: &CollisionProfile) -> bool {
+	return !profile.top.blocks
+		&& !profile.right.blocks
+		&& !profile.bottom.blocks
+		&& !profile.left.blocks
+		&& profile.top.damage == 0
+		&& profile.right.damage == 0
+		&& profile.bottom.damage == 0
+		&& profile.left.damage == 0
+		&& !profile.stompable;
 }

@@ -51,8 +51,8 @@ entities
 {
     player_start "player"
 	{
-		top = 20
-		left = 1
+		top = 22
+		left = 2
 		gravity_multiplier = 1.00
 		jump_multiplier =  .85
 		attack_power = 1
@@ -68,6 +68,17 @@ entities
 
 triggers
 {
+	
+	trigger "level_exit"
+    {
+        top = 22
+        left = 0
+        width = 1
+        height = 2        
+		target = "00"
+		level = "01"
+		mode = "auto"
+	}
 	
 	trigger "pickup"
     {
