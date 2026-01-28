@@ -1,6 +1,13 @@
 pub const BACKGROUND_ID_LIBRARY_STONE: u8 = 1;
 pub const BACKGROUND_PARALLAX_FOREST: u8 = 2;
 
+const BOOK_PANEL_COLOR: Color = Color::RGBA(20, 20, 28, 255);
+const BOOK_BAR_COLOR: Color = Color::RGBA(28, 28, 40, 235);
+const BOOK_DIVIDER_COLOR: Color = Color::RGBA(60, 60, 80, 110);
+
+const BOOK_HEADER_HEIGHT_PIXELS: i32 = 34;
+const BOOK_FOOTER_HEIGHT_PIXELS: i32 = 34;
+
 #[path = "pc_platform.rs"]
 mod pc_platform;
 
@@ -132,29 +139,25 @@ impl PcRenderer {
 
 	fn draw_book_footer(&mut self, panel_left: i32, panel_top: i32, panel_width_pixels: u32, panel_height_pixels: u32) {
 		let padding_pixels: i32 = 16;
-		let footer_height_pixels: i32 = 34;
 
 		let footer_left: i32 = panel_left;
-		let footer_top: i32 = panel_top + (panel_height_pixels as i32) - footer_height_pixels;
+		let footer_top: i32 = panel_top + (panel_height_pixels as i32) - BOOK_FOOTER_HEIGHT_PIXELS;
 		let footer_width_pixels: u32 = panel_width_pixels;
-		let footer_height_pixels_u32: u32 = footer_height_pixels as u32;
 
-		// footer bar (same scheme, slightly lighter)
-		self.canvas.set_draw_color(Color::RGBA(28, 28, 40, 235));
+		// footer bar
+		self.canvas.set_draw_color(BOOK_BAR_COLOR);
 		let _ = self
 			.canvas
-			.fill_rect(Rect::new(footer_left, footer_top, footer_width_pixels, footer_height_pixels_u32));
+			.fill_rect(Rect::new(footer_left, footer_top, footer_width_pixels, BOOK_FOOTER_HEIGHT_PIXELS as u32));
 
-		// optional: subtle divider line at top of footer
-		self.canvas.set_draw_color(Color::RGBA(60, 60, 80, 110));
+		// divider at top of footer
+		self.canvas.set_draw_color(BOOK_DIVIDER_COLOR);
 		let _ = self
 			.canvas
 			.draw_line((footer_left, footer_top), (footer_left + footer_width_pixels as i32, footer_top));
 
-		// text
 		let left_text: &str = "esc: close    \u{2190}/\u{2192}: page    ctrl+c: copy";
 		let right_text: &str = "r: read";
-
 		let text_top: i32 = footer_top + 8;
 
 		self.draw_book_text_line(footer_left + padding_pixels, text_top, left_text);
@@ -166,8 +169,6 @@ impl PcRenderer {
 
 		let right_left: i32 = footer_left + (footer_width_pixels as i32) - padding_pixels - (right_width_pixels as i32);
 		self.draw_book_text_line(right_left, text_top, right_text);
-
-		return;
 	}
 
 	pub fn draw_book_overlay(&mut self, session: &GameSession) {
@@ -178,54 +179,71 @@ impl PcRenderer {
 
 		let (screen_width_pixels, screen_height_pixels) = self.screen_size();
 
-		// --- dim background ---
-		self.canvas.set_blend_mode(sdl2::render::BlendMode::Blend);
+		// dim background
+		self.canvas.set_blend_mode(BlendMode::Blend);
 		self.canvas.set_draw_color(Color::RGBA(0, 0, 0, 180));
 		let _ = self.canvas.fill_rect(Rect::new(0, 0, screen_width_pixels as u32, screen_height_pixels as u32));
 
-		// --- panel ---
+		// panel
 		let panel_margin_pixels: i32 = 40;
 		let panel_left: i32 = panel_margin_pixels;
 		let panel_top: i32 = panel_margin_pixels;
 		let panel_width_pixels: u32 = screen_width_pixels as u32 - (panel_margin_pixels as u32 * 2);
 		let panel_height_pixels: u32 = screen_height_pixels as u32 - (panel_margin_pixels as u32 * 2);
 
-		self.canvas.set_draw_color(Color::RGBA(20, 20, 28, 255));
+		self.canvas.set_draw_color(BOOK_PANEL_COLOR);
 		let _ = self.canvas.fill_rect(Rect::new(panel_left, panel_top, panel_width_pixels, panel_height_pixels));
 
-		// --- render text (simple: one line per row, clipped) ---
-		let padding_pixels: i32 = 18;
-		let text_left: i32 = panel_left + padding_pixels;
-		let mut text_top: i32 = panel_top + padding_pixels;
-
-		// header line
+		// header (bar)
 		let header = format!("{}  page {}/{}", state.book_slug, state.page_index + 1, state.total_pages);
-		self.draw_book_header_right(panel_left, panel_top, panel_width_pixels, &header);
+		self.draw_book_header(panel_left, panel_top, panel_width_pixels, &header);
 
-		text_top += 26;
+		// footer (bar)
+		self.draw_book_footer(panel_left, panel_top, panel_width_pixels, panel_height_pixels);
 
-		// page body
+		// body area (between header and footer)
+		let padding_pixels: i32 = 18;
+
+		let text_left: i32 = panel_left + padding_pixels;
+		let mut text_top: i32 = panel_top + BOOK_HEADER_HEIGHT_PIXELS + padding_pixels;
+
+		let body_bottom_limit: i32 = panel_top + (panel_height_pixels as i32) - BOOK_FOOTER_HEIGHT_PIXELS - padding_pixels - 22;
+
 		for line in state.page_text.lines() {
-			if text_top > (panel_top + panel_height_pixels as i32 - padding_pixels - 26) {
+			if text_top > body_bottom_limit {
 				break;
 			}
 			self.draw_book_text_line(text_left, text_top, line);
-			self.draw_book_footer(panel_left, panel_top, panel_width_pixels, panel_height_pixels);
 			text_top += 22;
 		}
 	}
 
-	fn draw_book_header_right(&mut self, panel_left: i32, panel_top: i32, panel_width_pixels: u32, text: &str) {
+	fn draw_book_header(&mut self, panel_left: i32, panel_top: i32, panel_width_pixels: u32, text: &str) {
+		let padding_pixels: i32 = 16;
+
+		// bar background
+		self.canvas.set_draw_color(BOOK_BAR_COLOR);
+		let _ = self
+			.canvas
+			.fill_rect(Rect::new(panel_left, panel_top, panel_width_pixels, BOOK_HEADER_HEIGHT_PIXELS as u32));
+
+		// divider at bottom of header
+		let divider_y: i32 = panel_top + BOOK_HEADER_HEIGHT_PIXELS;
+		self.canvas.set_draw_color(BOOK_DIVIDER_COLOR);
+		let _ = self.canvas.draw_line((panel_left, divider_y), (panel_left + panel_width_pixels as i32, divider_y));
+
+		// right aligned header text
 		let (text_width_pixels, _) = match self.book_font.size_of(text) {
 			Ok(v) => v,
 			Err(_) => return,
 		};
 
-		let padding_pixels: i32 = 16;
-		let left: i32 = panel_left + (panel_width_pixels as i32) - padding_pixels - (text_width_pixels as i32);
-		let top: i32 = panel_top + padding_pixels;
+		let text_left: i32 = panel_left + (panel_width_pixels as i32) - padding_pixels - (text_width_pixels as i32);
+		let text_top: i32 = panel_top + 8;
 
-		self.draw_book_text_line(left, top, text);
+		self.draw_book_text_line(text_left, text_top, text);
+
+		return;
 	}
 
 	fn draw_book_text_line(&mut self, left: i32, top: i32, text: &str) {
