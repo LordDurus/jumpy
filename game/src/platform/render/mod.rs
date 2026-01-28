@@ -2,6 +2,7 @@ use crate::platform::input;
 
 pub mod backend;
 pub mod common;
+pub mod icon_registry;
 
 #[cfg(feature = "gba")]
 pub mod gba;

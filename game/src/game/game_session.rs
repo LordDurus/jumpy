@@ -6,6 +6,7 @@ use crate::{
 		inventory::Inventory,
 		level::Level,
 		message_table::MessageTable,
+		triggers::TriggerIndicator,
 	},
 };
 
@@ -34,6 +35,7 @@ pub struct GameSession {
 	pub message_table: MessageTable,
 	pub book_reader: ActiveBookReader,
 	pub book_reading: BookReadingState,
+	pub trigger_indicators: Vec<TriggerIndicator>,
 }
 
 impl GameSession {
@@ -62,6 +64,7 @@ impl GameSession {
 			message_table,
 			book_reader: ActiveBookReader::new(ActiveBookTextSource::new(), LINES_PER_PAGE),
 			book_reading: BookReadingState::closed(),
+			trigger_indicators: Vec::new(),
 		};
 	}
 	pub fn transition_to_level(&mut self, game_state: &mut GameState, level_name: &str) -> bool {

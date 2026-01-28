@@ -14,6 +14,12 @@ pub const TRIGGER_MODE_DOWN: u16 = 3;
 pub const TRIGGER_MODE_LEFT: u16 = 4;
 pub const TRIGGER_MODE_RIGHT: u16 = 5;
 
+pub struct TriggerIndicator {
+	pub icon_id: u16,
+	pub world_left: f32,
+	pub world_top: f32,
+}
+
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum TriggerKind {

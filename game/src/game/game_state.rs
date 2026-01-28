@@ -74,6 +74,7 @@ impl EntityKind {
 		}
 	}
 
+	#[allow(dead_code)]
 	pub fn str_from_u8(v: u8) -> &'static str {
 		match v {
 			0 => "Empty",
