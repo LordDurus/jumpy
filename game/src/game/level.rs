@@ -345,7 +345,7 @@ impl Level {
 				activation_mode,
 			});
 		}
-
+		/*
 		println!("-- triggers loaded --");
 		for (i, t) in triggers.iter().enumerate() {
 			if t.kind == 3 {
@@ -392,6 +392,7 @@ impl Level {
 				println!("{}: kind={} - Unknown kind", i, t.kind);
 			}
 		}
+		*/
 
 		let mut level = Level {
 			tile_width,

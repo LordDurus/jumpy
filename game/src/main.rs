@@ -57,7 +57,11 @@ fn main() {
 	let bootstrap_level: Level = Level::load_binary(first_level_path).expect("failed to load first level");
 	let mut state = GameState::new(bootstrap_level, audio);
 
-	game_session.transition_to_level(&mut state, first_level_path);
+	// game_session.transition_to_level(&mut state, first_level_path);
+
+	state.spawn_level_entities();
+	state.apply_player_from_persistent(&game_session);
+	game_session.current_level_name = Some(first_level_path.to_string());
 
 	if game_session.settings.is_background_music_enabled {
 		state.audio.play_music(MusicId::World1, true);

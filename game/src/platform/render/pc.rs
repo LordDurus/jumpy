@@ -4,9 +4,9 @@ pub const BACKGROUND_PARALLAX_FOREST: u8 = 2;
 const BOOK_PANEL_COLOR: Color = Color::RGBA(20, 20, 28, 255);
 const BOOK_BAR_COLOR: Color = Color::RGBA(28, 28, 40, 235);
 const BOOK_DIVIDER_COLOR: Color = Color::RGBA(60, 60, 80, 110);
-
 const BOOK_HEADER_HEIGHT_PIXELS: i32 = 34;
 const BOOK_FOOTER_HEIGHT_PIXELS: i32 = 34;
+const BOOK_BAR_TEXT_TOP_OFFSET_PIXELS: i32 = 8;
 
 #[path = "pc_platform.rs"]
 mod pc_platform;
@@ -16,7 +16,7 @@ use crate::{
 	common::coords::{PixelSize, Pointf32, Size, clamp_camera_to_level_world, get_screen, visible_tile_bounds},
 	engine_math::Vec2,
 	game::{
-		game_session::{self, GameSession},
+		game_session::GameSession,
 		game_state::{EntityKind, GameState},
 		level::Level,
 		triggers::TriggerKind,
@@ -141,24 +141,22 @@ impl PcRenderer {
 		let padding_pixels: i32 = 16;
 
 		let footer_left: i32 = panel_left;
-		let footer_top: i32 = panel_top + (panel_height_pixels as i32) - BOOK_FOOTER_HEIGHT_PIXELS;
+		let top: i32 = panel_top + (panel_height_pixels as i32) - BOOK_FOOTER_HEIGHT_PIXELS;
 		let footer_width_pixels: u32 = panel_width_pixels;
 
 		// footer bar
 		self.canvas.set_draw_color(BOOK_BAR_COLOR);
 		let _ = self
 			.canvas
-			.fill_rect(Rect::new(footer_left, footer_top, footer_width_pixels, BOOK_FOOTER_HEIGHT_PIXELS as u32));
+			.fill_rect(Rect::new(footer_left, top, footer_width_pixels, BOOK_FOOTER_HEIGHT_PIXELS as u32));
 
 		// divider at top of footer
 		self.canvas.set_draw_color(BOOK_DIVIDER_COLOR);
-		let _ = self
-			.canvas
-			.draw_line((footer_left, footer_top), (footer_left + footer_width_pixels as i32, footer_top));
+		let _ = self.canvas.draw_line((footer_left, top), (footer_left + footer_width_pixels as i32, top));
 
 		let left_text: &str = "esc: close    \u{2190}/\u{2192}: page    ctrl+c: copy";
 		let right_text: &str = "r: read";
-		let text_top: i32 = footer_top + 8;
+		let text_top: i32 = top + BOOK_BAR_TEXT_TOP_OFFSET_PIXELS;
 
 		self.draw_book_text_line(footer_left + padding_pixels, text_top, left_text);
 
@@ -207,7 +205,8 @@ impl PcRenderer {
 		let text_left: i32 = panel_left + padding_pixels;
 		let mut text_top: i32 = panel_top + BOOK_HEADER_HEIGHT_PIXELS + padding_pixels;
 
-		let body_bottom_limit: i32 = panel_top + (panel_height_pixels as i32) - BOOK_FOOTER_HEIGHT_PIXELS - padding_pixels - 22;
+		// let body_bottom_limit: i32 = panel_top + (panel_height_pixels as i32) - BOOK_FOOTER_HEIGHT_PIXELS - padding_pixels - 22;
+		let body_bottom_limit: i32 = panel_top + (panel_height_pixels as i32) - BOOK_FOOTER_HEIGHT_PIXELS - padding_pixels - 22 - 4;
 
 		for line in state.page_text.lines() {
 			if text_top > body_bottom_limit {
@@ -218,19 +217,17 @@ impl PcRenderer {
 		}
 	}
 
-	fn draw_book_header(&mut self, panel_left: i32, panel_top: i32, panel_width_pixels: u32, text: &str) {
+	fn draw_book_header(&mut self, left: i32, top: i32, panel_width_pixels: u32, text: &str) {
 		let padding_pixels: i32 = 16;
 
 		// bar background
 		self.canvas.set_draw_color(BOOK_BAR_COLOR);
-		let _ = self
-			.canvas
-			.fill_rect(Rect::new(panel_left, panel_top, panel_width_pixels, BOOK_HEADER_HEIGHT_PIXELS as u32));
+		let _ = self.canvas.fill_rect(Rect::new(left, top, panel_width_pixels, BOOK_HEADER_HEIGHT_PIXELS as u32));
 
 		// divider at bottom of header
-		let divider_y: i32 = panel_top + BOOK_HEADER_HEIGHT_PIXELS;
+		let divider_y: i32 = top + BOOK_HEADER_HEIGHT_PIXELS;
 		self.canvas.set_draw_color(BOOK_DIVIDER_COLOR);
-		let _ = self.canvas.draw_line((panel_left, divider_y), (panel_left + panel_width_pixels as i32, divider_y));
+		let _ = self.canvas.draw_line((left, divider_y), (left + panel_width_pixels as i32, divider_y));
 
 		// right aligned header text
 		let (text_width_pixels, _) = match self.book_font.size_of(text) {
@@ -238,8 +235,8 @@ impl PcRenderer {
 			Err(_) => return,
 		};
 
-		let text_left: i32 = panel_left + (panel_width_pixels as i32) - padding_pixels - (text_width_pixels as i32);
-		let text_top: i32 = panel_top + 8;
+		let text_left: i32 = left + (panel_width_pixels as i32) - padding_pixels - (text_width_pixels as i32);
+		let text_top: i32 = top + BOOK_BAR_TEXT_TOP_OFFSET_PIXELS;
 
 		self.draw_book_text_line(text_left, text_top, text);
 
