@@ -52,14 +52,6 @@ impl Inventory {
 		});
 	}
 
-	pub fn advance_book_page(&mut self, book_id: u16) {
-		if let Some(book) = self.books.iter_mut().find(|b| b.book_id == book_id) {
-			if book.current_page < book.total_pages {
-				book.current_page += 1;
-			}
-		}
-	}
-
 	pub fn get_book(&self, book_id: u16) -> Option<&Book> {
 		return self.books.iter().find(|b| b.book_id == book_id);
 	}

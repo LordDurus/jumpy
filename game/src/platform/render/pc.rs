@@ -9,7 +9,7 @@ use crate::{
 	common::coords::{PixelSize, Pointf32, Size, clamp_camera_to_level_world, get_screen, visible_tile_bounds},
 	engine_math::Vec2,
 	game::{
-		game_session::GameSession,
+		game_session::{self, GameSession},
 		game_state::{EntityKind, GameState},
 		level::Level,
 		triggers::TriggerKind,
@@ -25,10 +25,7 @@ use crate::{
 	},
 	tile::TileKind,
 };
-use sdl2::{
-	clipboard,
-	ttf::{Font, Sdl2TtfContext},
-};
+use sdl2::ttf::{Font, Sdl2TtfContext};
 
 use sdl2::{
 	EventPump,
@@ -54,7 +51,7 @@ enum SlimeTextureKey {
 }
 
 pub struct PcRenderer {
-	sdl: sdl2::Sdl,
+	video: sdl2::VideoSubsystem,
 	canvas: Canvas<Window>,
 	event_pump: EventPump,
 	common: RenderCommon,
@@ -73,7 +70,7 @@ pub struct PcRenderer {
 	pub atlas_tile_width_pixels: u32,
 	pub atlas_tile_height_pixels: u32,
 
-	pub ttf: &'static Sdl2TtfContext,
+	// pub ttf: &'static Sdl2TtfContext,
 	pub book_font: Font<'static, 'static>,
 
 	// texture_creator: sdl2::render::TextureCreator<sdl2::video::WindowContext>,
@@ -129,8 +126,8 @@ impl PcRenderer {
 	}
 
 	pub fn copy_book_page_to_clipboard(&self, text: &str) {
-		// let clipboard = self.sdl.clipboard();
-		// let _ = clipboard.set_clipboard_text(text);
+		let clipboard = self.video.clipboard();
+		let _ = clipboard.set_clipboard_text(text);
 	}
 
 	pub fn draw_book_overlay(&mut self, session: &GameSession) {
@@ -524,24 +521,24 @@ impl PcRenderer {
 	}
 
 	fn draw_level_internal(&mut self, game_state: &GameState, game_session: &GameSession) {
-		let (cam_left_world, cam_top_world) = self.common.compute_camera(self, game_state, game_session);
+		let (camera_left, camera_top) = self.common.compute_camera(self, game_state, game_session);
 		let scale: f32 = self.get_render_scale();
 
 		// background first, tiles on top
-		self.draw_background(cam_left_world, cam_top_world, scale);
+		self.draw_background(camera_left, camera_top, scale);
 
 		let tile_cols: u32 = self.tile_texture.as_mut().expect("tile_texture does not have a value").query().width / self.atlas_tile_width_pixels;
 		for layer in 0..(game_state.level.layer_count as u32) {
-			self.draw_tiles_layer_atlas(&game_state.level, layer, cam_left_world as f32, cam_top_world as f32, scale, self.frame_index);
+			self.draw_tiles_layer_atlas(&game_state.level, layer, camera_left as f32, camera_top as f32, scale, self.frame_index);
 		}
 
 		self.frame_index = self.frame_index.wrapping_add(1);
-		self.draw_entities(game_state, tile_cols, cam_left_world as f32, cam_top_world as f32, scale, self.frame_index);
-		self.draw_debug_triggers(game_state, game_session, cam_left_world as f32, cam_top_world as f32, scale);
+		self.draw_entities(game_state, game_session, tile_cols, camera_left as f32, camera_top as f32, scale, self.frame_index);
+		self.draw_debug_triggers(game_state, game_session, camera_left as f32, camera_top as f32, scale);
 		return;
 	}
 
-	fn draw_entities(&mut self, game_state: &GameState, tile_cols: u32, camera_left: f32, camera_top: f32, scale: f32, _frame_index: u32) {
+	fn draw_entities(&mut self, game_state: &GameState, game_session: &GameSession, tile_cols: u32, camera_left: f32, camera_top: f32, scale: f32, _frame_index: u32) {
 		//let texture = self.tile_texture.as_mut().expect("tile_texture does not have a value");
 		for (id, pos) in game_state.positions.iter() {
 			let kind = *game_state.entity_kinds.get(id).unwrap_or(&0);
@@ -572,7 +569,7 @@ impl PcRenderer {
 			if entity_kind == EntityKind::SlimeBlue || entity_kind == EntityKind::SlimeUndead || entity_kind == EntityKind::SlimeLava {
 				let death_timer: u16 = game_state.death_timers.get(id).copied().unwrap_or(0);
 				if death_timer > 0 {
-					self.draw_death_entity(game_state, entity_kind, pos, half_height, camera_left, camera_top, scale, death_timer);
+					self.draw_death_entity(game_state, game_session, entity_kind, pos, half_height, camera_left, camera_top, scale, death_timer);
 					continue;
 				}
 
@@ -618,18 +615,10 @@ impl PcRenderer {
 
 				let dest_left_pixels: i32 = entity_bottom_center_screen_left - sprite_feet_left_pixels;
 				let dest_top_pixels: i32 = entity_bottom_center_screen_top - sprite_feet_top_pixels;
-
 				let dest: Rect = Rect::new(dest_left_pixels, dest_top_pixels, dest_width_pixels, dest_height_pixels);
-
 				let flip_horizontal: bool = vel.x > 0.0;
 
-				// let tex: &sdl2::render::Texture<'static> = self.get_slime_texture(entity_kind, anim);
-
-				// let _ = self.canvas.copy_ex(tex, src, dest, 0.0, None, flip_horizontal, false).unwrap();
-
 				let key: SlimeTextureKey = self.get_slime_texture_key(entity_kind, anim);
-
-				// key is Copy, so no borrow of self remains here
 
 				let _ = match key {
 					SlimeTextureKey::BlueWalk => self.canvas.copy_ex(&self.slime_blue_walk_texture, src, dest, 0.0, None, flip_horizontal, false),
@@ -798,7 +787,7 @@ impl RenderBackend for PcRenderer {
 		let book_font = ttf.load_font(font_path, 16).map_err(|e| e.to_string()).unwrap();
 
 		return PcRenderer {
-			sdl,
+			video,
 			canvas,
 			event_pump,
 			common: RenderCommon::new(),
@@ -822,7 +811,6 @@ impl RenderBackend for PcRenderer {
 			texture_creator,
 			bg_id: 0,
 			book_font,
-			ttf,
 		};
 	}
 
@@ -847,6 +835,7 @@ impl RenderBackend for PcRenderer {
 	fn draw_death_entity(
 		&mut self,
 		game_state: &GameState,
+		game_session: &GameSession,
 		entity_kind: EntityKind,
 		pos: &Vec2,
 		half_height: f32,
@@ -859,10 +848,10 @@ impl RenderBackend for PcRenderer {
 		let frame_size_pixels: i32 = 64;
 
 		// how long death lasts total
-		let total: u16 = 30;
+		let total: u16 = game_session.settings.enemy_death_frame_count as u16;
 
 		// how many frames are in the sheet (tune this once)
-		let frame_count: u32 = 10;
+		let frame_count: u32 = game_session.settings.frame_count;
 
 		// elapsed frames since death started
 		let elapsed: u16 = total.saturating_sub(death_timer);

@@ -67,10 +67,9 @@ impl<S: BookTextSource> BookReader<S> {
 	}
 
 	pub fn read_page(&self, book_slug: &str, page_index: u16) -> Result<(BookPage, String), String> {
-		let raw: String = self.source.load_book_text(book_slug)?;
-		let cleaned: String = strip_gutenberg_header_footer(&raw);
+		let text: String = self.source.load_book_text(book_slug)?;
 
-		let lines: Vec<&str> = cleaned.lines().collect();
+		let lines: Vec<&str> = text.lines().collect();
 		let total_pages_usize: usize = (lines.len() + self.lines_per_page - 1) / self.lines_per_page;
 
 		let total_pages: u16 = if total_pages_usize > (u16::MAX as usize) {
@@ -103,27 +102,4 @@ impl<S: BookTextSource> BookReader<S> {
 
 		return Ok((page, out));
 	}
-}
-
-fn strip_gutenberg_header_footer(text: &str) -> String {
-	let start_marker: &str = "*** START OF";
-	let end_marker: &str = "*** END OF";
-
-	let mut start_index: usize = 0;
-	if let Some(pos) = text.find(start_marker) {
-		if let Some(nl) = text[pos..].find('\n') {
-			start_index = pos + nl + 1;
-		}
-	}
-
-	let mut end_index: usize = text.len();
-	if let Some(pos) = text.find(end_marker) {
-		end_index = pos;
-	}
-
-	if start_index >= end_index {
-		return text.to_string();
-	}
-
-	return text[start_index..end_index].to_string();
 }

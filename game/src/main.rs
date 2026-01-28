@@ -76,6 +76,8 @@ fn main() {
 	let mut read_was_down: bool = false;
 	let mut page_up_was_down: bool = false;
 	let mut page_down_was_down: bool = false;
+	let mut copy_was_down: bool = false;
+	let mut escape_was_down: bool = false;
 
 	loop {
 		use crate::game::triggers;
@@ -99,7 +101,11 @@ fn main() {
 				break;
 			}
 
-			if input.escape {
+			if !copy_was_down && input.copy {
+				renderer.copy_book_page_to_clipboard(&game_session.book_reading.page_text);
+			}
+
+			if !escape_was_down && input.escape {
 				game_session.book_reader.close_book(&mut game_session.book_reading);
 			}
 
@@ -115,6 +121,8 @@ fn main() {
 			left_was_down = input.left;
 			page_down_was_down = input.page_down;
 			page_up_was_down = input.page_up;
+			copy_was_down = input.copy;
+			escape_was_down = input.escape;
 
 			renderer.begin_frame();
 			renderer.draw_level(&state, &game_session);
@@ -200,6 +208,7 @@ fn main() {
 		read_was_down = input.read;
 		page_down_was_down = input.page_down;
 		page_up_was_down = input.page_up;
+		copy_was_down = input.copy;
 
 		// --- triggers run before gameplay consumes jump ---
 		let mut jump_consumed_by_triggers: bool = false;

@@ -14,6 +14,8 @@ pub struct Settings {
 	pub stomp_bonus_cap: u8,
 	pub language_code: String,
 	pub show_triggers: bool,
+	pub enemy_death_frame_count: u8,
+	pub frame_count: u32,
 }
 
 impl Settings {
@@ -33,6 +35,8 @@ impl Settings {
 			stomp_bonus_cap: 5,
 			language_code: String::from("en-us"),
 			show_triggers: true,
+			enemy_death_frame_count: 30,
+			frame_count: 30,
 		};
 	}
 }

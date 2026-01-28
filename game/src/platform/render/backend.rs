@@ -17,6 +17,7 @@ pub trait RenderBackend {
 	fn draw_death_entity(
 		&mut self,
 		game_state: &GameState,
+		game_session: &GameSession,
 		entity_kind: EntityKind,
 		pos: &Vec2,
 		half_height: f32,

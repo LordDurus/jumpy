@@ -11,6 +11,7 @@ pub struct InputState {
 	pub escape: bool,
 	pub page_up: bool,
 	pub page_down: bool,
+	pub copy: bool,
 }
 
 #[allow(dead_code)]
