@@ -74,6 +74,8 @@ fn main() {
 	let mut action_was_down: bool = false; // "action" is jump for now
 	let mut inventory_was_down: bool = false;
 	let mut read_was_down: bool = false;
+	let mut page_up_was_down: bool = false;
+	let mut page_down_was_down: bool = false;
 
 	loop {
 		use crate::game::triggers;
@@ -101,13 +103,18 @@ fn main() {
 				game_session.book_reader.close_book(&mut game_session.book_reading);
 			}
 
-			if input.left || input.page_down {
+			if (!left_was_down && input.left) || (!page_up_was_down && input.page_up) {
 				let _ = game_session.book_reader.turn_book_page(&mut game_session.book_reading, -1);
 			}
 
-			if input.right || input.page_up {
+			if (!right_was_down && input.right) || (!page_down_was_down && input.page_down) {
 				let _ = game_session.book_reader.turn_book_page(&mut game_session.book_reading, 1);
 			}
+
+			right_was_down = input.right;
+			left_was_down = input.left;
+			page_down_was_down = input.page_down;
+			page_up_was_down = input.page_up;
 
 			renderer.begin_frame();
 			renderer.draw_level(&state, &game_session);
@@ -191,6 +198,8 @@ fn main() {
 		right_was_down = input.right;
 		inventory_was_down = input.inventory;
 		read_was_down = input.read;
+		page_down_was_down = input.page_down;
+		page_up_was_down = input.page_up;
 
 		// --- triggers run before gameplay consumes jump ---
 		let mut jump_consumed_by_triggers: bool = false;

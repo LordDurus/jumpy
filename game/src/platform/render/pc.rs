@@ -25,7 +25,10 @@ use crate::{
 	},
 	tile::TileKind,
 };
-use sdl2::ttf::{Font, Sdl2TtfContext};
+use sdl2::{
+	clipboard,
+	ttf::{Font, Sdl2TtfContext},
+};
 
 use sdl2::{
 	EventPump,
@@ -51,6 +54,7 @@ enum SlimeTextureKey {
 }
 
 pub struct PcRenderer {
+	sdl: sdl2::Sdl,
 	canvas: Canvas<Window>,
 	event_pump: EventPump,
 	common: RenderCommon,
@@ -124,6 +128,11 @@ impl PcRenderer {
 		}
 	}
 
+	pub fn copy_book_page_to_clipboard(&self, text: &str) {
+		// let clipboard = self.sdl.clipboard();
+		// let _ = clipboard.set_clipboard_text(text);
+	}
+
 	pub fn draw_book_overlay(&mut self, session: &GameSession) {
 		let state = &session.book_reading;
 		if !state.is_open {
@@ -144,7 +153,7 @@ impl PcRenderer {
 		let panel_width_pixels: u32 = screen_width_pixels as u32 - (panel_margin_pixels as u32 * 2);
 		let panel_height_pixels: u32 = screen_height_pixels as u32 - (panel_margin_pixels as u32 * 2);
 
-		self.canvas.set_draw_color(Color::RGBA(20, 20, 28, 235));
+		self.canvas.set_draw_color(Color::RGBA(20, 20, 28, 255));
 		let _ = self.canvas.fill_rect(Rect::new(panel_left, panel_top, panel_width_pixels, panel_height_pixels));
 
 		// --- render text (simple: one line per row, clipped) ---
@@ -155,7 +164,7 @@ impl PcRenderer {
 		// header line
 		let header = format!("{}  page {}/{}", state.book_slug, state.page_index + 1, state.total_pages);
 		self.draw_book_header_right(panel_left, panel_top, panel_width_pixels, &header);
-		// self.draw_book_text_line(text_left, text_top, &header);
+
 		text_top += 26;
 
 		// page body
@@ -789,6 +798,7 @@ impl RenderBackend for PcRenderer {
 		let book_font = ttf.load_font(font_path, 16).map_err(|e| e.to_string()).unwrap();
 
 		return PcRenderer {
+			sdl,
 			canvas,
 			event_pump,
 			common: RenderCommon::new(),
