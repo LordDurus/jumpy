@@ -130,6 +130,46 @@ impl PcRenderer {
 		let _ = clipboard.set_clipboard_text(text);
 	}
 
+	fn draw_book_footer(&mut self, panel_left: i32, panel_top: i32, panel_width_pixels: u32, panel_height_pixels: u32) {
+		let padding_pixels: i32 = 16;
+		let footer_height_pixels: i32 = 34;
+
+		let footer_left: i32 = panel_left;
+		let footer_top: i32 = panel_top + (panel_height_pixels as i32) - footer_height_pixels;
+		let footer_width_pixels: u32 = panel_width_pixels;
+		let footer_height_pixels_u32: u32 = footer_height_pixels as u32;
+
+		// footer bar (same scheme, slightly lighter)
+		self.canvas.set_draw_color(Color::RGBA(28, 28, 40, 235));
+		let _ = self
+			.canvas
+			.fill_rect(Rect::new(footer_left, footer_top, footer_width_pixels, footer_height_pixels_u32));
+
+		// optional: subtle divider line at top of footer
+		self.canvas.set_draw_color(Color::RGBA(60, 60, 80, 110));
+		let _ = self
+			.canvas
+			.draw_line((footer_left, footer_top), (footer_left + footer_width_pixels as i32, footer_top));
+
+		// text
+		let left_text: &str = "esc: close    \u{2190}/\u{2192}: page    ctrl+c: copy";
+		let right_text: &str = "r: read";
+
+		let text_top: i32 = footer_top + 8;
+
+		self.draw_book_text_line(footer_left + padding_pixels, text_top, left_text);
+
+		let (right_width_pixels, _) = match self.book_font.size_of(right_text) {
+			Ok(v) => v,
+			Err(_) => return,
+		};
+
+		let right_left: i32 = footer_left + (footer_width_pixels as i32) - padding_pixels - (right_width_pixels as i32);
+		self.draw_book_text_line(right_left, text_top, right_text);
+
+		return;
+	}
+
 	pub fn draw_book_overlay(&mut self, session: &GameSession) {
 		let state = &session.book_reading;
 		if !state.is_open {
@@ -170,6 +210,7 @@ impl PcRenderer {
 				break;
 			}
 			self.draw_book_text_line(text_left, text_top, line);
+			self.draw_book_footer(panel_left, panel_top, panel_width_pixels, panel_height_pixels);
 			text_top += 22;
 		}
 	}
