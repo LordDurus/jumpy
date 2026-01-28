@@ -81,6 +81,7 @@ pub struct TriggerRuntime {
 	pub p0: u16,
 	pub p1: u16,
 	pub activation_mode: u8,
+	pub icon_id: u16,
 }
 
 #[derive(Debug)]

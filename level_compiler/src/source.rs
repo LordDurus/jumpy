@@ -73,6 +73,7 @@ pub struct TriggerSource {
 	pub width: i32,
 	pub height: i32,
 	pub kind: TriggerKindSource,
+	pub icon_id: i32,
 }
 
 #[derive(Debug)]

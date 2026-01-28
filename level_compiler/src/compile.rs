@@ -203,11 +203,18 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 		let left = trigger.left as u16;
 		let width = trigger.width as u16;
 		let height = trigger.height as u16;
+		let icon_id = trigger.icon_id as u16;
+
+		println!(
+			"compile trigger kind={:?} left={} top={} icon_id={}",
+			trigger.kind, trigger.left, trigger.top, trigger.icon_id
+		);
 
 		let runtime = match &trigger.kind {
 			TriggerKindSource::LevelExit { target, level, activation_mode } => {
 				let world_id: u16 = resolve_world_id(target)?;
 				let level_id: u16 = resolve_world_level_id(level)?;
+
 				TriggerRuntime {
 					kind: TriggerKind::LevelExit as u8,
 					gravity_multiplier: 0,
@@ -218,6 +225,7 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 					p0: world_id,
 					p1: level_id,
 					activation_mode: *activation_mode,
+					icon_id,
 				}
 			}
 			TriggerKindSource::Pickup { pickup, amount, activation_mode } => {
@@ -242,6 +250,7 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 					p0: pickup_type_id,
 					p1: value,
 					activation_mode: *activation_mode,
+					icon_id,
 				}
 			}
 			TriggerKindSource::Message { text_id, activation_mode } => {
@@ -256,6 +265,7 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 					p0: *activation_mode as u16,
 					p1: msg_id,
 					activation_mode: TriggerActivationMode::Action as u8,
+					icon_id,
 				}
 			}
 		};

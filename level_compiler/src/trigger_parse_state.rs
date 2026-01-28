@@ -6,6 +6,7 @@ pub struct TriggerParseState {
 	pub left: i32,
 	pub width: i32,
 	pub height: i32,
+	pub icon_id: i32,
 }
 
 impl TriggerParseState {
@@ -16,6 +17,7 @@ impl TriggerParseState {
 			left: 0,
 			width: 1,
 			height: 1,
+			icon_id: 0,
 		};
 	}
 
@@ -25,6 +27,7 @@ impl TriggerParseState {
 		self.left = 0;
 		self.width = 1;
 		self.height = 1;
+		self.icon_id = 0;
 	}
 
 	pub fn to_trigger_source(&mut self, line_number: usize) -> Result<TriggerSource, String> {
@@ -40,6 +43,7 @@ impl TriggerParseState {
 			left: self.left,
 			width: self.width,
 			height: self.height,
+			icon_id: self.icon_id,
 			kind,
 		};
 		return Ok(t);

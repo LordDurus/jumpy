@@ -71,6 +71,7 @@ pub struct LevelTrigger {
 	// generic params from file (meaning depends on kind)
 	pub p0: u16,
 	pub p1: u16,
+	pub icon_id: u16,
 }
 
 impl LevelTrigger {

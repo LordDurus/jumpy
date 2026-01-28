@@ -53,6 +53,7 @@ pub fn serialize_level(compiled: &CompiledLevel) -> Result<Vec<u8>, String> {
 		write_u16(&mut buffer, trigger.p0)?;
 		write_u16(&mut buffer, trigger.p1)?;
 		write_u8(&mut buffer, trigger.activation_mode)?;
+		write_u16(&mut buffer, trigger.icon_id)?;
 	}
 
 	let offset_tiles: u32 = buffer.len() as u32;

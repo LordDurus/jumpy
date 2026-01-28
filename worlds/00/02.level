@@ -85,7 +85,8 @@ triggers
         top = 22
         left = 3
         width = 1
-        height = 2        
+        height = 2
+		icon_id = 1
 		mode = "action"
 		pickup = "book:tom_sawyer"
 		amount = 1

@@ -252,6 +252,7 @@ impl Level {
 			entities.push(entity);
 		}
 
+		/*
 		println!("-- entities loaded --");
 		for (i, e) in entities.iter().enumerate() {
 			let kind_name = EntityKind::str_from_u8(e.kind);
@@ -277,7 +278,7 @@ impl Level {
 				e.gravity_multiplier
 			);
 		}
-
+		*/
 		let mut player_spawn_top: f32 = 0.0;
 		let mut player_spawn_left: f32 = 0.0;
 		let mut found_spawn: bool = false;
@@ -304,7 +305,7 @@ impl Level {
 		}
 
 		// triggers
-		let bytes_per_trigger: usize = 15;
+		let bytes_per_trigger: usize = 17;
 		let triggers_bytes: usize = trigger_count * bytes_per_trigger;
 
 		if offset_triggers + triggers_bytes > bytes.len() {
@@ -332,6 +333,7 @@ impl Level {
 			let p0: u16 = read_u16(&bytes, &mut trigger_offset)?;
 			let p1: u16 = read_u16(&bytes, &mut trigger_offset)?;
 			let activation_mode: u8 = read_u8(&bytes, &mut trigger_offset)?;
+			let icon_id: u16 = read_u16(&bytes, &mut trigger_offset)?;
 
 			triggers.push(LevelTrigger {
 				id: index as u16,
@@ -343,27 +345,15 @@ impl Level {
 				p0,
 				p1,
 				activation_mode,
+				icon_id,
 			});
 		}
-		/*
+
 		println!("-- triggers loaded --");
 		for (i, t) in triggers.iter().enumerate() {
 			if t.kind == 3 {
 				println!(
-					" {}: kind={}, pickup_type_id={} value={}, left={} top={} width={} height={} mode={}",
-					i,
-					t.kind,
-					t.p0, // world_id
-					t.p1, // level_id
-					t.left_tiles,
-					t.top_tiles,
-					t.width_tiles,
-					t.height_tiles,
-					t.get_activation_mode()
-				);
-			} else if t.kind == 2 {
-				println!(
-					" {}: kind={}, pickup_type_id={} value={}, left={} top={} width={} height={} mode={}, message_id={}",
+					" {}: kind={}, pickup_type_id={} value={}, left={} top={} width={} height={} mode={} icon_id={}",
 					i,
 					t.kind,
 					t.p0, // world_id
@@ -373,11 +363,11 @@ impl Level {
 					t.width_tiles,
 					t.height_tiles,
 					t.get_activation_mode(),
-					t.get_message_id()
+					t.icon_id
 				);
-			} else if t.kind == 1 {
+			} else if t.kind == 2 {
 				println!(
-					" {}: kind={}, exit: world={} level={}, left={} top={} width={} height={} mode={}",
+					" {}: kind={}, pickup_type_id={} value={}, left={} top={} width={} height={} mode={}, message_id={} icon_id={}",
 					i,
 					t.kind,
 					t.p0, // world_id
@@ -386,13 +376,28 @@ impl Level {
 					t.top_tiles,
 					t.width_tiles,
 					t.height_tiles,
-					t.get_activation_mode()
+					t.get_activation_mode(),
+					t.get_message_id(),
+					t.icon_id
+				);
+			} else if t.kind == 1 {
+				println!(
+					" {}: kind={}, exit: world={} level={}, left={} top={} width={} height={} mode={} icon_id={}",
+					i,
+					t.kind,
+					t.p0, // world_id
+					t.p1, // level_id
+					t.left_tiles,
+					t.top_tiles,
+					t.width_tiles,
+					t.height_tiles,
+					t.get_activation_mode(),
+					t.icon_id
 				);
 			} else {
 				println!("{}: kind={} - Unknown kind", i, t.kind);
 			}
 		}
-		*/
 
 		let mut level = Level {
 			tile_width,
