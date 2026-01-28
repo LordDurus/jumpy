@@ -11,7 +11,11 @@
 	"terminal.integrated.defaultProfile.windows": "VS2022 Dev Cmd",
 	"cSpell.words": [
 		"Aabb",
+		"cooldown",
+		"cooldowns",
 		"JLVL",
+		"lvlb",
+		"Pointf",
 		"regen",
 		"repr",
 		"respawn",

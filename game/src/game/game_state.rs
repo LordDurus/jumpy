@@ -131,7 +131,7 @@ pub struct GameState {
 	pub stomp_chains: ComponentStore<u16>,
 	pub hit_points: ComponentStore<u16>,
 	pub audio: Box<dyn AudioEngine>,
-	pub death_anims: ComponentStore<u8>,
+	pub death_animations: ComponentStore<u8>,
 	pub death_timers: ComponentStore<u16>,
 	pub trigger_armed: Vec<bool>,
 	pub enemy_sprite_scale: u8,
@@ -173,7 +173,7 @@ impl GameState {
 			stomp_chains: ComponentStore::new(),
 			hit_points: ComponentStore::new(),
 			base_stomp_damages: ComponentStore::new(),
-			death_anims: ComponentStore::new(),
+			death_animations: ComponentStore::new(),
 			death_timers: ComponentStore::new(),
 			trigger_armed: Vec::new(),
 			enemy_sprite_scale: 1,
@@ -464,7 +464,7 @@ impl GameState {
 			return;
 		}
 
-		self.death_anims.set(id, anim as u8);
+		self.death_animations.set(id, anim as u8);
 
 		let frames: u16 = 30;
 		self.death_timers.set(id, frames);
@@ -501,7 +501,7 @@ impl GameState {
 					self.remove_entity(id);
 				} else {
 					// keep it around until it lands, but don't re-run animation
-					// (leave death_anims as-is and death_timer at 0)
+					// (leave death_animations as-is and death_timer at 0)
 				}
 			}
 		}
@@ -526,7 +526,7 @@ impl GameState {
 		self.respawn_states.remove(id);
 		self.stomp_chains.remove(id);
 		self.base_stomp_damages.remove(id);
-		self.death_anims.remove(id);
+		self.death_animations.remove(id);
 		self.death_timers.remove(id);
 		// linear scan is fine. I’ll have maybe dozens of enemies, not millions.
 		self.enemy_ids.retain(|&e| e != id);
