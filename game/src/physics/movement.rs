@@ -1,4 +1,5 @@
 use crate::{
+	debugln,
 	engine_math::{Vec2, aabb_overlaps_solid_tiles},
 	game::{
 		game_session::GameSession,
@@ -190,7 +191,7 @@ pub fn move_and_collide(game_state: &mut GameState, game_session: &GameSession) 
 				CollisionOutcome::None => {}
 				CollisionOutcome::Crushed { source: _ } => {
 					if is_player {
-						println!("Crushed");
+						debugln!("Crushed");
 						game_state.kill_player(game_session, player_id);
 					}
 				}
@@ -223,7 +224,7 @@ pub fn move_and_collide(game_state: &mut GameState, game_session: &GameSession) 
 				CollisionOutcome::Damaged { source: _ } => {
 					if is_player {
 						//TODO: Calc Damage kill player if needed.
-						println!("Damaged");
+						debugln!("Damaged");
 						game_state.kill_player(game_session, player_id);
 					}
 				}
@@ -405,25 +406,6 @@ pub fn try_jump(game_state: &mut GameState, game_session: &GameSession, entity_i
 			js.coyote_frames_left = 0;
 			js.jump_buffer_frames_left = 0;
 		}
-		/*
-		// debug print
-		let reason: &'static str = if grounded {
-			"grounded"
-		} else if coyote_ok {
-			"coyote"
-		} else if on_left {
-			"wall_left"
-		} else if on_right {
-			"wall_right"
-		} else {
-			"unknown"
-		};
-
-		println!(
-			"JUMP FIRED reason={} grounded={} coyote_frames_left={} on_left={} on_right={} vel_y={}",
-			reason, grounded, coyote_frames_left, on_left, on_right, jump_velocity
-		);
-		 */
 		return true;
 	}
 
@@ -705,17 +687,14 @@ fn resolve_entity_collisions(
 			let side_overlap: bool = !was_above && !was_below;
 
 			if side_overlap && collider.delta_x != 0.0 && (collider.profile.left.blocks || collider.profile.right.blocks) {
-				// println!("shove actor out sideways...");
 				// shove actor out sideways...
 				if collider.delta_x > 0.0 {
-					// println!("  right");
 					position.x = collider.right + half_width;
 					velocity.x = 0.0;
 					continue 'pass;
 				}
 
 				if collider.delta_x < 0.0 {
-					// println!("  left");
 					position.x = collider.left - half_width;
 					velocity.x = 0.0;
 					continue 'pass;
@@ -808,7 +787,7 @@ fn resolve_entity_collisions(
 
 		// enemies should not damage enemies when patrolling
 		if is_patrolling && actor_is_enemy && other_is_enemy {
-			println!("enemies should not damage enemies");
+			debugln!("enemies should not damage enemies");
 			continue;
 		}
 

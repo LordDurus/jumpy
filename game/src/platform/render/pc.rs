@@ -14,6 +14,7 @@ mod pc_platform;
 use crate::{
 	assets::get_gfx_root,
 	common::coords::{PixelSize, Pointf32, Size, clamp_camera_to_level_world, get_screen, visible_tile_bounds},
+	debugln,
 	engine_math::Vec2,
 	game::{
 		game_session::GameSession,
@@ -537,25 +538,7 @@ impl PcRenderer {
 
 				let destination_left: i32 = tile_left * tile_dest_width_pixels - camera_left_pixels;
 				let destination_top: i32 = tile_top * tile_dest_height_pixels - camera_top_pixels;
-
 				let destination = Rect::new(destination_left, destination_top, tile_dest_width_pixels as u32, tile_dest_height_pixels as u32);
-
-				/*
-				let scale_i32: i32 = scale as i32;
-				let camera_left_pixels: i32 = (cam.left * scale).floor() as i32;
-				let camera_top_pixels: i32 = (cam.top * scale).floor() as i32;
-				let tile_pixel_scaled: i32 = atlas_tile_width_pixels as i32 * scale_i32;
-				let destination_left: i32 = tile_left * tile_pixel_scaled - camera_left_pixels;
-				let destination_top: i32 = tile_top * tile_pixel_scaled - camera_top_pixels;
-
-
-				let destination = Rect::new(
-					destination_left,
-					destination_top,
-					(tile_width * scale).round() as u32,
-					(tile_height * scale).round() as u32,
-				);
-				*/
 
 				// color-only overlays (no atlas sampling)
 				if tile_kind.is_color_only() {
@@ -643,10 +626,12 @@ impl PcRenderer {
 			}
 
 			let trigger_center_left_world: f32 = trigger_left_world + (trigger_width_world * 0.5);
-			let trigger_center_top_world: f32 = trigger_top_world + (trigger_height_world * 0.5);
+
+			let half_icon_height_world: f32 = (ICON_FRAME_HEIGHT_PIXELS as f32) / scale * 0.5;
+			let bottom_padding_world: f32 = 2.0 / scale; // 2 pixels padding
 
 			let icon_world_left: f32 = trigger_center_left_world;
-			let icon_world_top: f32 = trigger_center_top_world + 12.0;
+			let icon_world_top: f32 = trigger_bottom_world - half_icon_height_world - bottom_padding_world;
 
 			let frame_index: u16 = if def.frame_count <= 1 || def.frame_duration_ticks == 0 {
 				0
@@ -676,7 +661,7 @@ impl PcRenderer {
 			let entity_kind = EntityKind::from_u8(kind);
 
 			if entity_kind == EntityKind::Empty {
-				println!("Warning: entity id {} has unknown kind {}", id, kind);
+				debugln!("Warning: entity id {} has unknown kind {}", id, kind);
 				continue;
 			}
 

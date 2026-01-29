@@ -275,6 +275,7 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 
 	let background_id = resolve_background_id(&source.header.background)?;
 	let gravity_fixed = gravity_to_fixed(source.header.gravity);
+	let music_id: u8 = resolve_music_id(&source.header.music)?;
 
 	let header = FileHeader {
 		magic: *b"JLVL",
@@ -298,6 +299,7 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 		offset_entities: 0,
 		offset_triggers: 0,
 		offset_tiles: 0,
+		music_id,
 	};
 
 	let compiled = CompiledLevel {
@@ -419,4 +421,34 @@ fn load_ids_map(path: &PathBuf) -> Result<HashMap<String, u16>, String> {
 	}
 
 	return Ok(map);
+}
+
+fn resolve_music_id(name: &str) -> Result<u8, String> {
+	let n = name.trim().to_ascii_lowercase();
+
+	if n.is_empty() || n == "none" {
+		return Ok(0);
+	}
+
+	if n == "World1" {
+		return Ok(1);
+	}
+
+	if n == "World2" {
+		return Ok(2);
+	}
+
+	if n == "World3" {
+		return Ok(3);
+	}
+
+	if n == "World4" {
+		return Ok(4);
+	}
+
+	if n == "library" {
+		return Ok(99);
+	}
+
+	return Err(format!("unknown music '{}'", name));
 }

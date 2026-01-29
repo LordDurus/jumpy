@@ -1,5 +1,6 @@
 use crate::{
-	game::{game_state::EntityKind, triggers::LevelTrigger},
+	debugln,
+	game::{game_state::EntityKind, music::MusicId, triggers::LevelTrigger},
 	tile::TileKind,
 };
 use std::fs;
@@ -52,6 +53,7 @@ pub struct Level {
 	pub entities: Vec<LevelEntity>,
 	pub triggers: Vec<LevelTrigger>,
 	pub background_id: u8,
+	pub music_id: MusicId,
 }
 
 #[inline(always)]
@@ -162,7 +164,7 @@ impl Level {
 
 		let _gravity = read_u8(&bytes, &mut offset)?;
 
-		let _reserved0 = read_u8(&bytes, &mut offset)?;
+		let music_id_u8 = read_u8(&bytes, &mut offset)?;
 		let _reserved1 = read_u8(&bytes, &mut offset)?;
 
 		let tiles_per_layer = read_u32(&bytes, &mut offset)? as usize;
@@ -253,11 +255,11 @@ impl Level {
 		}
 
 		/*
-		println!("-- entities loaded --");
+		debugln!("-- entities loaded --");
 		for (i, e) in entities.iter().enumerate() {
 			let kind_name = EntityKind::str_from_u8(e.kind);
 
-			println!(
+			debugln!(
 				" {}: kind={}({}) style={} top={} left={} health_regen_rate={} invulnerability_time={} width={} height={} speed={} strength={} luck={} hit_points={} range_min={} range_max={} gravity={}",
 				i,
 				e.kind,
@@ -349,10 +351,10 @@ impl Level {
 			});
 		}
 
-		println!("-- triggers loaded --");
+		debugln!("-- triggers loaded --");
 		for (i, t) in triggers.iter().enumerate() {
 			if t.kind == 3 {
-				println!(
+				debugln!(
 					" {}: kind={}, pickup_type_id={} value={}, left={} top={} width={} height={} mode={} icon_id={}",
 					i,
 					t.kind,
@@ -366,7 +368,7 @@ impl Level {
 					t.icon_id
 				);
 			} else if t.kind == 2 {
-				println!(
+				debugln!(
 					" {}: kind={}, pickup_type_id={} value={}, left={} top={} width={} height={} mode={}, message_id={} icon_id={}",
 					i,
 					t.kind,
@@ -381,7 +383,7 @@ impl Level {
 					t.icon_id
 				);
 			} else if t.kind == 1 {
-				println!(
+				debugln!(
 					" {}: kind={}, exit: world={} level={}, left={} top={} width={} height={} mode={} icon_id={}",
 					i,
 					t.kind,
@@ -395,7 +397,7 @@ impl Level {
 					t.icon_id
 				);
 			} else {
-				println!("{}: kind={} - Unknown kind", i, t.kind);
+				debugln!("{}: kind={} - Unknown kind", i, t.kind);
 			}
 		}
 
@@ -413,6 +415,7 @@ impl Level {
 			entities: entities,
 			triggers: triggers,
 			background_id,
+			music_id: MusicId::from_u8(music_id_u8),
 		};
 
 		level.floor_y = level.compute_floor_y();

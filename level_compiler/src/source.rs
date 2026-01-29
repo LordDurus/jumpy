@@ -17,6 +17,7 @@ pub struct LevelHeader {
 	pub tile_height: u32,
 	pub gravity: f32,
 	pub background: String,
+	pub music: String,
 }
 
 #[allow(dead_code)]

@@ -1,3 +1,5 @@
+# World 1 level 1 #
+
 header
 {
     version = 1
@@ -8,7 +10,8 @@ header
     tile_width = 16
 	tile_height = 16
     gravity = 1.0
-    background = "bg_parallax_forest"	
+    background = "bg_parallax_forest"
+	music = "01_world_music"
 }
 
 layers
@@ -38,8 +41,8 @@ layers
 			"#....===........(____)..............................................##..#....."
 			"#...................................................................##..#....."
 			"#.........====........................................====..........##..#....."
-			"#...................................................................##..#....."
-			"#........................................====.......................##..#....."
+			"#.....=.............................................................##..#....."
+			"#........=...............................====.......................##..#....."
 			"#..b..................======.............####........................#..#....."
             "#==============================..........####..............................e.."
             "###############################...#################~~~~#######################"
@@ -141,13 +144,13 @@ entities
 	
 	platform "horizontal"
 	{
-		top = 20
-		left = 15
+		top = 27
+		left = 22
 		width = 4
 		height = 1
 		speed = 3
 		range_min = 2
-		range_max = 20
+		range_max = 22
 		gravity_multiplier = 0.00
 		render_style = 4
 	}
@@ -173,6 +176,43 @@ triggers
         height = 1
         text_id = "tutorial_press_jump"
     }
+	
+	trigger "pickup"
+    {
+        top = 16
+        left = 18
+        width = 1
+        height = 1
+		icon_id = 2
+		mode = "action"
+		pickup = "coin"
+		amount = 1
+	}
+
+	trigger "pickup"
+    {
+        top = 16
+        left = 19
+        width = 1
+        height = 1
+		icon_id = 2
+		mode = "auto"
+		pickup = "coin"
+		amount = 1
+	}
+	
+	trigger "pickup"
+    {
+        top = 16
+        left = 20
+        width = 1
+        height = 1
+		icon_id = 3
+		mode = "auto"
+		pickup = "coin"
+		amount = 1
+	}
+	
 	
 	trigger "message"
     {

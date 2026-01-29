@@ -1,11 +1,12 @@
 use crate::{
-	ActiveBookTextSource, GameState,
+	ActiveBookTextSource, GameState, debugln,
 	game::{
 		Settings,
 		book::{ActiveBookReader, reading_state::BookReadingState},
 		inventory::Inventory,
 		level::Level,
 		message_table::MessageTable,
+		music::MusicId,
 	},
 };
 
@@ -34,6 +35,7 @@ pub struct GameSession {
 	pub message_table: MessageTable,
 	pub book_reader: ActiveBookReader,
 	pub book_reading: BookReadingState,
+	pub active_music_id: MusicId,
 }
 
 impl GameSession {
@@ -42,7 +44,7 @@ impl GameSession {
 
 		let settings: Settings = Settings::new();
 		let message_table: MessageTable = MessageTable::load(settings.language_code.as_str()).unwrap_or_else(|e| {
-			println!("message table load failed: {}", e);
+			debugln!("message table load failed: {}", e);
 			return MessageTable::load("en-us").unwrap();
 		});
 
@@ -62,8 +64,10 @@ impl GameSession {
 			message_table,
 			book_reader: ActiveBookReader::new(ActiveBookTextSource::new(), LINES_PER_PAGE),
 			book_reading: BookReadingState::closed(),
+			active_music_id: MusicId::None,
 		};
 	}
+
 	pub fn transition_to_level(&mut self, game_state: &mut GameState, level_name: &str) -> bool {
 		// 1) save current runtime -> persistent
 		game_state.save_player_to_persistent(self);
@@ -72,10 +76,12 @@ impl GameSession {
 		let next_level: Level = match Level::load_binary(level_name) {
 			Ok(l) => l,
 			Err(e) => {
-				println!("level load failed: {}", e);
+				debugln!("level load failed: {}", e);
 				return false;
 			}
 		};
+
+		let next_music_id: MusicId = next_level.music_id;
 
 		// 3) move audio backend into the new state (can't clone Box<dyn AudioEngine>)
 		let audio = game_state.take_audio();
@@ -91,6 +97,12 @@ impl GameSession {
 		*game_state = new_state;
 
 		self.current_level_name = Some(level_name.to_string());
+
+		if self.active_music_id != next_music_id {
+			game_state.audio.play_music(next_music_id, true);
+			self.active_music_id = next_music_id;
+		}
+
 		return true;
 	}
 

@@ -82,10 +82,10 @@ triggers
 	
 	trigger "pickup"
     {
-        top = 22
+        top = 23
         left = 3
         width = 1
-        height = 2
+        height = 1
 		icon_id = 1
 		mode = "action"
 		pickup = "book:tom_sawyer"
@@ -94,34 +94,34 @@ triggers
 	
 	trigger "pickup"
     {
-        top = 22
+        top = 23
         left = 5
         width = 1
-        height = 2        
+        height = 1        
 		icon_id = 2
-		mode = "action"
+		mode = "auto"
 		pickup = "coin"
 		amount = 1
 	}
 
 	trigger "pickup"
     {
-        top = 22
+        top = 23
         left = 7
         width = 1
-        height = 2        
+        height = 1
 		icon_id = 3
-		mode = "action"
+		mode = "auto"
 		pickup = "coin"
 		amount = 5
 	}
 	
 	trigger "pickup"
     {
-        top = 22
+        top = 23
         left = 11
         width = 1
-        height = 2        
+        height = 1
 		mode = "action"
 		pickup = "key:w01:l01"
 		amount = 1

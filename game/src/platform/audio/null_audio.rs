@@ -1,6 +1,6 @@
-use crate::platform::audio::{
-	AudioEngine, SfxId,
-	backend::{AudioHandle, MusicId},
+use crate::{
+	MusicId,
+	platform::audio::{AudioEngine, SfxId, backend::AudioHandle},
 };
 
 pub struct NullAudio;

@@ -8,7 +8,8 @@ header
     tile_width = 16
 	tile_height = 16
     gravity = 1.0
-    background = "bg_parallax_forest"	
+    background = "bg_parallax_forest"
+	music = "01_world_music"
 }
 
 layers

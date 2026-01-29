@@ -1,4 +1,5 @@
 use crate::{
+	debugln,
 	engine_math::{random_u16, rects_overlap},
 	game::{
 		game_session::GameSession,
@@ -159,14 +160,14 @@ pub fn handle_message_triggers(session: &GameSession, game_state: &mut GameState
 				game_state.trigger_armed[trigger_index] = true;
 
 				let msg: &str = session.message_table.get(message_id);
-				println!("{}", msg);
+				debugln!("{}", msg);
 			}
 		} else if activation_mode == TRIGGER_MODE_ACTION {
 			if trigger_presses.action_pressed && !game_state.trigger_armed[trigger_index] {
 				game_state.trigger_armed[trigger_index] = true;
 
 				let msg: &str = session.message_table.get(message_id);
-				println!("{}", msg);
+				debugln!("{}", msg);
 
 				consumed_action = true;
 			}
@@ -232,7 +233,6 @@ pub fn handle_level_exit_triggers(session: &mut GameSession, game_state: &mut Ga
 			continue;
 		}
 
-		// println!("[trigger] mode={}", mode);
 		// auto fires immediately on overlap, others only fire on matching press
 		if mode != TRIGGER_MODE_AUTO && !should_fire(mode, presses) {
 			continue;
@@ -343,7 +343,7 @@ pub fn handle_pickup_triggers(session: &mut GameSession, game_state: &mut GameSt
 #[inline(always)]
 fn apply_pickup(session: &mut GameSession, pickup_type: u16, value: u16) {
 	if pickup_type == 1 {
-		println!("adding coins({})", value);
+		debugln!("adding coins({})", value);
 
 		session.inventory.add_coins(value);
 		return;

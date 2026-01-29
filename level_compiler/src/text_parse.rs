@@ -439,6 +439,7 @@ fn parse_header_line(line: &str, existing: Option<LevelHeader>) -> Result<LevelH
 			tile_width: 0,
 			gravity: 0.0,
 			background: String::new(),
+			music: String::new(),
 		},
 	};
 
@@ -472,6 +473,11 @@ fn parse_header_line(line: &str, existing: Option<LevelHeader>) -> Result<LevelH
 		"background" => {
 			header.background = parse_quoted(value_str)?;
 		}
+		"music" => {
+			header.music = parse_quoted(value_str)?;
+		}
+		"#" => {}
+		"//" => {}
 		_ => {
 			return Err(format!("unknown header key '{}'", key));
 		}

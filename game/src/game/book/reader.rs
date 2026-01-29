@@ -1,4 +1,4 @@
-use crate::{BookSlug, game::book::reading_state::BookReadingState};
+use crate::{BookSlug, debugln, game::book::reading_state::BookReadingState};
 
 #[derive(Debug, Clone, Copy)]
 pub struct BookPage {
@@ -23,7 +23,7 @@ impl<S: BookTextSource> BookReader<S> {
 	pub fn open_book(&self, state: &mut BookReadingState, book_slug: BookSlug, start_page: u16) -> Result<(), String> {
 		let (page, text) = self.read_page(book_slug, start_page)?;
 
-		println!("Open Book: book_slug={}", book_slug);
+		debugln!("Open Book: book_slug={}", book_slug);
 
 		state.is_open = true;
 		state.book_slug = book_slug.to_string();

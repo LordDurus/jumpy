@@ -1,8 +1,9 @@
 #![cfg(feature = "pc")]
 
-use crate::platform::audio::{
-	AudioEngine, SfxId,
-	backend::{AudioHandle, MusicId},
+use crate::{
+	debugln,
+	game::music::MusicId,
+	platform::audio::{AudioEngine, SfxId, backend::AudioHandle},
 };
 use sdl2::mixer::{self, Channel, Chunk, Music};
 use std::{collections::HashMap, path::PathBuf};
@@ -30,6 +31,37 @@ impl PcAudio {
 		let music = Music::from_file(&path).unwrap_or_else(|_| panic!("missing music file: {}", path.display()));
 		self.music.insert(id, music);
 	}
+
+	pub fn set_level_music(&mut self, id_u8: u8) {
+		let id: MusicId = MusicId::from_u8(id_u8);
+
+		if id == MusicId::None {
+			mixer::Music::halt();
+			return;
+		}
+
+		let m = self.music.get(&id).expect("music missing after ensure_music_loaded");
+		m.play(-1).expect("failed to start music");
+	}
+
+	fn ensure_music_loaded(&mut self, id: MusicId) {
+		if id == MusicId::None {
+			return;
+		}
+
+		if self.music.contains_key(&id) {
+			return;
+		}
+
+		let Some(path) = music_path(id) else {
+			debugln!("no music path for {:?}", id);
+			return;
+		};
+
+		self.load_music(id, path);
+
+		return;
+	}
 }
 
 impl AudioEngine for PcAudio {
@@ -52,22 +84,20 @@ impl AudioEngine for PcAudio {
 		self.load_sfx(SfxId::Player1Died, "player1_dead.wav");
 
 		// ---- load music ----
-		self.load_music(MusicId::World1, "01_world_music.wav");
-
-		/*
-		let music = Music::from_file(Self::asset_path("01_world_music.wav")).expect("01_world_music.wav missing");
-		self.music = Some(music);
-		self.music.as_ref().unwrap().play(-1).expect("failed to start music");
-		*/
+		// self.load_music(MusicId::World1, "01_world_music.wav");
 	}
 
 	fn play_music(&mut self, id: MusicId, loop_forever: bool) {
+		self.ensure_music_loaded(id);
+
 		let Some(music) = self.music.get(&id) else {
 			return;
 		};
 
 		let loops: i32 = if loop_forever { -1 } else { 0 };
 		let _ = music.play(loops);
+
+		return;
 	}
 
 	fn stop_music(&mut self) {
@@ -108,4 +138,16 @@ impl AudioEngine for PcAudio {
 	fn update(&mut self) {
 		// nothing required for SDL mixer
 	}
+}
+
+fn music_path(id: MusicId) -> Option<&'static str> {
+	return match id {
+		MusicId::None => None,
+		MusicId::World1 => Some("01_world_music.wav"),
+		MusicId::World2 => Some("02_world_music.wav"),
+		MusicId::World3 => Some("03_world_music.wav"),
+		MusicId::World4 => Some("04_world_music.wav"),
+		MusicId::Library => Some("02_world_music.wav"),
+		//MusicId::Library => Some("library_music.wav"),
+	};
 }

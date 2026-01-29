@@ -28,6 +28,7 @@ pub struct FileHeader {
 	pub offset_entities: u32,
 	pub offset_triggers: u32,
 	pub offset_tiles: u32,
+	pub music_id: u8,
 }
 
 #[repr(C)]
@@ -62,10 +63,6 @@ pub struct EntityRuntime {
 }
 
 impl EntityRuntime {
-	// update to the actual bytes you write
-	// pub const BYTE_SIZE: u32 = 68;
-	// pub const BYTE_SIZE: u32 = 14;
-	// pub const BYTE_SIZE: u32 = 17;
 	pub const BYTE_SIZE: u32 = 24;
 }
 

@@ -1,7 +1,4 @@
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum MusicId {
-	World1,
-}
+use crate::MusicId;
 
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

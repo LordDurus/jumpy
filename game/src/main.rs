@@ -14,12 +14,9 @@ use crate::{
 		game_session::GameSession,
 		game_state::GameState,
 		level::Level,
+		music::MusicId,
 	},
-	platform::{
-		audio::{AudioEngine, backend::MusicId},
-		input::TriggerPresses,
-		render::backend::RenderBackend,
-	},
+	platform::{audio::AudioEngine, input::TriggerPresses, render::backend::RenderBackend},
 };
 
 #[cfg(feature = "pc")]
@@ -53,8 +50,37 @@ fn main() {
 		Box::new(a)
 	};
 
-	let first_level_path: &str = "../worlds/00/01.lvlb";
-	let bootstrap_level: Level = Level::load_binary(first_level_path).expect("failed to load first level");
+	let default_level_path: &str = "../worlds/01/01.lvlb"; // Default to 1-1
+	let mut first_level_path: String = default_level_path.to_string();
+
+	let args: Vec<String> = std::env::args().collect();
+	let mut i: usize = 1;
+	while i < args.len() {
+		let a: &str = args[i].as_str();
+		// support:
+		// -level <path>
+		// --level <path>
+		// --level=<path>
+		if a == "--level" || a == "-level" {
+			if i + 1 < args.len() {
+				first_level_path = args[i + 1].clone();
+				i += 2;
+				continue;
+			}
+			panic!("missing value after {}", a);
+		}
+
+		if let Some(rest) = a.strip_prefix("--level=") {
+			first_level_path = rest.to_string();
+			i += 1;
+			continue;
+		}
+
+		i += 1;
+	}
+	debugln!("loading level: {}", first_level_path);
+
+	let bootstrap_level: Level = Level::load_binary(&first_level_path).expect("failed to load first level");
 	let mut state = GameState::new(bootstrap_level, audio);
 
 	// game_session.transition_to_level(&mut state, first_level_path);
@@ -64,7 +90,9 @@ fn main() {
 	game_session.current_level_name = Some(first_level_path.to_string());
 
 	if game_session.settings.is_background_music_enabled {
-		state.audio.play_music(MusicId::World1, true);
+		let music_id: MusicId = state.level.music_id;
+		state.audio.play_music(music_id, true);
+		game_session.active_music_id = music_id;
 	}
 
 	let mut renderer = ActiveRenderer::new();
@@ -143,14 +171,14 @@ fn main() {
 			let book_slug: BookSlug = "tom_sawyer";
 
 			let Some(_) = game_session.inventory.get_book(book_id) else {
-				println!("tom_sawyer not in inventory");
+				debugln!("tom_sawyer not in inventory");
 				continue;
 			};
 
 			// open the ui at page 0 (or the saved page later)
 			let result = game_session.book_reader.open_book(&mut game_session.book_reading, book_slug, 0);
 			if let Err(e) = result {
-				println!("open book failed: {}", e);
+				debugln!("open book failed: {}", e);
 			}
 			continue;
 		}
@@ -260,17 +288,17 @@ fn main() {
 }
 
 fn print_inventory(inv: &crate::game::inventory::Inventory) {
-	println!("--- inventory ---");
-	println!("coins={}", inv.coins);
+	debugln!("--- inventory ---");
+	debugln!("coins={}", inv.coins);
 
-	println!("keys={}", inv.keys.len());
+	debugln!("keys={}", inv.keys.len());
 	for k in &inv.keys {
-		println!(" key id={} used={}", k.key_id, k.is_used);
+		debugln!(" key id={} used={}", k.key_id, k.is_used);
 	}
 
-	println!("books={}", inv.books.len());
+	debugln!("books={}", inv.books.len());
 	for b in &inv.books {
-		println!(" book id={} page={}/{}", b.book_id, b.current_page, b.total_pages);
+		debugln!(" book id={} page={}/{}", b.book_id, b.current_page, b.total_pages);
 	}
 
 	return;
