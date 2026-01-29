@@ -7,7 +7,6 @@ const BOOK_DIVIDER_COLOR: Color = Color::RGBA(60, 60, 80, 110);
 const BOOK_HEADER_HEIGHT_PIXELS: i32 = 34;
 const BOOK_FOOTER_HEIGHT_PIXELS: i32 = 34;
 const BOOK_BAR_TEXT_TOP_OFFSET_PIXELS: i32 = 8;
-const MAX_ICON_COUNT: usize = 2;
 
 #[path = "pc_platform.rs"]
 mod pc_platform;
@@ -28,11 +27,13 @@ use crate::{
 		input::InputState,
 		render::{
 			common::RenderCommon,
+			icon_registry::{ICON_FRAME_HEIGHT_PIXELS, ICON_FRAME_WIDTH_PIXELS, get_icon_src_rect_pixels, resolve_icon},
 			pc::pc_platform::{WindowSettings, load_window_settings, save_window_settings},
 		},
 	},
 	tile::TileKind,
 };
+
 use sdl2::ttf::{Font, Sdl2TtfContext};
 
 use sdl2::{
@@ -77,8 +78,8 @@ pub struct PcRenderer {
 	pub frame_index: u32,
 	pub atlas_tile_width_pixels: u32,
 	pub atlas_tile_height_pixels: u32,
+	pub atlas_icon_texture: Texture<'static>,
 	pub book_font: Font<'static, 'static>,
-	pub icon_textures: Vec<Option<Texture<'static>>>,
 
 	// bg parallax
 	bg_texture: Option<Texture<'static>>,
@@ -594,14 +595,21 @@ impl PcRenderer {
 	}
 
 	fn draw_trigger_icons(&mut self, game_state: &GameState, _session: &GameSession, cam_left_world: f32, cam_top_world: f32, scale: f32) {
-		// ---- temp: brute force indicators in renderer ----
+		let atlas: &Texture<'static> = &self.atlas_icon_texture;
+
 		let tile_width: f32 = game_state.level.tile_width as f32;
 		let tile_height: f32 = game_state.level.tile_height as f32;
 
-		let Some(player_pos) = game_state.positions.get(game_state.get_player_id()) else {
-			println!("player not found.");
-			return;
-		};
+		let (screen_width_pixels, screen_height_pixels) = self.screen_size();
+		let view_width_world: f32 = (screen_width_pixels as f32) / scale;
+		let view_height_world: f32 = (screen_height_pixels as f32) / scale;
+
+		let view_left_world: f32 = cam_left_world;
+		let view_top_world: f32 = cam_top_world;
+		let view_right_world: f32 = view_left_world + view_width_world;
+		let view_bottom_world: f32 = view_top_world + view_height_world;
+
+		let padding_world: f32 = 16.0;
 
 		for trigger in &game_state.level.triggers {
 			if trigger.icon_id == 0 {
@@ -613,23 +621,14 @@ impl PcRenderer {
 				continue; // consumed -> don't draw
 			}
 
-			// println!("icon_id={}", trigger.icon_id);
+			let Some(def) = resolve_icon(trigger.icon_id) else {
+				continue;
+			};
 
 			let trigger_left_world: f32 = (trigger.left_tiles as f32) * tile_width;
 			let trigger_top_world: f32 = (trigger.top_tiles as f32) * tile_height;
 			let trigger_width_world: f32 = (trigger.width_tiles as f32) * tile_width;
 			let trigger_height_world: f32 = (trigger.height_tiles as f32) * tile_height;
-
-			let (screen_width_pixels, screen_height_pixels) = self.screen_size();
-			let view_width_world: f32 = (screen_width_pixels as f32) / scale;
-			let view_height_world: f32 = (screen_height_pixels as f32) / scale;
-
-			let view_left_world: f32 = cam_left_world;
-			let view_top_world: f32 = cam_top_world;
-			let view_right_world: f32 = view_left_world + view_width_world;
-			let view_bottom_world: f32 = view_top_world + view_height_world;
-
-			let padding_world: f32 = 16.0; // 1 tile cushion
 
 			let trigger_right_world: f32 = trigger_left_world + trigger_width_world;
 			let trigger_bottom_world: f32 = trigger_top_world + trigger_height_world;
@@ -643,27 +642,30 @@ impl PcRenderer {
 				continue;
 			}
 
-			let trigger_center_left: f32 = (trigger.left_tiles as f32 + (trigger.width_tiles as f32 * 0.5)) * tile_width;
+			let trigger_center_left_world: f32 = trigger_left_world + (trigger_width_world * 0.5);
 			let trigger_center_top_world: f32 = trigger_top_world + (trigger_height_world * 0.5);
-			let icon_world_left: f32 = trigger_center_left;
+
+			let icon_world_left: f32 = trigger_center_left_world;
 			let icon_world_top: f32 = trigger_center_top_world + 12.0;
 
-			let icon_index: usize = trigger.icon_id as usize;
-			let texture = match self.icon_textures.get(icon_index) {
-				Some(Some(tex)) => tex,
-				// println!("2");
-				_ => continue,
+			let frame_index: u16 = if def.frame_count <= 1 || def.frame_duration_ticks == 0 {
+				0
+			} else {
+				let frame_u32: u32 = (self.frame_index as u32 / def.frame_duration_ticks as u32) % def.frame_count as u32;
+				frame_u32 as u16
 			};
 
-			let query = texture.query();
-			let icon_width_pixels: u32 = query.width;
-			let icon_height_pixels: u32 = query.height;
+			let (src_left_pixels, src_top_pixels, src_width_pixels, src_height_pixels) = get_icon_src_rect_pixels(trigger.icon_id, frame_index);
 
-			let screen_left: i32 = ((icon_world_left - cam_left_world) * scale) as i32 - (icon_width_pixels as i32 / 2);
-			let screen_top: i32 = ((icon_world_top - cam_top_world) * scale) as i32 - (icon_height_pixels as i32);
+			let src = sdl2::rect::Rect::new(src_left_pixels, src_top_pixels, src_width_pixels, src_height_pixels);
 
-			let dest = sdl2::rect::Rect::new(screen_left, screen_top, icon_width_pixels, icon_height_pixels);
-			let _ = self.canvas.copy(texture, None, dest);
+			// screen-space: keep icon size constant (32x32), don’t multiply by world scale
+			let screen_left: i32 = ((icon_world_left - cam_left_world) * scale) as i32 - (ICON_FRAME_WIDTH_PIXELS as i32 / 2);
+			let screen_top: i32 = ((icon_world_top - cam_top_world) * scale) as i32 - (ICON_FRAME_HEIGHT_PIXELS as i32 / 2);
+
+			let dest = sdl2::rect::Rect::new(screen_left, screen_top, ICON_FRAME_WIDTH_PIXELS, ICON_FRAME_HEIGHT_PIXELS);
+
+			let _ = self.canvas.copy(atlas, Some(src), dest);
 		}
 	}
 
@@ -915,12 +917,8 @@ impl RenderBackend for PcRenderer {
 		let font_path = crate::assets::get_font_path("DejaVuSansMono.ttf");
 		let book_font = ttf.load_font(font_path, 16).map_err(|e| e.to_string()).unwrap();
 
-		let mut icon_textures: Vec<Option<Texture<'static>>> = Vec::new();
-		icon_textures.resize_with(MAX_ICON_COUNT, || None);
-
-		let tom_sawyer_path: PathBuf = gfx_pc_path(&["books", "tom_sawyer_icon.png"]);
-		let tom_sawyer_texture = texture_creator.load_texture(tom_sawyer_path).expect("failed to load tom_sawyer_icon.png");
-		icon_textures[1] = Some(tom_sawyer_texture);
+		let icon_atlas_path: PathBuf = gfx_pc_path(&["icons.png"]);
+		let icon_atlas_texture = texture_creator.load_texture(icon_atlas_path).expect("failed to load icons.png");
 
 		return PcRenderer {
 			video,
@@ -947,7 +945,7 @@ impl RenderBackend for PcRenderer {
 			texture_creator,
 			bg_id: 0,
 			book_font,
-			icon_textures,
+			atlas_icon_texture: icon_atlas_texture,
 		};
 	}
 

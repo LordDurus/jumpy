@@ -98,6 +98,30 @@ triggers
         left = 5
         width = 1
         height = 2        
+		icon_id = 2
+		mode = "action"
+		pickup = "coin"
+		amount = 1
+	}
+
+	trigger "pickup"
+    {
+        top = 22
+        left = 7
+        width = 1
+        height = 2        
+		icon_id = 3
+		mode = "action"
+		pickup = "coin"
+		amount = 5
+	}
+	
+	trigger "pickup"
+    {
+        top = 22
+        left = 11
+        width = 1
+        height = 2        
 		mode = "action"
 		pickup = "key:w01:l01"
 		amount = 1
