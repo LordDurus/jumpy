@@ -32,18 +32,6 @@ impl PcAudio {
 		self.music.insert(id, music);
 	}
 
-	pub fn set_level_music(&mut self, id_u8: u8) {
-		let id: MusicId = MusicId::from_u8(id_u8);
-
-		if id == MusicId::None {
-			mixer::Music::halt();
-			return;
-		}
-
-		let m = self.music.get(&id).expect("music missing after ensure_music_loaded");
-		m.play(-1).expect("failed to start music");
-	}
-
 	fn ensure_music_loaded(&mut self, id: MusicId) {
 		if id == MusicId::None {
 			return;
