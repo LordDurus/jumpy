@@ -1,6 +1,6 @@
 use crate::{
 	debugln,
-	engine_math::{random_u16, rects_overlap},
+	engine_math::{do_they_overlap, random_u16},
 	game::{
 		game_session::GameSession,
 		game_state::{EntityId, GameState},
@@ -136,7 +136,7 @@ pub fn handle_message_triggers(session: &GameSession, game_state: &mut GameState
 		let trig_width_world: f32 = (trigger.width_tiles as f32) * tile_width_world;
 		let trig_height_world: f32 = (trigger.height_tiles as f32) * tile_height_world;
 
-		let is_overlapping: bool = rects_overlap(
+		let is_overlapping: bool = do_they_overlap(
 			player_left_world,
 			player_top_world,
 			player_width_world,
@@ -210,7 +210,7 @@ pub fn handle_level_exit_triggers(session: &mut GameSession, game_state: &mut Ga
 		let trig_width_world: f32 = (trigger.width_tiles as f32) * tile_width_world;
 		let trig_height_world: f32 = (trigger.height_tiles as f32) * tile_height_world;
 
-		let is_overlapping: bool = rects_overlap(
+		let is_overlapping: bool = do_they_overlap(
 			player_left_world,
 			player_top_world,
 			player_width_world,
@@ -285,7 +285,7 @@ pub fn handle_pickup_triggers(session: &mut GameSession, game_state: &mut GameSt
 		let trig_width_world: f32 = (trigger.width_tiles as f32) * tile_width_world;
 		let trig_height_world: f32 = (trigger.height_tiles as f32) * tile_height_world;
 
-		let is_overlapping: bool = rects_overlap(
+		let is_overlapping: bool = do_they_overlap(
 			player_left_world,
 			player_top_world,
 			player_width_world,

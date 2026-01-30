@@ -1,7 +1,9 @@
+# World 0 level 1  -- Debug# 
+
 header
 {
     version = 1
-    name = "first jump"
+    name = "debug"
     author = "tom"
     width = 80
     height = 33
@@ -9,7 +11,7 @@ header
 	tile_height = 16
     gravity = 1.0
     background = "bg_parallax_forest"
-	music = "01_world_music"
+	music = "world1"
 }
 
 layers

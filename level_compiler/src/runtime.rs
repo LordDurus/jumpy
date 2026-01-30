@@ -18,8 +18,8 @@ pub struct FileHeader {
 	pub background_id: u8,
 	pub gravity: u8,
 
-	pub health_regen_rate: u8,
-	pub invulnerability_time: u8,
+	pub music_id: u8,
+	pub reserved1: u8,
 
 	pub tiles_per_layer: u32,
 	pub tile_count_total: u32,
@@ -28,7 +28,6 @@ pub struct FileHeader {
 	pub offset_entities: u32,
 	pub offset_triggers: u32,
 	pub offset_tiles: u32,
-	pub music_id: u8,
 }
 
 #[repr(C)]

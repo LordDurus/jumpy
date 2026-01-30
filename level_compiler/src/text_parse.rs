@@ -43,6 +43,10 @@ pub fn load_level_from_str(text: &str) -> Result<LevelSource, String> {
 			continue;
 		}
 
+		if line.is_empty() || line.starts_with('#') || line.starts_with("//") {
+			continue;
+		}
+
 		if line == "header" {
 			section = Section::Header;
 			continue;
@@ -440,6 +444,7 @@ fn parse_header_line(line: &str, existing: Option<LevelHeader>) -> Result<LevelH
 			gravity: 0.0,
 			background: String::new(),
 			music: String::new(),
+			reserved1: 0,
 		},
 	};
 

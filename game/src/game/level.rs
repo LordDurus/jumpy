@@ -7,6 +7,7 @@ use std::fs;
 
 pub const BYTES_PER_ENTITY: usize = 24;
 pub const PLAYER_HALF_HEIGHT: f32 = 8.0;
+pub const HEADER_SIZE: usize = 51;
 
 /*
 #[derive(Debug, Clone)]
@@ -54,6 +55,9 @@ pub struct Level {
 	pub triggers: Vec<LevelTrigger>,
 	pub background_id: u8,
 	pub music_id: MusicId,
+
+	#[allow(dead_code)]
+	pub reserved1: u8,
 }
 
 #[inline(always)]
@@ -148,36 +152,34 @@ impl Level {
 		let _version = read_u16(&bytes, &mut offset)?;
 		let header_size = read_u16(&bytes, &mut offset)? as usize;
 
+		if header_size != HEADER_SIZE {
+			let message = format!("Header Size invalid. Expected: {} | Read: {}", HEADER_SIZE, header_size);
+			return Err(message);
+		}
+
 		let width = read_u16(&bytes, &mut offset)? as u32;
 		let height = read_u16(&bytes, &mut offset)? as u32;
 
 		let tile_width = read_u16(&bytes, &mut offset)? as u32;
 		let tile_height = read_u16(&bytes, &mut offset)? as u32;
-
 		let layer_count = read_u8(&bytes, &mut offset)? as u32;
-
 		let entity_count = read_u16(&bytes, &mut offset)? as usize;
 		let trigger_count = read_u16(&bytes, &mut offset)? as usize;
-
 		let _gravity_fixed = read_i16(&bytes, &mut offset)?;
 		let background_id = read_u8(&bytes, &mut offset)?;
-
 		let _gravity = read_u8(&bytes, &mut offset)?;
-
 		let music_id_u8 = read_u8(&bytes, &mut offset)?;
-		let _reserved1 = read_u8(&bytes, &mut offset)?;
-
+		let reserved1 = read_u8(&bytes, &mut offset)?;
 		let tiles_per_layer = read_u32(&bytes, &mut offset)? as usize;
 		let tile_count_total = read_u32(&bytes, &mut offset)? as usize;
-
 		let _offset_layers = read_u32(&bytes, &mut offset)? as usize;
 		let offset_entities = read_u32(&bytes, &mut offset)? as usize;
 		let offset_triggers = read_u32(&bytes, &mut offset)? as usize;
 		let offset_tiles = read_u32(&bytes, &mut offset)? as usize;
 
-		// sanity: header_size should not point past file
-		if header_size > bytes.len() {
-			return Err(format!("header_size {} past file len {}", header_size, bytes.len()));
+		// loader sanity
+		if header_size != offset {
+			return Err(format!("header_size mismatch: header says {}, reader consumed {}", header_size, offset));
 		}
 
 		// tiles sanity
@@ -351,6 +353,7 @@ impl Level {
 			});
 		}
 
+		/*
 		debugln!("-- triggers loaded --");
 		for (i, t) in triggers.iter().enumerate() {
 			if t.kind == 3 {
@@ -400,6 +403,7 @@ impl Level {
 				debugln!("{}: kind={} - Unknown kind", i, t.kind);
 			}
 		}
+		*/
 
 		let mut level = Level {
 			tile_width,
@@ -416,6 +420,7 @@ impl Level {
 			triggers: triggers,
 			background_id,
 			music_id: MusicId::from_u8(music_id_u8),
+			reserved1,
 		};
 
 		level.floor_y = level.compute_floor_y();

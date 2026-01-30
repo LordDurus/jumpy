@@ -170,7 +170,7 @@ impl From<NalgebraVector2<f32>> for Vec2 {
 }
 
 #[inline(always)]
-pub fn rects_overlap(a_left: f32, a_top: f32, a_width: f32, a_height: f32, b_left: f32, b_top: f32, b_width: f32, b_height: f32) -> bool {
+pub fn do_they_overlap(a_left: f32, a_top: f32, a_width: f32, a_height: f32, b_left: f32, b_top: f32, b_width: f32, b_height: f32) -> bool {
 	a_left < b_left + b_width && a_left + a_width > b_left && a_top < b_top + b_height && a_top + a_height > b_top
 }
 
@@ -195,7 +195,7 @@ pub fn aabb_overlaps_solid_tiles(level: &Level, left: f32, right: f32, top: f32,
 			let tile_left: f32 = tx as f32 * tile_width_world;
 			let tile_top: f32 = ty as f32 * tile_height_world;
 
-			if rects_overlap(left, top, a_width, a_height, tile_left, tile_top, tile_width_world, tile_height_world) {
+			if do_they_overlap(left, top, a_width, a_height, tile_left, tile_top, tile_width_world, tile_height_world) {
 				return true;
 			}
 		}
@@ -207,7 +207,6 @@ pub fn aabb_overlaps_solid_tiles(level: &Level, left: f32, right: f32, top: f32,
 #[allow(dead_code)]
 #[inline(always)]
 pub fn random_u32(state: &mut u32) -> u32 {
-	// xorshift32
 	let mut x: u32 = *state;
 	x ^= x << 13;
 	x ^= x >> 17;

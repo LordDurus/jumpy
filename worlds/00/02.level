@@ -1,14 +1,16 @@
+# World 0 level 1 -- Libary #
 header
 {
     version = 1
-    name = "first jump"
+    name = "Library"
     author = "tom"
     width = 81
     height = 25
     tile_width = 16
 	tile_height = 16
     gravity = 1.0
-    background = "bg_library_stone"	
+    background = "bg_library_stone"
+	music = "world2"
 }
 
 layers

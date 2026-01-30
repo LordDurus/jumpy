@@ -103,14 +103,15 @@ fn write_header(buffer: &mut Vec<u8>, h: &FileHeader) -> Result<(), String> {
 	write_i16(buffer, h.gravity_fixed)?;
 	write_u8(buffer, h.background_id)?;
 	write_u8(buffer, h.gravity)?;
-	write_u8(buffer, h.health_regen_rate)?;
-	write_u8(buffer, h.invulnerability_time)?;
+	write_u8(buffer, h.music_id)?;
+	write_u8(buffer, h.reserved1)?;
 	write_u32(buffer, h.tiles_per_layer)?;
 	write_u32(buffer, h.tile_count_total)?;
 	write_u32(buffer, h.offset_layers)?;
 	write_u32(buffer, h.offset_entities)?;
 	write_u32(buffer, h.offset_triggers)?;
 	write_u32(buffer, h.offset_tiles)?;
+
 	return Ok(());
 }
 

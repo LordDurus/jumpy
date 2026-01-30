@@ -99,8 +99,11 @@ impl GameSession {
 		self.current_level_name = Some(level_name.to_string());
 
 		if self.active_music_id != next_music_id {
+			debugln!("play={:?}", next_music_id);
 			game_state.audio.play_music(next_music_id, true);
 			self.active_music_id = next_music_id;
+		} else {
+			debugln!("already playing {:?}", next_music_id);
 		}
 
 		return true;

@@ -1,3 +1,5 @@
+const HEADER_SIZE: u16 = 51;
+
 use crate::{binary_writer::serialize_level, message_registry::MessageRegistry, runtime::*, source::*, text_parse::TriggerActivationMode};
 
 use std::{
@@ -205,11 +207,6 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 		let height = trigger.height as u16;
 		let icon_id = trigger.icon_id as u16;
 
-		println!(
-			"compile trigger kind={:?} left={} top={} icon_id={}",
-			trigger.kind, trigger.left, trigger.top, trigger.icon_id
-		);
-
 		let runtime = match &trigger.kind {
 			TriggerKindSource::LevelExit { target, level, activation_mode } => {
 				let world_id: u16 = resolve_world_id(target)?;
@@ -280,7 +277,7 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 	let header = FileHeader {
 		magic: *b"JLVL",
 		version: 1,
-		header_size: 0,
+		header_size: HEADER_SIZE,
 		width: source.header.width as u16,
 		height: source.header.height as u16,
 		tile_width: source.header.tile_width as u16,
@@ -291,8 +288,6 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 		gravity_fixed,
 		background_id,
 		gravity: source.header.gravity as u8,
-		health_regen_rate: 1,
-		invulnerability_time: 1,
 		tiles_per_layer,
 		tile_count_total,
 		offset_layers: 0,
@@ -300,6 +295,7 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 		offset_triggers: 0,
 		offset_tiles: 0,
 		music_id,
+		reserved1: source.header.reserved1 as u8,
 	};
 
 	let compiled = CompiledLevel {
@@ -430,19 +426,21 @@ fn resolve_music_id(name: &str) -> Result<u8, String> {
 		return Ok(0);
 	}
 
-	if n == "World1" {
+	if n == "world1" {
+		println!("world1");
 		return Ok(1);
 	}
 
-	if n == "World2" {
+	if n == "world2" {
+		println!("world2");
 		return Ok(2);
 	}
 
-	if n == "World3" {
+	if n == "world3" {
 		return Ok(3);
 	}
 
-	if n == "World4" {
+	if n == "world4" {
 		return Ok(4);
 	}
 
