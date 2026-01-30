@@ -29,7 +29,7 @@ impl Settings {
 			gravity: 0.35,
 			bounce_separator: 0.5,
 			camera_bottom_padding_tiles: 2,
-			is_background_music_enabled: true,
+			is_background_music_enabled: false,
 			are_sound_effects_enabled: false,
 			stomp_chain_gain_per_stomp: 1,
 			stomp_bonus_cap: 5,

@@ -78,7 +78,6 @@ fn main() {
 
 		i += 1;
 	}
-	debugln!("loading level: {}", first_level_path);
 
 	let bootstrap_level: Level = Level::load_binary(&first_level_path).expect("failed to load first level");
 	let mut state = GameState::new(bootstrap_level, audio);

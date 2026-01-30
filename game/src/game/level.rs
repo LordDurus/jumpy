@@ -128,6 +128,8 @@ impl Level {
 	}
 
 	pub fn load_binary(path: &str) -> Result<Level, String> {
+		debugln!("loading level: {}", path);
+
 		let bytes = fs::read(path).map_err(|e| e.to_string())?;
 		if bytes.len() < 4 {
 			return Err("File too small".to_string());
