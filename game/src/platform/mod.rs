@@ -1,5 +1,6 @@
 pub mod audio;
 pub mod input;
+pub mod level_loader;
 pub mod memory;
 pub mod render;
 pub mod timer;

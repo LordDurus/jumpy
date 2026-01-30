@@ -1,6 +1,7 @@
 use crate::{
 	debugln,
 	game::{game_state::EntityKind, music::MusicId, triggers::LevelTrigger},
+	platform::memory::fast_fn,
 	tile::TileKind,
 };
 use std::fs;
@@ -67,16 +68,18 @@ impl Level {
 		return kind.is_solid();
 	}
 
-	pub fn is_solid_tile_f32(&self, level_x: f32, level_y: f32) -> bool {
-		let tile_width: f32 = self.tile_width as f32;
-		let tile_height: f32 = self.tile_height as f32;
+	fast_fn! {
+		pub fn is_solid_tile_f32(&self, level_x: f32, level_y: f32) -> bool {
+			let tile_width: f32 = self.tile_width as f32;
+			let tile_height: f32 = self.tile_height as f32;
 
-		let tile_x: i32 = (level_x / tile_width).floor() as i32;
-		let tile_y: i32 = (level_y / tile_height).floor() as i32;
+			let tile_x: i32 = (level_x / tile_width).floor() as i32;
+			let tile_y: i32 = (level_y / tile_height).floor() as i32;
 
-		let layer: u32 = self.get_action_layer_index() as u32;
-		let kind: TileKind = self.get_tile_at_layer(layer, tile_x, tile_y);
-		return kind.is_solid();
+			let layer: u32 = self.get_action_layer_index() as u32;
+			let kind: TileKind = self.get_tile_at_layer(layer, tile_x, tile_y);
+			return kind.is_solid();
+		}
 	}
 
 	pub fn get_action_layer_index(&self) -> u8 {
@@ -127,10 +130,8 @@ impl Level {
 		return self.tiles[index];
 	}
 
-	pub fn load_binary(path: &str) -> Result<Level, String> {
-		debugln!("loading level: {}", path);
-
-		let bytes = fs::read(path).map_err(|e| e.to_string())?;
+	// pub fn load_binary(path: &str) -> Result<Level, String> {
+	pub fn load_binary(bytes: &[u8]) -> Result<Level, String> {
 		if bytes.len() < 4 {
 			return Err("File too small".to_string());
 		}

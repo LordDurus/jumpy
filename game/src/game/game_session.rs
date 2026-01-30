@@ -68,12 +68,15 @@ impl GameSession {
 		};
 	}
 
-	pub fn transition_to_level(&mut self, game_state: &mut GameState, level_name: &str) -> bool {
+	pub fn transition_to_level<FLoad>(&mut self, game_state: &mut GameState, level_name: &str, load_level: FLoad) -> bool
+	where
+		FLoad: Fn(&str) -> Result<Level, String>,
+	{
 		// 1) save current runtime -> persistent
 		game_state.save_player_to_persistent(self);
 
 		// 2) load next level (pc now; gba later via assets wrapper)
-		let next_level: Level = match Level::load_binary(level_name) {
+		let next_level: Level = match load_level(level_name) {
 			Ok(l) => l,
 			Err(e) => {
 				debugln!("level load failed: {}", e);

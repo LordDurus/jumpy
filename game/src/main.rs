@@ -16,7 +16,12 @@ use crate::{
 		level::Level,
 		music::MusicId,
 	},
-	platform::{audio::AudioEngine, input::TriggerPresses, render::backend::RenderBackend},
+	platform::{
+		audio::AudioEngine,
+		input::TriggerPresses,
+		level_loader::{load_level_from_file, load_level_from_name},
+		render::backend::RenderBackend,
+	},
 };
 
 #[cfg(feature = "pc")]
@@ -42,6 +47,8 @@ type ActiveRenderer = crate::platform::render::psp::PspRenderer;
 
 #[cfg(feature = "pc")]
 fn main() {
+	use std::path::Path;
+
 	let mut game_session = GameSession::new();
 
 	let audio: Box<dyn AudioEngine> = {
@@ -79,7 +86,8 @@ fn main() {
 		i += 1;
 	}
 
-	let bootstrap_level: Level = Level::load_binary(&first_level_path).expect("failed to load first level");
+	let path = Path::new(&first_level_path);
+	let bootstrap_level = load_level_from_file(path);
 	let mut state = GameState::new(bootstrap_level, audio);
 
 	// game_session.transition_to_level(&mut state, first_level_path);
@@ -184,7 +192,8 @@ fn main() {
 
 		// if triggers requested a level change last frame, do it now
 		if let Some(next_level_name) = game_session.pending_level_name.take() {
-			game_session.transition_to_level(&mut state, &next_level_name);
+			// game_session.transition_to_level(&mut state, &next_level_name);
+			game_session.transition_to_level(&mut state, &next_level_name, load_level_from_name);
 			renderer.set_level_background(state.level.background_id);
 		}
 

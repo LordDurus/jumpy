@@ -1,9 +1,9 @@
-// platform/mem.rs
+#![allow(unused_macros)]
 
 #[cfg(feature = "gba")]
 macro_rules! fast_fn {
 	($item:item) => {
-		#[link_section = ".iwram"]
+		#[link_section = ".iwram.text"]
 		$item
 	};
 }
@@ -15,12 +15,10 @@ macro_rules! fast_fn {
 	};
 }
 
-pub(crate) use fast_fn;
-
 #[cfg(feature = "gba")]
 macro_rules! fast_data {
 	($item:item) => {
-		#[link_section = ".iwram"]
+		#[link_section = ".iwram.data"]
 		$item
 	};
 }
@@ -33,3 +31,4 @@ macro_rules! fast_data {
 }
 
 pub(crate) use fast_data;
+pub(crate) use fast_fn;
