@@ -1,266 +1,44 @@
-pub const BACKGROUND_ID_LIBRARY_STONE: u8 = 1;
-pub const BACKGROUND_PARALLAX_FOREST: u8 = 2;
-
-const BOOK_PANEL_COLOR: Color = Color::RGBA(20, 20, 28, 255);
-const BOOK_BAR_COLOR: Color = Color::RGBA(28, 28, 40, 235);
-const BOOK_DIVIDER_COLOR: Color = Color::RGBA(60, 60, 80, 110);
-const BOOK_HEADER_HEIGHT_PIXELS: i32 = 34;
-const BOOK_FOOTER_HEIGHT_PIXELS: i32 = 34;
-const BOOK_BAR_TEXT_TOP_OFFSET_PIXELS: i32 = 8;
-
-#[path = "pc_platform.rs"]
-mod pc_platform;
-
 use crate::{
-	assets::get_gfx_root,
+	GameSession,
 	common::coords::{PixelSize, Pointf32, Size, clamp_camera_to_level_world, get_screen, visible_tile_bounds},
 	debugln,
 	engine_math::Vec2,
 	game::{
-		game_session::GameSession,
 		game_state::{EntityKind, GameState},
 		level::Level,
 		triggers::TriggerKind,
 	},
 	platform::{
-		RenderBackend,
 		audio::backend::LocomotionAnim,
-		input::InputState,
 		render::{
-			common::RenderCommon,
+			backend::RenderBackend,
 			icon_registry::{ICON_FRAME_HEIGHT_PIXELS, ICON_FRAME_WIDTH_PIXELS, get_icon_src_rect_pixels, resolve_icon},
-			pc::pc_platform::{WindowSettings, load_window_settings, save_window_settings},
 		},
 	},
 	tile::TileKind,
 };
+use sdl2::render::{BlendMode, Texture};
 
-use sdl2::ttf::{Font, Sdl2TtfContext};
+use sdl2::{pixels::Color, rect::Rect};
 
-use sdl2::{
-	EventPump,
-	image::LoadTexture,
-	pixels::Color,
-	rect::Rect,
-	render::{BlendMode, Canvas, Texture},
-	video::Window,
-};
-use std::path::PathBuf;
-
-#[derive(Clone, Copy)]
-enum SlimeTextureKey {
-	BlueWalk,
-	BlueRun,
-	BlueDeath,
-	UndeadWalk,
-	UndeadRun,
-	UndeadDeath,
-	LavaWalk,
-	LavaRun,
-	LavaDeath,
-}
-
-pub struct PcRenderer {
-	video: sdl2::VideoSubsystem,
-	canvas: Canvas<Window>,
-	event_pump: EventPump,
-	common: RenderCommon,
-
-	slime_blue_walk_texture: Texture<'static>,
-	slime_blue_run_texture: Texture<'static>,
-	slime_blue_death_texture: Texture<'static>,
-	slime_undead_walk_texture: Texture<'static>,
-	slime_undead_run_texture: Texture<'static>,
-	slime_undead_death_texture: Texture<'static>,
-	slime_lava_walk_texture: Texture<'static>,
-	slime_lava_run_texture: Texture<'static>,
-	slime_lava_death_texture: Texture<'static>,
-
-	pub frame_index: u32,
-	pub atlas_tile_width_pixels: u32,
-	pub atlas_tile_height_pixels: u32,
-	pub atlas_icon_texture: Texture<'static>,
-	pub book_font: Font<'static, 'static>,
-
-	// bg parallax
-	bg_texture: Option<Texture<'static>>,
-	bg_id: u8,
-
-	tile_texture: Option<Texture<'static>>,
-	texture_creator: &'static sdl2::render::TextureCreator<sdl2::video::WindowContext>,
-	bg_parallax_x: f32,
-	bg_parallax_y: f32,
-	render_scale: u32,
-	//pub fn get_background_file_name(background_id: u8) -> &'static str),
-}
-
-impl Drop for PcRenderer {
-	fn drop(&mut self) {
-		save_window_settings(self.canvas.window());
-	}
-}
+use super::{PcRenderer, renderer::SlimeTextureKey};
 
 impl PcRenderer {
-	pub fn set_level_background(&mut self, background_id: u8) {
-		if self.bg_texture.is_some() && self.bg_id == background_id {
-			return;
-		}
-
-		self.bg_id = background_id;
-		let file_name = parse_background_id(background_id);
-		let bg_path = gfx_pc_path(&["background", file_name]);
-
-		let bg_texture = load_texture(&self.texture_creator, bg_path);
-		self.bg_texture = Some(bg_texture);
-		// let _ = sdl2::hint::set("SDL_RENDER_SCALE_QUALITY", "0"); // nearest
-
-		if let Some(background) = self.bg_texture.as_mut() {
-			background.set_blend_mode(BlendMode::Blend);
-			background.set_alpha_mod(208);
-		}
-
-		// optional: set parallax rules per background id
-		if background_id == BACKGROUND_ID_LIBRARY_STONE {
-			self.bg_parallax_x = 0.35;
-			self.bg_parallax_y = 0.15;
-		} else if background_id == BACKGROUND_PARALLAX_FOREST {
-			self.bg_parallax_x = 0.35;
-			self.bg_parallax_y = 0.15;
-		} else {
-			self.bg_parallax_x = 0.0;
-			self.bg_parallax_y = 0.0;
-		}
-	}
-
-	pub fn copy_book_page_to_clipboard(&self, text: &str) {
-		let clipboard = self.video.clipboard();
-		let _ = clipboard.set_clipboard_text(text);
-	}
-
-	fn draw_book_footer(&mut self, panel_left: i32, panel_top: i32, panel_width_pixels: u32, panel_height_pixels: u32) {
-		let padding_pixels: i32 = 16;
-
-		let footer_left: i32 = panel_left;
-		let top: i32 = panel_top + (panel_height_pixels as i32) - BOOK_FOOTER_HEIGHT_PIXELS;
-		let footer_width_pixels: u32 = panel_width_pixels;
-
-		// footer bar
-		self.canvas.set_draw_color(BOOK_BAR_COLOR);
-		let _ = self
-			.canvas
-			.fill_rect(Rect::new(footer_left, top, footer_width_pixels, BOOK_FOOTER_HEIGHT_PIXELS as u32));
-
-		// divider at top of footer
-		self.canvas.set_draw_color(BOOK_DIVIDER_COLOR);
-		let _ = self.canvas.draw_line((footer_left, top), (footer_left + footer_width_pixels as i32, top));
-
-		let left_text: &str = "esc: close    \u{2190}/\u{2192}: page    ctrl+c: copy";
-		let right_text: &str = "r: read";
-		let text_top: i32 = top + BOOK_BAR_TEXT_TOP_OFFSET_PIXELS;
-
-		self.draw_book_text_line(footer_left + padding_pixels, text_top, left_text);
-
-		let (right_width_pixels, _) = match self.book_font.size_of(right_text) {
-			Ok(v) => v,
-			Err(_) => return,
-		};
-
-		let right_left: i32 = footer_left + (footer_width_pixels as i32) - padding_pixels - (right_width_pixels as i32);
-		self.draw_book_text_line(right_left, text_top, right_text);
-	}
-
-	pub fn draw_book_overlay(&mut self, session: &GameSession) {
-		let state = &session.book_reading;
-		if !state.is_open {
-			return;
-		}
-
-		let (screen_width_pixels, screen_height_pixels) = self.screen_size();
-
-		// dim background
-		self.canvas.set_blend_mode(BlendMode::Blend);
-		self.canvas.set_draw_color(Color::RGBA(0, 0, 0, 180));
-		let _ = self.canvas.fill_rect(Rect::new(0, 0, screen_width_pixels as u32, screen_height_pixels as u32));
-
-		// panel
-		let panel_margin_pixels: i32 = 40;
-		let panel_left: i32 = panel_margin_pixels;
-		let panel_top: i32 = panel_margin_pixels;
-		let panel_width_pixels: u32 = screen_width_pixels as u32 - (panel_margin_pixels as u32 * 2);
-		let panel_height_pixels: u32 = screen_height_pixels as u32 - (panel_margin_pixels as u32 * 2);
-
-		self.canvas.set_draw_color(BOOK_PANEL_COLOR);
-		let _ = self.canvas.fill_rect(Rect::new(panel_left, panel_top, panel_width_pixels, panel_height_pixels));
-
-		// header (bar)
-		let header = format!("{}  page {}/{}", state.book_slug, state.page_index + 1, state.total_pages);
-		self.draw_book_header(panel_left, panel_top, panel_width_pixels, &header);
-
-		// footer (bar)
-		self.draw_book_footer(panel_left, panel_top, panel_width_pixels, panel_height_pixels);
-
-		// body area (between header and footer)
-		let padding_pixels: i32 = 18;
-
-		let text_left: i32 = panel_left + padding_pixels;
-		let mut text_top: i32 = panel_top + BOOK_HEADER_HEIGHT_PIXELS + padding_pixels;
-
-		// let body_bottom_limit: i32 = panel_top + (panel_height_pixels as i32) - BOOK_FOOTER_HEIGHT_PIXELS - padding_pixels - 22;
-		let body_bottom_limit: i32 = panel_top + (panel_height_pixels as i32) - BOOK_FOOTER_HEIGHT_PIXELS - padding_pixels - 22 - 4;
-
-		for line in state.page_text.lines() {
-			if text_top > body_bottom_limit {
-				break;
-			}
-			self.draw_book_text_line(text_left, text_top, line);
-			text_top += 22;
-		}
-	}
-
-	fn draw_book_header(&mut self, left: i32, top: i32, panel_width_pixels: u32, text: &str) {
-		let padding_pixels: i32 = 16;
-
-		// bar background
-		self.canvas.set_draw_color(BOOK_BAR_COLOR);
-		let _ = self.canvas.fill_rect(Rect::new(left, top, panel_width_pixels, BOOK_HEADER_HEIGHT_PIXELS as u32));
-
-		// divider at bottom of header
-		let divider_y: i32 = top + BOOK_HEADER_HEIGHT_PIXELS;
-		self.canvas.set_draw_color(BOOK_DIVIDER_COLOR);
-		let _ = self.canvas.draw_line((left, divider_y), (left + panel_width_pixels as i32, divider_y));
-
-		// right aligned header text
-		let (text_width_pixels, _) = match self.book_font.size_of(text) {
-			Ok(v) => v,
-			Err(_) => return,
-		};
-
-		let text_left: i32 = left + (panel_width_pixels as i32) - padding_pixels - (text_width_pixels as i32);
-		let text_top: i32 = top + BOOK_BAR_TEXT_TOP_OFFSET_PIXELS;
-
-		self.draw_book_text_line(text_left, text_top, text);
-
-		return;
-	}
-
-	fn draw_book_text_line(&mut self, left: i32, top: i32, text: &str) {
-		// white text
-		let surface = self.book_font.render(text).blended(Color::RGBA(235, 235, 235, 255));
-		let surface = match surface {
-			Ok(s) => s,
-			Err(_) => return,
-		};
-
-		let texture = self.texture_creator.create_texture_from_surface(&surface);
-		let texture = match texture {
-			Ok(t) => t,
-			Err(_) => return,
-		};
-
-		let query = texture.query();
-		let destination = Rect::new(left, top, query.width, query.height);
-		let _ = self.canvas.copy(&texture, None, Some(destination));
-	}
+	// pasted from your original pc.rs starting at fn draw_debug_triggers(...)
+	// through the end of that impl block.
+	//
+	// NOTE: keep your existing method bodies exactly as-is here.
+	//
+	// this file should contain:
+	// - draw_debug_triggers
+	// - get_slime_texture_key
+	// - draw_filled_rect / circle / triangle helpers
+	// - draw_background
+	// - draw_tiles_layer_atlas
+	// - draw_level_internal
+	// - draw_trigger_icons
+	// - draw_entities
+	// - draw_death_entity_internal (or whatever name you had)
 
 	fn draw_debug_triggers(&mut self, game_state: &GameState, session: &GameSession, cam_left_world: f32, cam_top_world: f32, scale: f32) {
 		if !session.settings.show_triggers {
@@ -558,7 +336,7 @@ impl PcRenderer {
 		return;
 	}
 
-	fn draw_level_internal(&mut self, game_state: &GameState, game_session: &GameSession) {
+	pub fn draw_level_internal(&mut self, game_state: &GameState, game_session: &GameSession) {
 		let (camera_left, camera_top) = self.common.compute_camera(self, game_state, game_session);
 		let scale: f32 = self.get_render_scale();
 
@@ -577,8 +355,78 @@ impl PcRenderer {
 		return;
 	}
 
+	pub fn draw_death_entity_internal(
+		&mut self,
+		game_state: &GameState,
+		game_session: &GameSession,
+		entity_kind: EntityKind,
+		pos: &Vec2,
+		half_height: f32,
+		camera_left: f32,
+		camera_top: f32,
+		scale: f32,
+		death_timer: u16,
+	) {
+		// 64x64 frames in the death sheet
+		let frame_size_pixels: i32 = 64;
+
+		// how long death lasts total
+		let total: u16 = game_session.settings.enemy_death_frame_count as u16;
+
+		// how many frames are in the sheet (tune this once)
+		let frame_count: u32 = game_session.settings.frame_count;
+
+		// elapsed frames since death started
+		let elapsed: u16 = total.saturating_sub(death_timer);
+
+		// spread elapsed over frame_count
+		let frame_index: u32 = ((elapsed as u32) * frame_count / (total as u32)).min(frame_count - 1);
+
+		let row_index: u32 = 0;
+
+		let src_left_pixels: i32 = (frame_index as i32) * frame_size_pixels;
+		let src_top_pixels: i32 = (row_index as i32) * frame_size_pixels;
+		let src = Rect::new(src_left_pixels, src_top_pixels, frame_size_pixels as u32, frame_size_pixels as u32);
+
+		// let dest_width_pixels_u32: u32 = ((half_width * 2.0) * scale).round().max(1.0) as u32;
+		// let dest_height_pixels_u32: u32 = ((half_height * 2.0) * scale).round().max(1.0) as u32;
+
+		let sprite_world_scale: f32 = game_state.enemy_sprite_scale as f32;
+		let dest_width_pixels_u32: u32 = (64.0 * sprite_world_scale * scale).round().max(1.0) as u32;
+		let dest_height_pixels_u32: u32 = (64.0 * sprite_world_scale * scale).round().max(1.0) as u32;
+
+		// physics anchor: bottom-center
+		let entity_bottom_center_world_x: f32 = pos.x;
+		let entity_bottom_center_world_y: f32 = pos.y + half_height;
+
+		let entity_bottom_center_screen_left: i32 = ((entity_bottom_center_world_x - camera_left) * scale).round() as i32;
+		let entity_bottom_center_screen_top: i32 = ((entity_bottom_center_world_y - camera_top) * scale).round() as i32;
+
+		// tune these once for your death sheet
+		let anchor_left_frac: f32 = 32.0 / 64.0;
+		let anchor_top_frac: f32 = 40.0 / 64.0;
+
+		let anchor_left_pixels: i32 = (dest_width_pixels_u32 as f32 * anchor_left_frac).round() as i32;
+		let anchor_top_pixels: i32 = (dest_height_pixels_u32 as f32 * anchor_top_frac).round() as i32;
+
+		let dest_left_pixels: i32 = entity_bottom_center_screen_left - anchor_left_pixels;
+		let dest_top_pixels: i32 = entity_bottom_center_screen_top - anchor_top_pixels;
+
+		let dest = Rect::new(dest_left_pixels, dest_top_pixels, dest_width_pixels_u32, dest_height_pixels_u32);
+
+		// pick texture based on kind (or reuse one texture sheet)
+		let tex = match entity_kind {
+			EntityKind::SlimeBlue => &self.slime_blue_death_texture,
+			EntityKind::SlimeUndead => &self.slime_undead_death_texture,
+			EntityKind::SlimeLava => &self.slime_lava_death_texture,
+			_ => &self.slime_blue_death_texture,
+		};
+
+		let _ = self.canvas.copy_ex(tex, src, dest, 0.0, None, false, false).unwrap();
+	}
+
 	fn draw_trigger_icons(&mut self, game_state: &GameState, _session: &GameSession, cam_left_world: f32, cam_top_world: f32, scale: f32) {
-		let atlas: &Texture<'static> = &self.atlas_icon_texture;
+		let atlas: &Texture<'static> = &self.trigger_texture;
 
 		let tile_width: f32 = game_state.level.tile_width as f32;
 		let tile_height: f32 = game_state.level.tile_height as f32;
@@ -804,263 +652,4 @@ impl PcRenderer {
 
 		return;
 	}
-}
-
-impl RenderBackend for PcRenderer {
-	fn init(&mut self) {
-		// Nothing yet
-	}
-
-	fn get_render_scale(&self) -> f32 {
-		return self.render_scale as f32;
-	}
-
-	fn new() -> Self {
-		let sdl = sdl2::init().unwrap();
-		let _ = sdl2::hint::set("SDL_RENDER_SCALE_QUALITY", "0"); // nearest
-
-		let _image = sdl2::image::init(sdl2::image::InitFlag::PNG).unwrap();
-		let video = sdl.video().unwrap();
-		let dm = video.desktop_display_mode(0).expect("desktop_display_mode failed");
-		let desktop_width_pixels: u32 = dm.w as u32;
-		let desktop_height_pixels: u32 = dm.h as u32;
-		let target_aspect: f32 = 16.0 / 9.0;
-
-		let saved: Option<WindowSettings> = load_window_settings();
-
-		let (window_width_pixels, window_height_pixels) = if let Some(s) = saved {
-			(s.width_pixels, s.height_pixels)
-		} else {
-			let mut window_height_pixels: u32 = ((desktop_height_pixels as f32) * 0.80) as u32;
-			if window_height_pixels < 360 {
-				window_height_pixels = 360;
-			}
-
-			let mut window_width_pixels: u32 = (window_height_pixels as f32 * target_aspect) as u32;
-			if window_width_pixels > desktop_width_pixels {
-				window_width_pixels = desktop_width_pixels;
-				window_height_pixels = (window_width_pixels as f32 / target_aspect) as u32;
-			}
-
-			(window_width_pixels, window_height_pixels)
-		};
-
-		let mut window = video
-			.window("jumpy", window_width_pixels, window_height_pixels)
-			.position_centered()
-			.resizable()
-			.build()
-			.unwrap();
-
-		if let Some(s) = saved {
-			window.set_position(sdl2::video::WindowPos::Positioned(s.left), sdl2::video::WindowPos::Positioned(s.top));
-
-			if s.is_maximized {
-				window.maximize();
-			}
-		}
-
-		let canvas = window.into_canvas().accelerated().present_vsync().build().unwrap();
-		let event_pump = sdl.event_pump().unwrap();
-
-		let texture_creator = leak_texture_creator(&canvas);
-		let tile_path = gfx_pc_path(&["tiles", "tiles64.png"]);
-		let tile_texture = load_texture(&texture_creator, tile_path);
-
-		// slimes
-		let slime_blue_walk_path = gfx_pc_path(&["slime", "blue", "walk_body.png"]);
-		let slime_blue_walk_tex = load_texture(&texture_creator, slime_blue_walk_path);
-
-		let slime_blue_run_path = gfx_pc_path(&["slime", "blue", "run_body.png"]);
-		let slime_blue_run_tex = load_texture(&texture_creator, slime_blue_run_path);
-
-		let slime_undead_walk_path = gfx_pc_path(&["slime", "undead", "walk_body.png"]);
-		let slime_undead_walk_tex = load_texture(&texture_creator, slime_undead_walk_path);
-
-		let slime_undead_run_path = gfx_pc_path(&["slime", "undead", "run_body.png"]);
-		let slime_undead_run_tex = load_texture(&texture_creator, slime_undead_run_path);
-
-		let slime_lava_walk_path = gfx_pc_path(&["slime", "lava", "walk_body.png"]);
-		let slime_lava_walk_tex = load_texture(&texture_creator, slime_lava_walk_path);
-
-		let slime_lava_run_path = gfx_pc_path(&["slime", "lava", "run_body.png"]);
-		let slime_lava_run_tex = load_texture(&texture_creator, slime_lava_run_path);
-
-		let slime_blue_death_path: PathBuf = gfx_pc_path(&["slime", "blue", "death_body.png"]);
-		//let slime_blue_death_texture = texture_creator.load_texture(slime_blue_death_path).expect("failed to load slime_blue_death.png");
-		let slime_blue_death_texture = load_texture(&texture_creator, slime_blue_death_path);
-
-		let slime_undead_death_path: PathBuf = gfx_pc_path(&["slime", "undead", "death_body.png"]);
-		let slime_undead_death_texture = texture_creator.load_texture(slime_undead_death_path).expect("failed to load slime_undead_death.png");
-
-		let slime_lava_death_path: PathBuf = gfx_pc_path(&["slime", "lava", "death_body.png"]);
-		let slime_lava_death_texture = texture_creator.load_texture(slime_lava_death_path).expect("failed to load slime_lava_death.png");
-
-		let ttf_ctx: Sdl2TtfContext = sdl2::ttf::init().map_err(|e| e.to_string()).unwrap();
-		let ttf: &'static Sdl2TtfContext = Box::leak(Box::new(ttf_ctx));
-
-		let font_path = crate::assets::get_font_path("DejaVuSansMono.ttf");
-		let book_font = ttf.load_font(font_path, 16).map_err(|e| e.to_string()).unwrap();
-
-		let icon_atlas_path: PathBuf = gfx_pc_path(&["icons.png"]);
-		let icon_atlas_texture = texture_creator.load_texture(icon_atlas_path).expect("failed to load icons.png");
-
-		return PcRenderer {
-			video,
-			canvas,
-			event_pump,
-			common: RenderCommon::new(),
-			frame_index: 0,
-			bg_texture: None,
-			bg_parallax_x: 0.35,
-			bg_parallax_y: 0.15,
-			atlas_tile_width_pixels: 64,
-			atlas_tile_height_pixels: 64,
-			tile_texture: Some(tile_texture),
-			render_scale: 4,
-			slime_blue_run_texture: slime_blue_run_tex,
-			slime_blue_walk_texture: slime_blue_walk_tex,
-			slime_blue_death_texture: slime_blue_death_texture,
-			slime_lava_walk_texture: slime_lava_walk_tex,
-			slime_lava_run_texture: slime_lava_run_tex,
-			slime_lava_death_texture: slime_lava_death_texture,
-			slime_undead_run_texture: slime_undead_run_tex,
-			slime_undead_walk_texture: slime_undead_walk_tex,
-			slime_undead_death_texture: slime_undead_death_texture,
-			texture_creator,
-			bg_id: 0,
-			book_font,
-			atlas_icon_texture: icon_atlas_texture,
-		};
-	}
-
-	fn screen_size(&self) -> (i32, i32) {
-		let (w, h) = self.canvas.output_size().unwrap();
-		return (w as i32, h as i32);
-	}
-
-	fn poll_input(&mut self) -> InputState {
-		return crate::platform::input::pc::poll(&mut self.event_pump);
-	}
-
-	fn begin_frame(&mut self) {
-		self.canvas.set_draw_color(Color::RGB(0, 0, 0));
-		self.canvas.clear();
-	}
-
-	fn draw_level(&mut self, game_state: &GameState, game_session: &GameSession) {
-		self.draw_level_internal(game_state, game_session);
-	}
-
-	fn draw_death_entity(
-		&mut self,
-		game_state: &GameState,
-		game_session: &GameSession,
-		entity_kind: EntityKind,
-		pos: &Vec2,
-		half_height: f32,
-		camera_left: f32,
-		camera_top: f32,
-		scale: f32,
-		death_timer: u16,
-	) {
-		// 64x64 frames in the death sheet
-		let frame_size_pixels: i32 = 64;
-
-		// how long death lasts total
-		let total: u16 = game_session.settings.enemy_death_frame_count as u16;
-
-		// how many frames are in the sheet (tune this once)
-		let frame_count: u32 = game_session.settings.frame_count;
-
-		// elapsed frames since death started
-		let elapsed: u16 = total.saturating_sub(death_timer);
-
-		// spread elapsed over frame_count
-		let frame_index: u32 = ((elapsed as u32) * frame_count / (total as u32)).min(frame_count - 1);
-
-		let row_index: u32 = 0;
-
-		let src_left_pixels: i32 = (frame_index as i32) * frame_size_pixels;
-		let src_top_pixels: i32 = (row_index as i32) * frame_size_pixels;
-		let src = Rect::new(src_left_pixels, src_top_pixels, frame_size_pixels as u32, frame_size_pixels as u32);
-
-		// let dest_width_pixels_u32: u32 = ((half_width * 2.0) * scale).round().max(1.0) as u32;
-		// let dest_height_pixels_u32: u32 = ((half_height * 2.0) * scale).round().max(1.0) as u32;
-
-		let sprite_world_scale: f32 = game_state.enemy_sprite_scale as f32;
-		let dest_width_pixels_u32: u32 = (64.0 * sprite_world_scale * scale).round().max(1.0) as u32;
-		let dest_height_pixels_u32: u32 = (64.0 * sprite_world_scale * scale).round().max(1.0) as u32;
-
-		// physics anchor: bottom-center
-		let entity_bottom_center_world_x: f32 = pos.x;
-		let entity_bottom_center_world_y: f32 = pos.y + half_height;
-
-		let entity_bottom_center_screen_left: i32 = ((entity_bottom_center_world_x - camera_left) * scale).round() as i32;
-		let entity_bottom_center_screen_top: i32 = ((entity_bottom_center_world_y - camera_top) * scale).round() as i32;
-
-		// tune these once for your death sheet
-		let anchor_left_frac: f32 = 32.0 / 64.0;
-		let anchor_top_frac: f32 = 40.0 / 64.0;
-
-		let anchor_left_pixels: i32 = (dest_width_pixels_u32 as f32 * anchor_left_frac).round() as i32;
-		let anchor_top_pixels: i32 = (dest_height_pixels_u32 as f32 * anchor_top_frac).round() as i32;
-
-		let dest_left_pixels: i32 = entity_bottom_center_screen_left - anchor_left_pixels;
-		let dest_top_pixels: i32 = entity_bottom_center_screen_top - anchor_top_pixels;
-
-		let dest = Rect::new(dest_left_pixels, dest_top_pixels, dest_width_pixels_u32, dest_height_pixels_u32);
-
-		// pick texture based on kind (or reuse one texture sheet)
-		let tex = match entity_kind {
-			EntityKind::SlimeBlue => &self.slime_blue_death_texture,
-			EntityKind::SlimeUndead => &self.slime_undead_death_texture,
-			EntityKind::SlimeLava => &self.slime_lava_death_texture,
-			_ => &self.slime_blue_death_texture,
-		};
-
-		let _ = self.canvas.copy_ex(tex, src, dest, 0.0, None, false, false).unwrap();
-	}
-
-	fn commit(&mut self) {
-		self.canvas.present();
-	}
-}
-
-/*
-fn leak_texture_creator(canvas: &sdl2::render::Canvas<sdl2::video::Window>) -> &'static sdl2::render::TextureCreator<sdl2::video::WindowContext> {
-	let creator_box = Box::new(canvas.texture_creator());
-	let texture_creator: &'static sdl2::render::TextureCreator<sdl2::video::WindowContext> = Box::leak(creator_box);
-	return texture_creator;
-}
-*/
-
-fn gfx_pc_path(parts: &[&str]) -> PathBuf {
-	let mut path = get_gfx_root().join("pc");
-	for p in parts {
-		path = path.join(p);
-	}
-	return path;
-}
-
-fn load_texture<'a>(texture_creator: &'a sdl2::render::TextureCreator<sdl2::video::WindowContext>, path: PathBuf) -> sdl2::render::Texture<'a> {
-	let path_string = path.to_string_lossy().to_string();
-	let texture = texture_creator
-		.load_texture(&path)
-		.unwrap_or_else(|_| panic!("failed to load texture: {}", path_string));
-	return texture;
-}
-
-fn parse_background_id(background_id: u8) -> &'static str {
-	match background_id {
-		BACKGROUND_ID_LIBRARY_STONE => "bg_library_stone.png",
-		BACKGROUND_PARALLAX_FOREST => "bg_parallax_forest.png",
-		_ => panic!("Unknown id: {}", background_id),
-	}
-}
-
-fn leak_texture_creator(canvas: &sdl2::render::Canvas<sdl2::video::Window>) -> &'static sdl2::render::TextureCreator<sdl2::video::WindowContext> {
-	let creator_box = Box::new(canvas.texture_creator());
-	let texture_creator: &'static sdl2::render::TextureCreator<sdl2::video::WindowContext> = Box::leak(creator_box);
-	return texture_creator;
 }
