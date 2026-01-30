@@ -7,15 +7,6 @@ use std::fs;
 
 pub const BYTES_PER_ENTITY: usize = 24;
 pub const PLAYER_HALF_HEIGHT: f32 = 8.0;
-pub const HEADER_SIZE: usize = 51;
-
-/*
-#[derive(Debug, Clone)]
-pub struct LevelReference {
-	pub world_id: u8,
-	pub level_id: u8,
-}
-*/
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -151,15 +142,8 @@ impl Level {
 		// ---- header ----
 		let _version = read_u16(&bytes, &mut offset)?;
 		let header_size = read_u16(&bytes, &mut offset)? as usize;
-
-		if header_size != HEADER_SIZE {
-			let message = format!("Header Size invalid. Expected: {} | Read: {}", HEADER_SIZE, header_size);
-			return Err(message);
-		}
-
 		let width = read_u16(&bytes, &mut offset)? as u32;
 		let height = read_u16(&bytes, &mut offset)? as u32;
-
 		let tile_width = read_u16(&bytes, &mut offset)? as u32;
 		let tile_height = read_u16(&bytes, &mut offset)? as u32;
 		let layer_count = read_u8(&bytes, &mut offset)? as u32;
