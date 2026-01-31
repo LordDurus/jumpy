@@ -4,7 +4,7 @@ this doc covers what you need installed to build and run the pc version of jumpy
 
 ## quick checklist
 
-- rust toolchain installed (stable is fine unless the project says otherwise)
+- rust toolchain installed
 - sdl2 runtime + dev headers
 - sdl2_image, sdl2_ttf, sdl2_mixer
 - audio codec libs for sdl2_mixer (ogg/vorbis at minimum)
