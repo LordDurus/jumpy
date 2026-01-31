@@ -1,96 +1,69 @@
 # Jumpy
 
-Jumpy is a cross-platform game engine and project framework designed for both embedded devices (like the Game Boy Advance, PSP) and modern PCs. The goal of the project is to provide a modular and scalable structure that allows game logic to remain platform-agnostic while supporting platform-specific rendering, input, and threading capabilities.
+Jumpy is a cross-platform game engine and game project targeting both constrained hardware
+(Game Boy Advance, PSP) and modern PCs.
 
-## Features
+The core design goal is **platform-agnostic game logic** with **platform-specific backends**
+for rendering, audio, input, and threading. The same game code runs on PC and embedded targets,
+with differences handled behind feature-gated implementations.
 
-- **Cross-Platform Rendering:**
-  - GBA rendering using OAM and VRAM.
-  - PC rendering via SDL or similar libraries.
-  - PSP rendering using `rust-psp`.
-- **Entity Component System (ECS):**
-  - Lightweight and custom-designed ECS for managing entities and components.
-- **Physics Module:**
-  - Gravity and other physics-related systems.
-- **Vector2 Math:**
-  - Custom `Vector2` implementation with optional integration for `nalgebra` (PC-specific).
-- **Threaded and Single-Threaded Game Loops:**
-  - Supports both single-threaded execution and multi-threaded execution using `rayon` on platforms where threading is supported.
+PC is the primary development platform. Embedded targets are treated as first-class,
+but with stricter memory and API constraints.
 
-## Project Structure
+## supported platforms
 
-The project is organized into modular components for ease of development and scalability:
+- **PC (Windows / Linux / macOS)**  
+  - SDL2-based rendering, input, and audio
+  - wav + ogg audio
+  - threaded or single-threaded game loop
+- **Game Boy Advance**
+  - OAM / VRAM rendering
+  - no standard library
+  - strict memory limits
+- **PlayStation Portable (PSP)**
+  - `rust-psp` backend
+  - feature-gated platform support
 
-```plaintext
+## features
+
+- **Platform-agnostic game logic**
+- **Feature-gated platform backends**
+  - `pc`
+  - `gba`
+  - `psp`
+- **Custom ECS**
+  - Lightweight and data-oriented
+- **Physics systems**
+  - Gravity and collision handling
+- **Deterministic math**
+  - Custom vector math
+  - Optional PC-only integrations
+- **Audio system**
+  - Unified trait
+  - Platform-specific implementations
+- **Asset pipeline**
+  - Shared logical assets
+  - Platform-specific formats where required
+
+## project structure
+
+High-level layout (simplified):
+
+```text
 src/
-├── main.rs            # Main entry point
-├── game/              # Core game logic
-│   ├── movement.rs    # Movement system
-│   ├── mod.rs         # Game module entry point
-│   └── render/        # Platform-specific rendering
-│       ├── mod.rs     # Render module entry point
-│       ├── gba.rs     # GBA rendering implementation
-│       ├── pc.rs      # PC rendering implementation
-│       └── psp.rs     # PSP rendering implementation
-├── physics/           # Physics systems
-│   ├── gravity.rs     # Gravity system
-│   └── mod.rs         # Physics module entry point
-├── vector2.rs         # Vector2 math implementation
-├── world.rs           # ECS world and entity management
-└── assets/            # Game assets (e.g., sprites, sounds)
-```
-
-## Getting Started
-
-### Prerequisites
-
-- **Rust Toolchain:** Install from [rustup.rs](https://rustup.rs).
-- **PC Builds:**
-  - SDL2 or equivalent libraries for rendering.
-  - `rayon` for multi-threading support.
-- **GBA Builds:**
-  - Cross-compilation target: `thumbv4t-none-eabi`.
-  - A GBA emulator or flash cart for testing (e.g., mGBA, VisualBoy Advance).
-- **PSP Builds:**
-  - The `rust-psp` crate for PSP-specific functionality.
-  - A PSP emulator or actual PSP hardware.
-
-### Build Commands
-
-To build for your desired platform, use the following commands:
-
-#### For PC Builds:
-```bash
-cargo build --features pc
-cargo run --features pc
-```
-
-#### For GBA Builds:
-```bash
-cargo build --features gba --target thumbv4t-none-eabi
-```
-You can test the GBA build using an emulator (e.g., mGBA):
-```bash
-mgba target/thumbv4t-none-eabi/debug/jumpy.gba
-```
-
-#### For PSP Builds:
-```bash
-cargo build --features psp --target mipsel-unknown-elf
-```
-Use a PSP emulator or load the binary onto a real PSP to test.
-
-## Goals and Future Enhancements
-
-- Expand rendering capabilities for PC, using a robust library like SDL2 or winit + pixels.
-- Add support for collision detection and advanced physics.
-- Enhance PSP support by leveraging more features of the `rust-psp` crate.
-- Explore compatibility with other platforms (e.g., SNES, Dreamcast).
-
-## Contributing
-
-Contributions are welcome!
-
-Feel free to fork this repository, make changes, and submit a pull request.
-
-If you encounter issues or have suggestions, please open an issue.
+├── main.rs
+├── game/              # game logic (platform-agnostic)
+│   ├── level/
+│   ├── triggers/
+│   ├── ecs/
+│   └── render/        # renderer abstractions
+├── physics/
+├── platform/          # platform backends
+│   ├── render/
+│   │   ├── pc.rs
+│   │   ├── gba.rs
+│   │   └── psp.rs
+│   ├── audio/
+│   └── input/
+├── assets/
+└── common/

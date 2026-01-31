@@ -1,4 +1,7 @@
 {
+	"evenBetterToml.schema.associations": {
+		".cargo/config.toml": ""
+	},
 	"terminal.integrated.profiles.windows": {
 		"VS2022 Dev Cmd": {
 			"path": "C:/Windows/System32/cmd.exe",

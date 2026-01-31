@@ -1,0 +1,6 @@
+[unstable]
+build-std = ["core", "alloc"]
+
+[target.thumbv4t-none-eabi]
+runner = "mgba-qt"
+rustflags = ["-C", "link-arg=-Tlinker.ld"]
