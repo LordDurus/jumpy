@@ -3,7 +3,7 @@
 header
 {
     version = 1
-    name = "first jump"
+    name = "Happy"
     author = "Tom Rooker"
     width = 78
     height = 27
@@ -144,7 +144,7 @@ entities
 	
 	platform "horizontal"
 	{
-		top = 20
+		top = 15
 		left = 15
 		width = 4
 		height = 1
@@ -158,6 +158,17 @@ entities
 
 triggers
 {
+
+    trigger "level_exit"
+    {
+        top = 22
+        left = 0
+        width = 2
+        height = 2
+		target = "01"
+		level = "01"
+    }
+
     trigger "level_exit"
     {
         top = 22

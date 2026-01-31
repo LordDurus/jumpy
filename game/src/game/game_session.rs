@@ -1,8 +1,8 @@
 use crate::{
-	ActiveBookTextSource, GameState, debugln,
+	GameState, debugln,
 	game::{
 		Settings,
-		book::{ActiveBookReader, reading_state::BookReadingState},
+		book::{ActiveBookReader, ActiveBookTextSource, reading_state::BookReadingState},
 		inventory::Inventory,
 		level::Level,
 		message_table::MessageTable,

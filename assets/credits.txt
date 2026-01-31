@@ -19,3 +19,11 @@ Art:
 		https://imgv2-2-f.scribdassets.com/img/document/639423562/original/f08b4cdb7e/1686335413?v=1
 	Coins
 		https://skristi.itch.io/skristis-coins-asset-pack?download
+	Slimes:
+		Slime Mobs Pixel Art
+		https://craftpix.net/freebies/free-slime-mobs-pixel-art-top-down-sprite-pack/
+		
+
+Books:
+	Project Gutenberg 
+	https://www.gutenberg.org
