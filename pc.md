@@ -62,7 +62,13 @@ high level steps:
 - `vcpkg install sdl2 sdl2-image sdl2-ttf sdl2-mixer`
 - set env vars so `sdl2-sys` can find vcpkg (depends on how your rust sdl crate is configured)
 
-if you pick vcpkg, document your exact env vars in this file once you’ve got it building reliably.
+env vars:
+SDL2_INCLUDE_DIR = C:\libs\SDL2-2.30.11\include
+SDL2_LIB_DIR = C:\libs\SDL2-2.30.11\lib\x64
+
+VCPKG_DEFAULT_TRIPLET = x64-windows
+VCPKG_ROOT = C:\dev\vcpkg
+VCPKGRS_DYNAMIC = 1
 
 ### macos
 
