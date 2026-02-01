@@ -284,9 +284,9 @@ pub fn load_level_from_str(text: &str) -> Result<LevelSource, String> {
 			}
 			Section::TriggerBody => {
 				if line.starts_with("top") {
-					trigger.top = parse_i32_value(line, "top", line_number)?;
+					trigger.top = parse_f32_value(line, "top", line_number)?;
 				} else if line.starts_with("left") {
-					trigger.left = parse_i32_value(line, "left", line_number)?;
+					trigger.left = parse_f32_value(line, "left", line_number)?;
 				} else if line.starts_with("width") {
 					trigger.width = parse_f32_value(line, "width", line_number)?;
 				} else if line.starts_with("height") {

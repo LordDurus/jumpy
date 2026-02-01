@@ -69,10 +69,10 @@ pub struct LevelTrigger {
 	pub id: u16,
 
 	// position in tiles (convert to world when needed)
-	pub left_tiles: u16,
-	pub top_tiles: u16,
-	pub width_tiles: f32,
-	pub height_tiles: f32,
+	pub left: f32,
+	pub top: f32,
+	pub width: f32,
+	pub height: f32,
 	pub activation_mode: u8,
 
 	// generic params from file (meaning depends on kind)
@@ -137,10 +137,10 @@ pub fn handle_message_triggers(session: &Session, state: &mut State, trigger_pre
 			continue;
 		}
 
-		let trig_left_world: f32 = (trigger.left_tiles as f32) * tile_width_world;
-		let trig_top_world: f32 = (trigger.top_tiles as f32) * tile_height_world;
-		let trig_width_world: f32 = (trigger.width_tiles as f32) * tile_width_world;
-		let trig_height_world: f32 = (trigger.height_tiles as f32) * tile_height_world;
+		let trig_left_world: f32 = (trigger.left as f32) * tile_width_world;
+		let trig_top_world: f32 = (trigger.top as f32) * tile_height_world;
+		let trig_width_world: f32 = (trigger.width as f32) * tile_width_world;
+		let trig_height_world: f32 = (trigger.height as f32) * tile_height_world;
 
 		let is_overlapping: bool = do_they_overlap(
 			player_left_world,
@@ -211,10 +211,10 @@ pub fn handle_level_exit_triggers(session: &mut Session, game: &mut State, press
 			continue;
 		}
 
-		let trig_left_world: f32 = (trigger.left_tiles as f32) * tile_width_world;
-		let trig_top_world: f32 = (trigger.top_tiles as f32) * tile_height_world;
-		let trig_width_world: f32 = (trigger.width_tiles as f32) * tile_width_world;
-		let trig_height_world: f32 = (trigger.height_tiles as f32) * tile_height_world;
+		let trig_left_world: f32 = (trigger.left as f32) * tile_width_world;
+		let trig_top_world: f32 = (trigger.top as f32) * tile_height_world;
+		let trig_width_world: f32 = (trigger.width as f32) * tile_width_world;
+		let trig_height_world: f32 = (trigger.height as f32) * tile_height_world;
 
 		let is_overlapping: bool = do_they_overlap(
 			player_left_world,
@@ -286,10 +286,10 @@ pub fn handle_pickup_triggers(session: &mut Session, state: &mut State, presses:
 			continue;
 		}
 
-		let trig_left_world: f32 = (trigger.left_tiles as f32) * tile_width_world;
-		let trig_top_world: f32 = (trigger.top_tiles as f32) * tile_height_world;
-		let trig_width_world: f32 = (trigger.width_tiles as f32) * tile_width_world;
-		let trig_height_world: f32 = (trigger.height_tiles as f32) * tile_height_world;
+		let trig_left_world: f32 = (trigger.left as f32) * tile_width_world;
+		let trig_top_world: f32 = (trigger.top as f32) * tile_height_world;
+		let trig_width_world: f32 = (trigger.width as f32) * tile_width_world;
+		let trig_height_world: f32 = (trigger.height as f32) * tile_height_world;
 
 		let is_overlapping: bool = do_they_overlap(
 			player_left_world,

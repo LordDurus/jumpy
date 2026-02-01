@@ -322,10 +322,26 @@ impl Level {
 			// compiler wrote this, runtime doesn't care right now
 			let _gravity_multiplier: u8 = read_u8(&bytes, &mut trigger_offset)?;
 
-			let left_tiles: u16 = read_u16(&bytes, &mut trigger_offset)?;
-			let top_tiles: u16 = read_u16(&bytes, &mut trigger_offset)?;
-			let width_tiles = (read_u16(&bytes, &mut trigger_offset)? as f32) / 16.0;
-			let height_tiles = (read_u16(&bytes, &mut trigger_offset)? as f32) / 16.0;
+			let mut left = read_u16(&bytes, &mut trigger_offset)? as f32;
+			if left != 0.0 {
+				left = left / 16.0;
+			}
+
+			let mut top = read_u16(&bytes, &mut trigger_offset)? as f32;
+			if top != 0.0 {
+				top = top / 16.0;
+			}
+
+			let mut width = read_u16(&bytes, &mut trigger_offset)? as f32;
+			if width != 0.0 {
+				width = width / 16.0;
+			}
+
+			let mut height = read_u16(&bytes, &mut trigger_offset)? as f32;
+			if height != 0.0 {
+				height = height / 16.0;
+			}
+
 			let p0: u16 = read_u16(&bytes, &mut trigger_offset)?;
 			let p1: u16 = read_u16(&bytes, &mut trigger_offset)?;
 			let activation_mode: u8 = read_u8(&bytes, &mut trigger_offset)?;
@@ -334,10 +350,10 @@ impl Level {
 			triggers.push(LevelTrigger {
 				id: index as u16,
 				kind,
-				left_tiles,
-				top_tiles,
-				width_tiles,
-				height_tiles,
+				left,
+				top,
+				width,
+				height,
 				p0,
 				p1,
 				activation_mode,
@@ -352,12 +368,12 @@ impl Level {
 					" {}: kind={}, pickup_type_id={} value={}, left={} top={} width={} height={} mode={} icon_id={}",
 					i,
 					t.kind,
-					t.p0, // world_id
-					t.p1, // level_id
-					t.left_tiles,
-					t.top_tiles,
-					t.width_tiles,
-					t.height_tiles,
+					t.p0,
+					t.p1,
+					t.left,
+					t.top,
+					t.width,
+					t.height,
 					t.get_activation_mode(),
 					t.icon_id
 				);
@@ -368,10 +384,10 @@ impl Level {
 					t.kind,
 					t.p0, // world_id
 					t.p1, // level_id
-					t.left_tiles,
-					t.top_tiles,
-					t.width_tiles,
-					t.height_tiles,
+					t.left,
+					t.top,
+					t.width,
+					t.height,
 					t.get_activation_mode(),
 					t.get_message_id(),
 					t.icon_id
@@ -383,10 +399,10 @@ impl Level {
 					t.kind,
 					t.p0, // world_id
 					t.p1, // level_id
-					t.left_tiles,
-					t.top_tiles,
-					t.width_tiles,
-					t.height_tiles,
+					t.left,
+					t.top,
+					t.width,
+					t.height,
 					t.get_activation_mode(),
 					t.icon_id
 				);

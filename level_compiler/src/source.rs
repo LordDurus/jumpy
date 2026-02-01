@@ -70,8 +70,8 @@ pub enum EntityKindSource {
 
 #[derive(Debug)]
 pub struct TriggerSource {
-	pub top: i32,
-	pub left: i32,
+	pub top: f32,
+	pub left: f32,
 	pub width: f32,
 	pub height: f32,
 	pub kind: TriggerKindSource,

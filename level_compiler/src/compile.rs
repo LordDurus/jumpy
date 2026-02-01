@@ -17,6 +17,16 @@ fn clamp_u8(value: i32) -> u8 {
 	return value as u8;
 }
 
+fn clamp_u16(v: i32) -> u16 {
+	if v < 0 {
+		return 0;
+	}
+	if v > u16::MAX as i32 {
+		return u16::MAX;
+	}
+	return v as u16;
+}
+
 pub fn compile_and_serialize(source: &LevelSource) -> Result<Vec<u8>, String> {
 	let compiled = compile_level(source)?;
 	let bytes = serialize_level(&compiled)?;
@@ -201,14 +211,16 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 
 	let mut triggers_runtime = Vec::with_capacity(source.triggers.len());
 	for trigger in &source.triggers {
-		let top = trigger.top as u16;
-		let left = trigger.left as u16;
+		// let top = trigger.top as u16;
+		// let left = trigger.left as u16;
 
-		let width = clamp_u8((trigger.width * 16.0).round() as i32).max(1) as u16;
-		let height = clamp_u8((trigger.height * 16.0).round() as i32).max(1) as u16;
+		let top = clamp_u16((trigger.top * 16.0).round() as i32) as u16;
+		//println!("trigger.top={} top={}", trigger.top, top);
 
-		// let width: u16 = (trigger.width * 16) as u16;
-		// let height: u16 = (trigger.height * 16) as u16;
+		let left = clamp_u16((trigger.left * 16.0).round() as i32) as u16;
+		let width = clamp_u16((trigger.width * 16.0).round() as i32) as u16;
+		let height = clamp_u16((trigger.height * 16.0).round() as i32) as u16;
+
 		let icon_id = trigger.icon_id as u16;
 
 		let runtime = match &trigger.kind {

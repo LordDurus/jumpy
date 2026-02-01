@@ -56,10 +56,10 @@ impl PcRenderer {
 				continue; // consumed -> don't draw
 			}
 
-			let left_world: f32 = (t.left_tiles as f32) * tile_width_world;
-			let top_world: f32 = (t.top_tiles as f32) * tile_height_world;
-			let width_world: f32 = (t.width_tiles as f32) * tile_width_world;
-			let height_world: f32 = (t.height_tiles as f32) * tile_height_world;
+			let left_world: f32 = (t.left as f32) * tile_width_world;
+			let top_world: f32 = (t.top as f32) * tile_height_world;
+			let width_world: f32 = (t.width as f32) * tile_width_world;
+			let height_world: f32 = (t.height as f32) * tile_height_world;
 
 			let left_pixels: i32 = ((left_world - cam_left_world) * scale) as i32;
 			let top_pixels: i32 = ((top_world - cam_top_world) * scale) as i32;
@@ -452,10 +452,10 @@ impl PcRenderer {
 				continue;
 			};
 
-			let trigger_left_world: f32 = (trigger.left_tiles as f32) * tile_width;
-			let trigger_top_world: f32 = (trigger.top_tiles as f32) * tile_height;
-			let trigger_width_world: f32 = (trigger.width_tiles as f32) * tile_width;
-			let trigger_height_world: f32 = (trigger.height_tiles as f32) * tile_height;
+			let trigger_left_world: f32 = (trigger.left as f32) * tile_width;
+			let trigger_top_world: f32 = (trigger.top as f32) * tile_height;
+			let trigger_width_world: f32 = (trigger.width as f32) * tile_width;
+			let trigger_height_world: f32 = (trigger.height as f32) * tile_height;
 
 			let trigger_right_world: f32 = trigger_left_world + trigger_width_world;
 			let trigger_bottom_world: f32 = trigger_top_world + trigger_height_world;
