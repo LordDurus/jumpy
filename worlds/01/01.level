@@ -182,8 +182,8 @@ triggers
     {
         top = 16
         left = 18
-        width = 1
-        height = 1
+        width = 0.8
+        height = 0.7
 		icon_id = 2
 		mode = "action"
 		pickup = "coin"
@@ -194,8 +194,8 @@ triggers
     {
         top = 16
         left = 19
-        width = 1
-        height = 1
+        width = .8
+        height = .8
 		icon_id = 2
 		mode = "auto"
 		pickup = "coin"

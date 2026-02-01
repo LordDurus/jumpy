@@ -1,3 +1,9 @@
+#[cfg(feature = "gba")]
+extern crate alloc;
+
+#[cfg(feature = "gba")]
+use alloc::{boxed::Box, string::String, vec::Vec};
+
 use crate::{BookSlug, debugln, runtime::book::reading_state::BookReadingState};
 
 #[derive(Debug, Clone, Copy)]
@@ -26,7 +32,7 @@ impl<S: BookTextSource> BookReader<S> {
 		debugln!("Open Book: book_slug={}", book_slug);
 
 		state.is_open = true;
-		state.book_slug = book_slug.to_string();
+		state.book_slug = String::from(book_slug);
 		state.page_index = page.page_index;
 		state.total_pages = page.total_pages;
 		state.page_text = text;

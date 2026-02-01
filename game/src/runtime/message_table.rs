@@ -1,4 +1,12 @@
+#[cfg(feature = "gba")]
+extern crate alloc;
+
+#[cfg(feature = "gba")]
+use alloc::{format, string::String, vec::Vec};
+
 use crate::runtime::assets::get_messages_root;
+
+#[cfg(feature = "pc")]
 use std::{fs, path::PathBuf};
 
 pub struct MessageTable {
@@ -6,10 +14,16 @@ pub struct MessageTable {
 }
 
 impl MessageTable {
+	#[cfg(feature = "pc")]
 	pub fn load(language_code: &str) -> Result<MessageTable, String> {
 		let path: PathBuf = get_messages_root().join(format!("messages.{}.txt", language_code));
 		let text: String = fs::read_to_string(&path).map_err(|e| format!("{}: {}", path.display(), e))?;
 		return MessageTable::parse(text.as_str());
+	}
+
+	#[cfg(feature = "gba")]
+	pub fn load(_language_code: &str) -> Result<MessageTable, String> {
+		return Err(String::from("message table loading not implemented on gba yet"));
 	}
 
 	pub fn get(&self, id: u16) -> &str {
@@ -58,7 +72,7 @@ impl MessageTable {
 			let value: &str = line[eq_index + 1..].trim();
 
 			let id: u16 = id_str.parse::<u16>().map_err(|_| format!("invalid id at line {}", line_number))?;
-			by_id[id as usize] = value.to_string();
+			by_id[id as usize] = String::from(value);
 		}
 
 		return Ok(MessageTable { by_id });

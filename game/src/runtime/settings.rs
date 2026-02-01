@@ -1,3 +1,9 @@
+#[cfg(feature = "gba")]
+extern crate alloc;
+
+#[cfg(feature = "gba")]
+use alloc::{boxed::Box, string::String, vec::Vec};
+
 #[derive(Clone, Debug)]
 pub struct Settings {
 	pub gravity: f32,

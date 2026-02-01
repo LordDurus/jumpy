@@ -203,8 +203,12 @@ pub fn compile_level(source: &LevelSource) -> Result<CompiledLevel, String> {
 	for trigger in &source.triggers {
 		let top = trigger.top as u16;
 		let left = trigger.left as u16;
-		let width = trigger.width as u16;
-		let height = trigger.height as u16;
+
+		let width = clamp_u8((trigger.width * 16.0).round() as i32).max(1) as u16;
+		let height = clamp_u8((trigger.height * 16.0).round() as i32).max(1) as u16;
+
+		// let width: u16 = (trigger.width * 16) as u16;
+		// let height: u16 = (trigger.height * 16) as u16;
 		let icon_id = trigger.icon_id as u16;
 
 		let runtime = match &trigger.kind {

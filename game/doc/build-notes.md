@@ -78,7 +78,7 @@ The `Level` API exposes **semantic queries**, not raw bytes.
 ## 5. Movement & Jump Architecture
 
 ```rust
-pub fn try_jump(world: &mut GameState, entity_id: EntityId) -> bool
+pub fn try_jump(world: &mut State, entity_id: EntityId) -> bool
 ```
 
 ---

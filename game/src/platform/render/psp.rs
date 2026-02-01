@@ -21,7 +21,7 @@ impl Renderer for PspRenderer {
 	}
 	fn begin_frame(&mut self) {}
 
-	fn draw_world(&mut self, _world: &GameState) {
+	fn draw_level(&mut self, state: &State, session: &Session) {
 		self.frame_index = self.frame_index.wrapping_add(1);
 	}
 

@@ -1,3 +1,10 @@
+#[cfg(feature = "gba")]
+extern crate alloc;
+
+#[cfg(feature = "gba")]
+use alloc::{boxed::Box, collections::BTreeMap, string::String, vec::Vec};
+//use alloc::{boxed::Box, collections::BTreeMap, string::String, vec::Vec};
+
 #[derive(Clone, Debug)]
 pub struct BookReadingState {
 	pub is_open: bool,

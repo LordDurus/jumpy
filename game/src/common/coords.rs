@@ -50,16 +50,16 @@ impl PixelSize {
 #[inline(always)]
 pub fn get_screen(pointf32: Pointf32, cam: Pointf32, scale: f32) -> Pointi32 {
 	return Pointi32 {
-		left: ((pointf32.left - cam.left) * scale).round() as i32,
-		top: ((pointf32.top - cam.top) * scale).round() as i32,
+		left: ((pointf32.left - cam.left) * scale) as i32,
+		top: ((pointf32.top - cam.top) * scale) as i32,
 	};
 }
 
 #[inline(always)]
 pub fn get_tile(pointf32: Pointf32, tile_size: Size) -> Pointi32 {
 	return Pointi32 {
-		left: (pointf32.left / tile_size.width).floor() as i32,
-		top: (pointf32.top / tile_size.height).floor() as i32,
+		left: (pointf32.left / tile_size.width) as i32,
+		top: (pointf32.top / tile_size.height) as i32,
 	};
 }
 

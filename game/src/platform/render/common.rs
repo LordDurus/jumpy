@@ -77,6 +77,6 @@ impl RenderCommon {
 		camera_left = camera_left.clamp(0.0, max_x);
 		camera_top = camera_top.clamp(0.0, max_y);
 
-		return (camera_left.round() as i32, camera_top.round() as i32);
+		return (camera_left as i32, camera_top as i32);
 	}
 }

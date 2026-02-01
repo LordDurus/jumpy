@@ -1,3 +1,9 @@
+extern crate alloc;
+use alloc::collections::BTreeMap;
+
+#[cfg(feature = "gba")]
+use alloc::vec::Vec;
+
 use crate::{
 	debugln,
 	engine_math::{Vec2, aabb_overlaps_solid_tiles},
@@ -80,7 +86,10 @@ pub fn move_and_collide(state: &mut State, session: &Session) {
 	let margin: f32 = 64.0;
 	let player_id: EntityId = state.get_player_id();
 	let mut colliders: Vec<Collider> = Vec::new();
-	let mut delta_x_by_ids: std::collections::HashMap<EntityId, f32> = std::collections::HashMap::new();
+
+	// let mut delta_x_by_ids: HashMap<EntityId, f32> = HashMap::new();
+	let mut delta_x_by_ids: BTreeMap<EntityId, f32> = BTreeMap::new();
+
 	let entity_ids: Vec<EntityId> = state.positions.keys().collect();
 
 	for entity_id in &entity_ids {

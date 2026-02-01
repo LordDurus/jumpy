@@ -113,7 +113,8 @@ impl Vec2 {
 	}
 
 	pub fn length(&self) -> f32 {
-		return self.length_squared().sqrt();
+		// return self.length_squared().sqrt();
+		return libm::sqrtf(self.length_squared());
 	}
 
 	pub fn normalized(&self) -> Vec2 {
@@ -181,10 +182,10 @@ pub fn aabb_overlaps_solid_tiles(level: &Level, left: f32, right: f32, top: f32,
 	let tile_width_world: f32 = level.tile_width as f32;
 	let tile_height_world: f32 = level.tile_height as f32;
 
-	let start_tile_x: i32 = (left / tile_width_world).floor() as i32;
-	let end_tile_x: i32 = ((right - 0.001) / tile_width_world).floor() as i32;
-	let start_tile_y: i32 = (top / tile_height_world).floor() as i32;
-	let end_tile_y: i32 = ((bottom - 0.001) / tile_height_world).floor() as i32;
+	let start_tile_x: i32 = (left / tile_width_world) as i32;
+	let end_tile_x: i32 = ((right - 0.001) / tile_width_world) as i32;
+	let start_tile_y: i32 = (top / tile_height_world) as i32;
+	let end_tile_y: i32 = ((bottom - 0.001) / tile_height_world) as i32;
 
 	for ty in start_tile_y..=end_tile_y {
 		for tx in start_tile_x..=end_tile_x {

@@ -1,3 +1,9 @@
+#[cfg(feature = "gba")]
+extern crate alloc;
+
+#[cfg(feature = "gba")]
+use alloc::{boxed::Box, string::String, vec::Vec};
+
 use crate::{
 	State, debugln,
 	runtime::{
@@ -99,7 +105,8 @@ impl Session {
 		// 7) swap
 		*state = new_state;
 
-		self.current_level_name = Some(level_name.to_string());
+		// self.current_level_name = Some(level_name.to_string());
+		self.current_level_name = Some(String::from(level_name));
 
 		if self.active_music_id != next_music_id {
 			if self.settings.is_background_music_enabled {

@@ -4,7 +4,7 @@
 use agb::entry;
 
 #[entry]
-fn main(mut gba: agb::Gba) -> ! {
+fn run(mut gba: agb::Gba) -> ! {
 	loop {
 		gba.vblank.wait_for_vblank();
 	}

@@ -1,8 +1,13 @@
 #![cfg(feature = "gba")]
 
 use crate::{
-	game::state::State,
-	platform::render::{InputState, Renderer},
+	RenderBackend, Session, State,
+	engine_math::Vec2,
+	platform::{input::InputState, render::common::RenderCommon},
+	runtime::{
+		assets::{get_font_path, get_gfx_root},
+		state::EntityKind,
+	},
 };
 
 pub struct GbaRenderer {
@@ -14,7 +19,7 @@ impl RenderBackend for GbaRenderer {
 		return (240, 160);
 	}
 
-	fn render_scale(&self) -> f32 {
+	fn get_render_scale(&self) -> f32 {
 		return 1.0;
 	}
 
@@ -30,8 +35,22 @@ impl RenderBackend for GbaRenderer {
 
 	fn begin_frame(&mut self) {}
 
-	fn draw_world(&mut self, _world: &GameState) {
+	fn draw_level(&mut self, state: &State, session: &Session) {
 		self.frame_index = self.frame_index.wrapping_add(1);
+	}
+
+	fn draw_death_entity(
+		&mut self,
+		state: &State,
+		session: &Session,
+		entity_kind: EntityKind,
+		pos: &Vec2,
+		half_height: f32,
+		camera_left: f32,
+		camera_top: f32,
+		scale: f32,
+		death_timer: u16,
+	) {
 	}
 
 	fn commit(&mut self) {

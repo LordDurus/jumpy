@@ -1,3 +1,9 @@
+#[cfg(feature = "gba")]
+extern crate alloc;
+
+#[cfg(feature = "gba")]
+use alloc::{format, string::String};
+
 use crate::{
 	debugln,
 	engine_math::{do_they_overlap, random_u16},
@@ -65,8 +71,8 @@ pub struct LevelTrigger {
 	// position in tiles (convert to world when needed)
 	pub left_tiles: u16,
 	pub top_tiles: u16,
-	pub width_tiles: u16,
-	pub height_tiles: u16,
+	pub width_tiles: f32,
+	pub height_tiles: f32,
 	pub activation_mode: u8,
 
 	// generic params from file (meaning depends on kind)

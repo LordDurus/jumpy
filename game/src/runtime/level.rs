@@ -1,4 +1,11 @@
+#[cfg(feature = "gba")]
+extern crate alloc;
+
+#[cfg(feature = "gba")]
+use alloc::{format, string::String, vec::Vec};
+
 use crate::{
+	debugln,
 	platform::memory::fast_fn,
 	runtime::{music::MusicId, state::EntityKind, triggers::LevelTrigger},
 	tile::TileKind,
@@ -71,8 +78,8 @@ impl Level {
 			let tile_width: f32 = self.tile_width as f32;
 			let tile_height: f32 = self.tile_height as f32;
 
-			let tile_x: i32 = (level_x / tile_width).floor() as i32;
-			let tile_y: i32 = (level_y / tile_height).floor() as i32;
+			let tile_x: i32 = (level_x / tile_width) as i32;
+			let tile_y: i32 = (level_y / tile_height) as i32;
 
 			let layer: u32 = self.get_action_layer_index() as u32;
 			let kind: TileKind = self.get_tile_at_layer(layer, tile_x, tile_y);
@@ -131,11 +138,11 @@ impl Level {
 	// pub fn load_binary(path: &str) -> Result<Level, String> {
 	pub fn load_binary(bytes: &[u8]) -> Result<Level, String> {
 		if bytes.len() < 4 {
-			return Err("File too small".to_string());
+			return Err(String::from("File too small"));
 		}
 
 		if &bytes[0..4] != b"JLVL" {
-			return Err("Bad magic (expected JLVL)".to_string());
+			return Err(String::from("Bad magic (expected JLVL)"));
 		}
 
 		let mut offset: usize = 4;
@@ -283,14 +290,14 @@ impl Level {
 		}
 
 		if !found_spawn {
-			return Err("level has no player entity".to_string());
+			return Err(String::from("level has no player entity"));
 		}
 
 		// entities
 		let entities_bytes: usize = entity_count * BYTES_PER_ENTITY;
 
 		if offset_entities + entities_bytes > bytes.len() {
-			return Err(format!("entity section out of range"));
+			return Err(String::from("entity section out of range"));
 		}
 
 		// triggers
@@ -317,8 +324,8 @@ impl Level {
 
 			let left_tiles: u16 = read_u16(&bytes, &mut trigger_offset)?;
 			let top_tiles: u16 = read_u16(&bytes, &mut trigger_offset)?;
-			let width_tiles: u16 = read_u16(&bytes, &mut trigger_offset)?;
-			let height_tiles: u16 = read_u16(&bytes, &mut trigger_offset)?;
+			let width_tiles = (read_u16(&bytes, &mut trigger_offset)? as f32) / 16.0;
+			let height_tiles = (read_u16(&bytes, &mut trigger_offset)? as f32) / 16.0;
 			let p0: u16 = read_u16(&bytes, &mut trigger_offset)?;
 			let p1: u16 = read_u16(&bytes, &mut trigger_offset)?;
 			let activation_mode: u8 = read_u8(&bytes, &mut trigger_offset)?;
@@ -338,7 +345,6 @@ impl Level {
 			});
 		}
 
-		/*
 		debugln!("-- triggers loaded --");
 		for (i, t) in triggers.iter().enumerate() {
 			if t.kind == 3 {
@@ -388,7 +394,6 @@ impl Level {
 				debugln!("{}: kind={} - Unknown kind", i, t.kind);
 			}
 		}
-		*/
 
 		let mut level = Level {
 			tile_width,
@@ -454,7 +459,7 @@ impl Level {
 
 fn read_u32(bytes: &[u8], offset: &mut usize) -> Result<u32, String> {
 	if *offset + 4 > bytes.len() {
-		return Err("Unexpected eof reading u32".to_string());
+		return Err(String::from("Unexpected eof reading u32"));
 	}
 	let v = u32::from_le_bytes([bytes[*offset], bytes[*offset + 1], bytes[*offset + 2], bytes[*offset + 3]]);
 	*offset += 4;
@@ -464,27 +469,36 @@ fn read_u32(bytes: &[u8], offset: &mut usize) -> Result<u32, String> {
 #[inline(always)]
 fn read_u16(bytes: &[u8], offset: &mut usize) -> Result<u16, String> {
 	if *offset + 2 > bytes.len() {
-		return Err("Unexpected eof reading u16".to_string());
+		return Err(String::from("Unexpected eof reading u16"));
 	}
 	let v = u16::from_le_bytes([bytes[*offset], bytes[*offset + 1]]);
 	*offset += 2;
 	return Ok(v);
 }
 
+#[inline(always)]
 fn read_u8(bytes: &[u8], offset: &mut usize) -> Result<u8, String> {
 	if *offset + 1 > bytes.len() {
-		return Err("Unexpected eof reading u8".to_string());
+		return Err(String::from("Unexpected eof reading u8"));
 	}
 	let v = bytes[*offset];
 	*offset += 1;
 	return Ok(v);
 }
 
+#[inline(always)]
 fn read_i16(bytes: &[u8], offset: &mut usize) -> Result<i16, String> {
 	if *offset + 2 > bytes.len() {
-		return Err("Unexpected eof reading i16".to_string());
+		return Err(String::from("Unexpected eof reading i16"));
 	}
 	let v = i16::from_le_bytes([bytes[*offset], bytes[*offset + 1]]);
 	*offset += 2;
 	return Ok(v);
+}
+
+#[allow(dead_code)]
+#[inline(always)]
+fn read_f32(bytes: &[u8], offset: &mut usize) -> Result<f32, String> {
+	let v: u32 = read_u32(bytes, offset)?;
+	return Ok(f32::from_bits(v));
 }

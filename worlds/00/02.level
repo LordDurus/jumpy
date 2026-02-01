@@ -98,8 +98,8 @@ triggers
     {
         top = 23
         left = 5
-        width = 1
-        height = 1        
+        width = .5
+        height = .5        
 		icon_id = 2
 		mode = "auto"
 		pickup = "coin"
@@ -110,8 +110,8 @@ triggers
     {
         top = 23
         left = 7
-        width = 1
-        height = 1
+        width = .5
+        height = .5
 		icon_id = 3
 		mode = "auto"
 		pickup = "coin"

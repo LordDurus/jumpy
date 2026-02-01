@@ -1,3 +1,9 @@
+#[cfg(feature = "gba")]
+extern crate alloc;
+
+#[cfg(feature = "gba")]
+use alloc::vec::Vec;
+
 use crate::runtime::state::EntityId;
 
 pub struct ComponentStore<T> {

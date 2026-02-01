@@ -1,3 +1,9 @@
+#[cfg(feature = "gba")]
+extern crate alloc;
+
+#[cfg(feature = "gba")]
+use alloc::{boxed::Box, string::String, vec::Vec};
+
 use crate::{
 	ecs::component_store::ComponentStore,
 	engine_math::Vec2,
@@ -599,7 +605,7 @@ impl State {
 
 		let eps: f32 = 0.05;
 		let foot_y: f32 = pos.y + half_height;
-		let probe_tile_y: i32 = ((foot_y + eps) / tile_height).floor() as i32;
+		let probe_tile_y: i32 = ((foot_y + eps) / tile_height) as i32;
 
 		let foot_left_x: f32 = pos.x - half_width + eps;
 		let foot_right_x: f32 = pos.x + half_width - eps;
@@ -610,7 +616,7 @@ impl State {
 		let mut grounded_safe: bool = false;
 
 		for foot_x in [foot_left_x, foot_right_x] {
-			let tx: i32 = (foot_x / tile_width).floor() as i32;
+			let tx: i32 = (foot_x / tile_width) as i32;
 
 			if tx < 0 || tx >= self.level.width as i32 {
 				continue;

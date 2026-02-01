@@ -288,11 +288,11 @@ pub fn load_level_from_str(text: &str) -> Result<LevelSource, String> {
 				} else if line.starts_with("left") {
 					trigger.left = parse_i32_value(line, "left", line_number)?;
 				} else if line.starts_with("width") {
-					trigger.width = parse_i32_value(line, "width", line_number)?;
+					trigger.width = parse_f32_value(line, "width", line_number)?;
+				} else if line.starts_with("height") {
+					trigger.height = parse_f32_value(line, "height", line_number)?;
 				} else if line.starts_with("icon_id") {
 					trigger.icon_id = parse_i32_value(line, "icon_id", line_number)?;
-				} else if line.starts_with("height") {
-					trigger.height = parse_i32_value(line, "height", line_number)?;
 				} else if line.starts_with("level") {
 					let s: String = parse_string_value(line, "level", line_number)?;
 					match trigger.kind.as_mut() {

@@ -61,10 +61,10 @@ impl PcRenderer {
 			let width_world: f32 = (t.width_tiles as f32) * tile_width_world;
 			let height_world: f32 = (t.height_tiles as f32) * tile_height_world;
 
-			let left_pixels: i32 = ((left_world - cam_left_world) * scale).round() as i32;
-			let top_pixels: i32 = ((top_world - cam_top_world) * scale).round() as i32;
-			let width_pixels: u32 = (width_world * scale).round().max(1.0) as u32;
-			let height_pixels: u32 = (height_world * scale).round().max(1.0) as u32;
+			let left_pixels: i32 = ((left_world - cam_left_world) * scale) as i32;
+			let top_pixels: i32 = ((top_world - cam_top_world) * scale) as i32;
+			let width_pixels: u32 = (width_world * scale).max(1.0) as u32;
+			let height_pixels: u32 = (height_world * scale).max(1.0) as u32;
 
 			// pick different colors by kind (optional)
 			if t.kind == TriggerKind::Message as u8 {
@@ -110,8 +110,8 @@ impl PcRenderer {
 		while y <= radius {
 			let yy: i32 = y * y;
 			let dx: f32 = ((rr - yy) as f32).sqrt();
-			let x0: i32 = circle_x - dx.round() as i32;
-			let x1: i32 = circle_x + dx.round() as i32;
+			let x0: i32 = circle_x - dx as i32;
+			let x1: i32 = circle_x + dx as i32;
 
 			let _ = self.canvas.draw_line((x0, circle_y + y), (x1, circle_y + y));
 			y += 1;
@@ -249,8 +249,8 @@ impl PcRenderer {
 		let cam_top_pixels: f32 = cam_top_world as f32 * scale;
 
 		// parallax offsets in pixels
-		let bg_cam_left_pixels: i32 = (cam_left_pixels * self.bg_parallax_x).floor() as i32;
-		let bg_cam_top_pixels: i32 = (cam_top_pixels * self.bg_parallax_y).floor() as i32;
+		let bg_cam_left_pixels: i32 = (cam_left_pixels * self.bg_parallax_x) as i32;
+		let bg_cam_top_pixels: i32 = (cam_top_pixels * self.bg_parallax_y) as i32;
 
 		// horizontal wrap (repeat)
 		let start_left: i32 = -(((bg_cam_left_pixels % bg_tile_width_pixels) + bg_tile_width_pixels) % bg_tile_width_pixels);
@@ -308,11 +308,11 @@ impl PcRenderer {
 					continue;
 				}
 
-				let tile_dest_width_pixels: i32 = (tile_width * scale).round() as i32;
-				let tile_dest_height_pixels: i32 = (tile_height * scale).round() as i32;
+				let tile_dest_width_pixels: i32 = (tile_width * scale) as i32;
+				let tile_dest_height_pixels: i32 = (tile_height * scale) as i32;
 
-				let camera_left_pixels: i32 = (cam.left * scale).floor() as i32;
-				let camera_top_pixels: i32 = (cam.top * scale).floor() as i32;
+				let camera_left_pixels: i32 = (cam.left * scale) as i32;
+				let camera_top_pixels: i32 = (cam.top * scale) as i32;
 
 				let destination_left: i32 = tile_left * tile_dest_width_pixels - camera_left_pixels;
 				let destination_top: i32 = tile_top * tile_dest_height_pixels - camera_top_pixels;
@@ -387,27 +387,23 @@ impl PcRenderer {
 		let src_left_pixels: i32 = (frame_index as i32) * frame_size_pixels;
 		let src_top_pixels: i32 = (row_index as i32) * frame_size_pixels;
 		let src = Rect::new(src_left_pixels, src_top_pixels, frame_size_pixels as u32, frame_size_pixels as u32);
-
-		// let dest_width_pixels_u32: u32 = ((half_width * 2.0) * scale).round().max(1.0) as u32;
-		// let dest_height_pixels_u32: u32 = ((half_height * 2.0) * scale).round().max(1.0) as u32;
-
 		let sprite_world_scale: f32 = state.enemy_sprite_scale as f32;
-		let dest_width_pixels_u32: u32 = (64.0 * sprite_world_scale * scale).round().max(1.0) as u32;
-		let dest_height_pixels_u32: u32 = (64.0 * sprite_world_scale * scale).round().max(1.0) as u32;
+		let dest_width_pixels_u32: u32 = (64.0 * sprite_world_scale * scale).max(1.0) as u32;
+		let dest_height_pixels_u32: u32 = (64.0 * sprite_world_scale * scale).max(1.0) as u32;
 
 		// physics anchor: bottom-center
 		let entity_bottom_center_world_x: f32 = pos.x;
 		let entity_bottom_center_world_y: f32 = pos.y + half_height;
 
-		let entity_bottom_center_screen_left: i32 = ((entity_bottom_center_world_x - camera_left) * scale).round() as i32;
-		let entity_bottom_center_screen_top: i32 = ((entity_bottom_center_world_y - camera_top) * scale).round() as i32;
+		let entity_bottom_center_screen_left: i32 = ((entity_bottom_center_world_x - camera_left) * scale) as i32;
+		let entity_bottom_center_screen_top: i32 = ((entity_bottom_center_world_y - camera_top) * scale) as i32;
 
 		// tune these once for your death sheet
 		let anchor_left_frac: f32 = 32.0 / 64.0;
 		let anchor_top_frac: f32 = 40.0 / 64.0;
 
-		let anchor_left_pixels: i32 = (dest_width_pixels_u32 as f32 * anchor_left_frac).round() as i32;
-		let anchor_top_pixels: i32 = (dest_height_pixels_u32 as f32 * anchor_top_frac).round() as i32;
+		let anchor_left_pixels: i32 = (dest_width_pixels_u32 as f32 * anchor_left_frac) as i32;
+		let anchor_top_pixels: i32 = (dest_height_pixels_u32 as f32 * anchor_top_frac) as i32;
 
 		let dest_left_pixels: i32 = entity_bottom_center_screen_left - anchor_left_pixels;
 		let dest_top_pixels: i32 = entity_bottom_center_screen_top - anchor_top_pixels;
@@ -527,8 +523,8 @@ impl PcRenderer {
 
 			let scale_left: i32 = screen.left;
 			let scale_top: i32 = screen.top;
-			let width: u32 = ((half_width * 2.0) * scale).round() as u32;
-			let height: u32 = ((half_height * 2.0) * scale).round() as u32;
+			let width: u32 = ((half_width * 2.0) * scale) as u32;
+			let height: u32 = ((half_height * 2.0) * scale) as u32;
 
 			if entity_kind == EntityKind::SlimeBlue || entity_kind == EntityKind::SlimeUndead || entity_kind == EntityKind::SlimeLava {
 				let death_timer: u16 = state.death_timers.get(id).copied().unwrap_or(0);
@@ -561,21 +557,21 @@ impl PcRenderer {
 				let src: Rect = Rect::new(src_left_pixels, src_top_pixels, 64, 64);
 
 				let sprite_world_scale: f32 = state.enemy_sprite_scale as f32;
-				let dest_width_pixels: u32 = (64.0 * sprite_world_scale * scale).round() as u32;
-				let dest_height_pixels: u32 = (64.0 * sprite_world_scale * scale).round() as u32;
+				let dest_width_pixels: u32 = (64.0 * sprite_world_scale * scale) as u32;
+				let dest_height_pixels: u32 = (64.0 * sprite_world_scale * scale) as u32;
 
 				// anchor point on physics body: bottom-center
 				let entity_bottom_center_world_x: f32 = pos.x;
 				let entity_bottom_center_world_y: f32 = pos.y + half_height;
 
-				let entity_bottom_center_screen_left: i32 = ((entity_bottom_center_world_x - camera_left) * scale).round() as i32;
-				let entity_bottom_center_screen_top: i32 = ((entity_bottom_center_world_y - camera_top) * scale).round() as i32;
+				let entity_bottom_center_screen_left: i32 = ((entity_bottom_center_world_x - camera_left) * scale) as i32;
+				let entity_bottom_center_screen_top: i32 = ((entity_bottom_center_world_y - camera_top) * scale) as i32;
 
 				let anchor_left_frac: f32 = 32.0 / 64.0;
 				let anchor_top_frac: f32 = 40.0 / 64.0;
 
-				let sprite_feet_left_pixels: i32 = (dest_width_pixels as f32 * anchor_left_frac).round() as i32;
-				let sprite_feet_top_pixels: i32 = (dest_height_pixels as f32 * anchor_top_frac).round() as i32;
+				let sprite_feet_left_pixels: i32 = (dest_width_pixels as f32 * anchor_left_frac) as i32;
+				let sprite_feet_top_pixels: i32 = (dest_height_pixels as f32 * anchor_top_frac) as i32;
 
 				let dest_left_pixels: i32 = entity_bottom_center_screen_left - sprite_feet_left_pixels;
 				let dest_top_pixels: i32 = entity_bottom_center_screen_top - sprite_feet_top_pixels;

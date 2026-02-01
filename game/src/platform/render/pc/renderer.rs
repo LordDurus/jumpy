@@ -127,7 +127,7 @@ impl RenderBackend for PcRenderer {
 				window_height_pixels = 360;
 			}
 
-			let window_width_pixels: u32 = ((window_height_pixels as f32) * target_aspect).round() as u32;
+			let window_width_pixels: u32 = ((window_height_pixels as f32) * target_aspect) as u32;
 			(window_width_pixels, window_height_pixels)
 		};
 
@@ -241,13 +241,6 @@ impl RenderBackend for PcRenderer {
 	fn draw_level(&mut self, state: &State, session: &Session) {
 		self.draw_level_internal(state, session);
 	}
-
-	/*
-	fn draw_death_entity(&mut self, state: &GameState) {
-		self.draw_death_entity_internal(state);
-		return;
-	}
-	*/
 
 	fn draw_death_entity(
 		&mut self,

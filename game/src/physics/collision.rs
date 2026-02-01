@@ -14,15 +14,15 @@ pub fn resolve_ceiling_collision(level: &Level, position: &mut Vec2, velocity: &
 	// probe slightly above head to detect ceiling reliably
 	let probe_top: f32 = top_y - 0.5;
 
-	let ty: i32 = (probe_top / tile_h).floor() as i32;
+	let ty: i32 = (probe_top / tile_h) as i32;
 
 	// inset so we don't catch tiles when just barely touching corners
 	let inset_x: f32 = 0.5;
 	let left_x: f32 = position.x - half_width + inset_x;
 	let right_x: f32 = position.x + half_width - inset_x;
 
-	let tx_left: i32 = (left_x / tile_w).floor() as i32;
-	let tx_right: i32 = (right_x / tile_w).floor() as i32;
+	let tx_left: i32 = (left_x / tile_w) as i32;
+	let tx_right: i32 = (right_x / tile_w) as i32;
 	let tile_bottom: f32 = ((ty + 1) as f32) * tile_h;
 	let hit: bool = level.get_tile_at_layer(layer, tx_left, ty).is_solid() || level.get_tile_at_layer(layer, tx_right, ty).is_solid();
 
@@ -45,10 +45,10 @@ pub fn resolve_floor_collision(level: &Level, pos: &mut Vec2, vel: &mut Vec2, ha
 	let tile_height: f32 = level.tile_height as f32;
 	let bottom: f32 = pos.y + half_height;
 	let probe_bottom: f32 = bottom + 0.5;
-	let tile_top: i32 = (probe_bottom / tile_height).floor() as i32;
+	let tile_top: i32 = (probe_bottom / tile_height) as i32;
 	let inset: f32 = 0.5;
-	let tile_left: i32 = ((pos.x - half_width + inset) / tile_width).floor() as i32;
-	let tile_right: i32 = ((pos.x + half_width - inset) / tile_width).floor() as i32;
+	let tile_left: i32 = ((pos.x - half_width + inset) / tile_width) as i32;
+	let tile_right: i32 = ((pos.x + half_width - inset) / tile_width) as i32;
 
 	let mut hit_ground: bool = false;
 	let mut ground_top: f32 = 0.0;
@@ -110,10 +110,10 @@ pub fn resolve_wall_collision(level: &Level, position: &mut Vec2, velocity: &mut
 		position.x - half_width - 0.5
 	};
 
-	let tx: i32 = (probe_x / tile_width).floor() as i32;
-	let ty_top: i32 = (top_left / tile_height).floor() as i32;
-	let ty_middle: i32 = (middle_left / tile_height).floor() as i32;
-	let ty_bottom: i32 = (bottom_left / tile_height).floor() as i32;
+	let tx: i32 = (probe_x / tile_width) as i32;
+	let ty_top: i32 = (top_left / tile_height) as i32;
+	let ty_middle: i32 = (middle_left / tile_height) as i32;
+	let ty_bottom: i32 = (bottom_left / tile_height) as i32;
 	let hit: bool;
 	let kind = level.get_tile_at_layer(layer, tx, ty_middle).get_collision_kind();
 
@@ -149,12 +149,12 @@ pub fn scan_down_to_ground(level: &Level, pos: &mut Vec2, half_width: f32, half_
 
 	// start from the entity's feet (a tiny bit below so we don't miss due to float rounding)
 	let start_y: f32 = pos.y + half_height + 0.5;
-	let mut ty: i32 = (start_y / tile_h).floor() as i32;
+	let mut ty: i32 = (start_y / tile_h) as i32;
 
 	// match your existing inset style
 	let inset_x: f32 = 0.5;
-	let tx_left: i32 = ((pos.x - half_width + inset_x) / tile_w).floor() as i32;
-	let tx_right: i32 = ((pos.x + half_width - inset_x) / tile_w).floor() as i32;
+	let tx_left: i32 = ((pos.x - half_width + inset_x) / tile_w) as i32;
+	let tx_right: i32 = ((pos.x + half_width - inset_x) / tile_w) as i32;
 
 	let min_ty: i32 = 0;
 	let max_ty: i32 = level.height as i32 - 1;

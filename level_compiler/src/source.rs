@@ -72,8 +72,8 @@ pub enum EntityKindSource {
 pub struct TriggerSource {
 	pub top: i32,
 	pub left: i32,
-	pub width: i32,
-	pub height: i32,
+	pub width: f32,
+	pub height: f32,
 	pub kind: TriggerKindSource,
 	pub icon_id: i32,
 }
