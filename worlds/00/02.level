@@ -96,9 +96,9 @@ triggers
 	
 	trigger "pickup"
     {
-        top = 23
+        top = 23.5
         left = 5
-        width = .5
+        width = .4
         height = .5        
 		icon_id = 2
 		mode = "auto"
@@ -110,7 +110,7 @@ triggers
     {
         top = 23.5
         left = 7
-        width = .5
+        width = .4
         height = .5
 		icon_id = 3
 		mode = "auto"
