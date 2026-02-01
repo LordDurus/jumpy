@@ -2,8 +2,8 @@
 
 use crate::{
 	debugln,
-	game::music::MusicId,
 	platform::audio::{AudioEngine, SfxId, backend::AudioHandle},
+	runtime::{assets::get_audio_root, music::MusicId},
 };
 use sdl2::mixer::{self, Channel, Chunk, Music};
 use std::{collections::HashMap, path::PathBuf};
@@ -17,7 +17,7 @@ pub struct PcAudio {
 
 impl PcAudio {
 	fn asset_path(file: &str) -> PathBuf {
-		return crate::assets::get_audio_root().join("pc").join(file);
+		return get_audio_root().join("pc").join(file);
 	}
 
 	fn load_sfx(&mut self, id: SfxId, file: &str) {

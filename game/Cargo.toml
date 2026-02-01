@@ -23,6 +23,7 @@ sdl2 = { version = "0.37", features = [
 ], optional = true } # PC only dependency
 rayon = { version = "1.6", optional = true } # PC only dependency
 psp-support = { package = "psp", version = "0.3.11", optional = true } # Alias for the psp crate
+portable-atomic = { version = "1", default-features = true } #GBA
 
 [profile.dev]
 debug = true

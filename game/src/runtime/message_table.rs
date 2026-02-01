@@ -1,4 +1,4 @@
-use crate::assets::get_messages_root;
+use crate::runtime::assets::get_messages_root;
 use std::{fs, path::PathBuf};
 
 pub struct MessageTable {

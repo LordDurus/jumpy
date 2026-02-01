@@ -1,4 +1,4 @@
-use crate::game::game_state::EntityId;
+use crate::runtime::state::EntityId;
 
 pub struct ComponentStore<T> {
 	data: Vec<Option<T>>,

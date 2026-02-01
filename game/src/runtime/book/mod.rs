@@ -8,7 +8,7 @@ pub mod reading_state;
 pub mod reader_pc;
 
 #[cfg(feature = "gba")]
-pub mod book_reader_gba;
+pub mod reader_gba;
 
 // ---- platform selection ----
 

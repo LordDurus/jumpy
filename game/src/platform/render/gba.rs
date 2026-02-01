@@ -1,7 +1,7 @@
 #![cfg(feature = "gba")]
 
 use crate::{
-	game::game_state::GameState,
+	game::state::State,
 	platform::render::{InputState, Renderer},
 };
 

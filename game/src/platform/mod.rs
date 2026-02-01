@@ -7,6 +7,9 @@ pub mod timer;
 
 use crate::platform::{audio::backend::AudioEngine, input::backend::InputBackend, render::backend::RenderBackend, timer::backend::TimerBackend};
 
+#[cfg(feature = "gba")]
+use alloc::boxed::Box;
+
 #[allow(dead_code)]
 pub struct Platform {
 	pub render: Box<dyn RenderBackend>,

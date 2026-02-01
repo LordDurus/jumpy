@@ -1,4 +1,4 @@
-use crate::game::game_session::GameSession;
+use crate::runtime::session::Session;
 
 use sdl2::rect::Rect;
 
@@ -79,7 +79,7 @@ impl PcRenderer {
 		return;
 	}
 
-	pub fn draw_book_overlay(&mut self, session: &GameSession) {
+	pub fn draw_book_overlay(&mut self, session: &Session) {
 		let state = &session.book_reading;
 		if !state.is_open {
 			return;

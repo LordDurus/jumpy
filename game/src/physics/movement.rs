@@ -1,13 +1,13 @@
 use crate::{
 	debugln,
 	engine_math::{Vec2, aabb_overlaps_solid_tiles},
-	game::{
-		game_session::GameSession,
-		game_state::{DeathAnim, EntityId, EntityKind, GameState},
-		level::Level,
-	},
 	physics::collision::{HitSide, classify_aabb_hit_side, resolve_ceiling_collision, resolve_floor_collision, resolve_wall_collision},
 	platform::audio::SfxId,
+	runtime::{
+		level::Level,
+		session::Session,
+		state::{DeathAnim, EntityId, EntityKind, State},
+	},
 };
 
 #[allow(dead_code)]
@@ -72,29 +72,29 @@ fn dead_profile() -> CollisionProfile {
 	};
 }
 
-pub fn move_and_collide(game_state: &mut GameState, game_session: &GameSession) {
-	let tile_width: f32 = game_state.level.tile_width as f32;
-	let tile_height: f32 = game_state.level.tile_height as f32;
-	let level_width_pixels: f32 = (game_state.level.width as f32) * tile_width;
-	let level_height_pixels: f32 = (game_state.level.height as f32) * tile_height;
+pub fn move_and_collide(state: &mut State, session: &Session) {
+	let tile_width: f32 = state.level.tile_width as f32;
+	let tile_height: f32 = state.level.tile_height as f32;
+	let level_width_pixels: f32 = (state.level.width as f32) * tile_width;
+	let level_height_pixels: f32 = (state.level.height as f32) * tile_height;
 	let margin: f32 = 64.0;
-	let player_id: EntityId = game_state.get_player_id();
+	let player_id: EntityId = state.get_player_id();
 	let mut colliders: Vec<Collider> = Vec::new();
 	let mut delta_x_by_ids: std::collections::HashMap<EntityId, f32> = std::collections::HashMap::new();
-	let entity_ids: Vec<EntityId> = game_state.positions.keys().collect();
+	let entity_ids: Vec<EntityId> = state.positions.keys().collect();
 
 	for entity_id in &entity_ids {
-		let kind_u8: u8 = *game_state.entity_kinds.get(*entity_id).unwrap_or(&0);
+		let kind_u8: u8 = *state.entity_kinds.get(*entity_id).unwrap_or(&0);
 		let kind: EntityKind = EntityKind::from_u8(kind_u8);
 
 		if kind != EntityKind::MovingPlatform {
 			continue;
 		}
 
-		let (half_width, half_height) = game_state.get_entity_half_values(*entity_id);
+		let (half_width, half_height) = state.get_entity_half_values(*entity_id);
 
-		let position: &mut Vec2 = game_state.positions.get_mut(*entity_id).unwrap();
-		let velocity: &mut Vec2 = game_state.velocities.get_mut(*entity_id).unwrap();
+		let position: &mut Vec2 = state.positions.get_mut(*entity_id).unwrap();
+		let velocity: &mut Vec2 = state.velocities.get_mut(*entity_id).unwrap();
 
 		velocity.y = 0.0;
 
@@ -102,7 +102,7 @@ pub fn move_and_collide(game_state: &mut GameState, game_session: &GameSession) 
 		let old_vx: f32 = velocity.x;
 
 		position.x += velocity.x;
-		resolve_wall_collision(&game_state.level, position, velocity, half_width, half_height, false);
+		resolve_wall_collision(&state.level, position, velocity, half_width, half_height, false);
 
 		let delta_x: f32 = position.x - old_x;
 		delta_x_by_ids.insert(*entity_id, delta_x);
@@ -113,12 +113,12 @@ pub fn move_and_collide(game_state: &mut GameState, game_session: &GameSession) 
 		}
 	}
 
-	for (id, pos) in game_state.positions.iter() {
-		let kind_u8: u8 = *game_state.entity_kinds.get(id).unwrap_or(&0);
+	for (id, pos) in state.positions.iter() {
+		let kind_u8: u8 = *state.entity_kinds.get(id).unwrap_or(&0);
 		let kind: EntityKind = EntityKind::from_u8(kind_u8);
-		let (half_width, half_height) = game_state.get_entity_half_values(id);
+		let (half_width, half_height) = state.get_entity_half_values(id);
 		let delta_x: f32 = *delta_x_by_ids.get(&id).unwrap_or(&0.0);
-		let dying: bool = game_state.is_dying(id);
+		let dying: bool = state.is_dying(id);
 
 		colliders.push(Collider {
 			id,
@@ -135,20 +135,20 @@ pub fn move_and_collide(game_state: &mut GameState, game_session: &GameSession) 
 	for entity_id in entity_ids {
 		let is_player: bool = entity_id == player_id;
 
-		let kind: EntityKind = EntityKind::from_u8(*game_state.entity_kinds.get(entity_id).unwrap_or(&0));
+		let kind: EntityKind = EntityKind::from_u8(*state.entity_kinds.get(entity_id).unwrap_or(&0));
 		if kind == EntityKind::MovingPlatform {
 			continue;
 		}
 
 		// do movement + collision inside a scope so &mut borrows drop
 		{
-			let (half_width, half_height) = game_state.get_entity_half_values(entity_id);
+			let (half_width, half_height) = state.get_entity_half_values(entity_id);
 
-			let Some(position) = game_state.positions.get_mut(entity_id) else {
+			let Some(position) = state.positions.get_mut(entity_id) else {
 				continue;
 			};
 
-			let Some(velocity) = game_state.velocities.get_mut(entity_id) else {
+			let Some(velocity) = state.velocities.get_mut(entity_id) else {
 				continue;
 			};
 
@@ -158,16 +158,16 @@ pub fn move_and_collide(game_state: &mut GameState, game_session: &GameSession) 
 			position.x += velocity.x;
 			position.y += velocity.y;
 
-			resolve_wall_collision(&game_state.level, position, velocity, half_width, half_height, false);
+			resolve_wall_collision(&state.level, position, velocity, half_width, half_height, false);
 
-			resolve_ceiling_collision(&game_state.level, position, velocity, half_width, half_height);
-			resolve_floor_collision(&game_state.level, position, velocity, half_width, half_height, prev_bottom_level);
+			resolve_ceiling_collision(&state.level, position, velocity, half_width, half_height);
+			resolve_floor_collision(&state.level, position, velocity, half_width, half_height, prev_bottom_level);
 
 			let pos_before_entities: Vec2 = position.clone();
-			let is_patrolling: bool = game_state.patrolling.get(entity_id).copied().unwrap_or(false);
+			let is_patrolling: bool = state.patrolling.get(entity_id).copied().unwrap_or(false);
 			let outcome: CollisionOutcome = resolve_entity_collisions(
-				&game_state.level,
-				&game_session.settings,
+				&state.level,
+				&session.settings,
 				entity_id,
 				kind,
 				is_patrolling,
@@ -183,7 +183,7 @@ pub fn move_and_collide(game_state: &mut GameState, game_session: &GameSession) 
 			if external_dx != 0.0 {
 				let old_vx: f32 = velocity.x;
 				velocity.x = external_dx;
-				resolve_wall_collision(&game_state.level, position, velocity, half_width, half_height, false);
+				resolve_wall_collision(&state.level, position, velocity, half_width, half_height, false);
 				velocity.x = old_vx;
 			}
 
@@ -192,86 +192,84 @@ pub fn move_and_collide(game_state: &mut GameState, game_session: &GameSession) 
 				CollisionOutcome::Crushed { source: _ } => {
 					if is_player {
 						debugln!("Crushed");
-						game_state.kill_player(game_session, player_id);
+						state.kill_player(session, player_id);
 					}
 				}
 				CollisionOutcome::Stomped(target_id) => {
 					if kind == EntityKind::Player {
-						let chain: u16 = game_state.stomp_chains.get(entity_id).copied().unwrap_or(0);
-						game_state.stomp_chains.set(entity_id, chain.saturating_add(1));
+						let chain: u16 = state.stomp_chains.get(entity_id).copied().unwrap_or(0);
+						state.stomp_chains.set(entity_id, chain.saturating_add(1));
 					}
 
-					let chain: u16 = game_state.stomp_chains.get(player_id).copied().unwrap_or(0);
-					let bonus: u16 = stomp_bonus(chain, game_session.settings.stomp_chain_gain_per_stomp as u16).min(game_session.settings.stomp_bonus_cap as u16);
-					let base_stomp_damage = game_state.base_stomp_damages.get(player_id).copied().unwrap_or(2);
+					let chain: u16 = state.stomp_chains.get(player_id).copied().unwrap_or(0);
+					let bonus: u16 = stomp_bonus(chain, session.settings.stomp_chain_gain_per_stomp as u16).min(session.settings.stomp_bonus_cap as u16);
+					let base_stomp_damage = state.base_stomp_damages.get(player_id).copied().unwrap_or(2);
 					let damage: u16 = base_stomp_damage + bonus;
-					let hit_points = game_state.hit_points.get(target_id).copied().unwrap_or(1);
+					let hit_points = state.hit_points.get(target_id).copied().unwrap_or(1);
 
 					if damage >= hit_points {
-						game_state.start_enemy_death(target_id, DeathAnim::SlimeFlatten);
+						state.start_enemy_death(target_id, DeathAnim::SlimeFlatten);
 
-						if game_session.settings.are_sound_effects_enabled {
-							game_state.audio.play_sfx(SfxId::Stomp);
+						if session.settings.are_sound_effects_enabled {
+							state.audio.play_sfx(SfxId::Stomp);
 						}
 
-						if game_session.settings.are_sound_effects_enabled {
-							game_state.audio.play_sfx(SfxId::Stomp);
+						if session.settings.are_sound_effects_enabled {
+							state.audio.play_sfx(SfxId::Stomp);
 						}
 					} else {
-						game_state.hit_points.set(target_id, hit_points - damage);
+						state.hit_points.set(target_id, hit_points - damage);
 					}
 				}
 				CollisionOutcome::Damaged { source: _ } => {
 					if is_player {
 						//TODO: Calc Damage kill player if needed.
 						debugln!("Damaged");
-						game_state.kill_player(game_session, player_id);
+						state.kill_player(session, player_id);
 					}
 				}
 				CollisionOutcome::HitWall => {
 					// request a patrol flip for this entity
-					let cool_down: u8 = game_state.bump_cooldowns.get(entity_id).copied().unwrap_or(0);
+					let cool_down: u8 = state.bump_cooldowns.get(entity_id).copied().unwrap_or(0);
 					if cool_down == 0 {
-						game_state.patrol_flips.set(entity_id, true);
-						game_state.bump_cooldowns.set(entity_id, 6);
+						state.patrol_flips.set(entity_id, true);
+						state.bump_cooldowns.set(entity_id, 6);
 					}
 				}
 				CollisionOutcome::HitWallEnemy => {
 					// enemy bump: debounce
 					if kind != EntityKind::Player && kind != EntityKind::MovingPlatform {
-						let cool_down: u8 = game_state.bump_cooldowns.get(entity_id).copied().unwrap_or(0);
+						let cool_down: u8 = state.bump_cooldowns.get(entity_id).copied().unwrap_or(0);
 						if cool_down == 0 {
-							game_state.patrol_flips.set(entity_id, true);
-							game_state.bump_cooldowns.set(entity_id, 6);
+							state.patrol_flips.set(entity_id, true);
+							state.bump_cooldowns.set(entity_id, 6);
 						}
 					}
 				}
 			} // <- pos/vel borrows end here
-			// now it's legal to query game_state immutably
 
 			if is_player {
-				let on_wall_left = game_state.on_wall_left(entity_id);
-				let on_wall_right = game_state.on_wall_right(entity_id);
-				let grounded_now: bool = game_state.is_grounded_now(entity_id);
+				let on_wall_left = state.on_wall_left(entity_id);
+				let on_wall_right = state.on_wall_right(entity_id);
+				let grounded_now: bool = state.is_grounded_now(entity_id);
 
 				if grounded_now {
-					// let coyote_frames_max = game_state.stomp_chains.set(entity_id, 0);
-					if game_state.camera_baseline_max_bottom_world.is_none() {
-						let (_half_width, half_height) = game_state.get_entity_half_values(entity_id);
-						if let Some(pos) = game_state.positions.get(entity_id) {
-							let tile_height_world: f32 = game_state.level.tile_height as f32;
-							let pad_world: f32 = game_session.settings.camera_bottom_padding_tiles as f32 * tile_height_world;
+					if state.camera_baseline_max_bottom_world.is_none() {
+						let (_half_width, half_height) = state.get_entity_half_values(entity_id);
+						if let Some(pos) = state.positions.get(entity_id) {
+							let tile_height_world: f32 = state.level.tile_height as f32;
+							let pad_world: f32 = session.settings.camera_bottom_padding_tiles as f32 * tile_height_world;
 
 							let ground_world_y: f32 = pos.y + half_height;
-							game_state.camera_baseline_max_bottom_world = Some(ground_world_y + pad_world);
+							state.camera_baseline_max_bottom_world = Some(ground_world_y + pad_world);
 						}
 					}
 				}
 
-				if let Some(jump_state) = game_state.jump_states.get_mut(entity_id) {
+				if let Some(jump_state) = state.jump_states.get_mut(entity_id) {
 					// coyote update (your existing code)
 					if grounded_now {
-						jump_state.coyote_frames_left = game_session.settings.coyote_frames_max;
+						jump_state.coyote_frames_left = session.settings.coyote_frames_max;
 					} else if jump_state.coyote_frames_left > 0 {
 						jump_state.coyote_frames_left -= 1;
 					}
@@ -285,14 +283,13 @@ pub fn move_and_collide(game_state: &mut GameState, game_session: &GameSession) 
 						let can_jump_now: bool = grounded_now || jump_state.coyote_frames_left > 0 || on_wall_left || on_wall_right;
 
 						if can_jump_now {
-							// we must drop the mutable borrow before calling try_jump(&mut game_state)
 							let should_fire: bool = true;
 
 							if should_fire {
-								let jumped = try_jump(game_state, game_session, entity_id);
+								let jumped = try_jump(state, session, entity_id);
 								if jumped {
-									if game_session.settings.are_sound_effects_enabled {
-										game_state.audio.play_sfx(SfxId::Jump);
+									if session.settings.are_sound_effects_enabled {
+										state.audio.play_sfx(SfxId::Jump);
 									}
 								}
 							}
@@ -301,14 +298,14 @@ pub fn move_and_collide(game_state: &mut GameState, game_session: &GameSession) 
 				}
 
 				// tick respawn cooldown every frame
-				if let Some(respawn_state) = game_state.respawn_states.get_mut(entity_id) {
+				if let Some(respawn_state) = state.respawn_states.get_mut(entity_id) {
 					if respawn_state.respawn_cooldown_frames > 0 {
 						respawn_state.respawn_cooldown_frames -= 1;
 					}
 
 					// update last grounded pos only when grounded
 					if grounded_now {
-						if let Some(position) = game_state.positions.get(entity_id).copied() {
+						if let Some(position) = state.positions.get(entity_id).copied() {
 							respawn_state.last_grounded_pos = position;
 							respawn_state.has_last_grounded_pos = true;
 						}
@@ -316,15 +313,15 @@ pub fn move_and_collide(game_state: &mut GameState, game_session: &GameSession) 
 				}
 			}
 
-			let (half_width, half_height) = &game_state.get_entity_half_values(entity_id);
+			let (half_width, half_height) = &state.get_entity_half_values(entity_id);
 
-			let Some(position) = game_state.positions.get_mut(entity_id) else {
+			let Some(position) = state.positions.get_mut(entity_id) else {
 				continue;
 			};
 
 			// clamp to world bounds (x only for now)
 			{
-				let Some(velocity) = game_state.velocities.get_mut(entity_id) else {
+				let Some(velocity) = state.velocities.get_mut(entity_id) else {
 					continue;
 				};
 
@@ -359,10 +356,10 @@ pub fn move_and_collide(game_state: &mut GameState, game_session: &GameSession) 
 
 			if out {
 				if is_player {
-					game_state.kill_player(game_session, player_id);
+					state.kill_player(session, player_id);
 					continue;
 				} else {
-					game_state.remove_entity(entity_id);
+					state.remove_entity(entity_id);
 					continue;
 				}
 			}
@@ -370,12 +367,12 @@ pub fn move_and_collide(game_state: &mut GameState, game_session: &GameSession) 
 	}
 }
 
-pub fn try_jump(game_state: &mut GameState, game_session: &GameSession, entity_id: EntityId) -> bool {
-	let grounded: bool = game_state.is_grounded_now(entity_id);
-	let on_left: bool = game_state.on_wall_left(entity_id);
-	let on_right: bool = game_state.on_wall_right(entity_id);
+pub fn try_jump(state: &mut State, session: &Session, entity_id: EntityId) -> bool {
+	let grounded: bool = state.is_grounded_now(entity_id);
+	let on_left: bool = state.on_wall_left(entity_id);
+	let on_right: bool = state.on_wall_right(entity_id);
 
-	let coyote_frames_left: u8 = game_state.jump_states.get(entity_id).map(|js| js.coyote_frames_left).unwrap_or(0);
+	let coyote_frames_left: u8 = state.jump_states.get(entity_id).map(|js| js.coyote_frames_left).unwrap_or(0);
 
 	let coyote_ok: bool = coyote_frames_left > 0;
 
@@ -383,12 +380,12 @@ pub fn try_jump(game_state: &mut GameState, game_session: &GameSession, entity_i
 		return false;
 	}
 
-	let jump_multiplier_u8: u8 = game_state.jump_multipliers.get(entity_id).copied().unwrap_or(1);
+	let jump_multiplier_u8: u8 = state.jump_multipliers.get(entity_id).copied().unwrap_or(1);
 	let jump_multiplier: f32 = jump_multiplier_u8 as f32;
 
-	let jump_velocity: f32 = game_session.settings.jump_velocity * jump_multiplier;
+	let jump_velocity: f32 = session.settings.jump_velocity * jump_multiplier;
 
-	if let Some(velocity) = game_state.velocities.get_mut(entity_id) {
+	if let Some(velocity) = state.velocities.get_mut(entity_id) {
 		velocity.y = jump_velocity;
 
 		// wall jump push (only if not grounded/coyote jump)
@@ -402,7 +399,7 @@ pub fn try_jump(game_state: &mut GameState, game_session: &GameSession, entity_i
 		}
 
 		// consume grace/buffer state when a jump actually fires
-		if let Some(js) = game_state.jump_states.get_mut(entity_id) {
+		if let Some(js) = state.jump_states.get_mut(entity_id) {
 			js.coyote_frames_left = 0;
 			js.jump_buffer_frames_left = 0;
 		}
@@ -412,35 +409,35 @@ pub fn try_jump(game_state: &mut GameState, game_session: &GameSession, entity_i
 	return false;
 }
 
-pub fn patrol(game_state: &mut GameState) {
-	let ids = game_state.patrolling.keys();
+pub fn patrol(state: &mut State) {
+	let ids = state.patrolling.keys();
 
 	for id in ids {
-		let position = match game_state.positions.get(id) {
+		let position = match state.positions.get(id) {
 			Some(p) => *p,
 			None => continue,
 		};
 
-		let velocity = match game_state.velocities.get_mut(id) {
+		let velocity = match state.velocities.get_mut(id) {
 			Some(v) => v,
 			None => continue,
 		};
 
-		if let Some(cd) = game_state.bump_cooldowns.get(id).copied() {
+		if let Some(cd) = state.bump_cooldowns.get(id).copied() {
 			if cd > 1 {
-				game_state.bump_cooldowns.set(id, cd - 1);
+				state.bump_cooldowns.set(id, cd - 1);
 			} else {
 				// cd == 1 → expire now
-				game_state.bump_cooldowns.remove(id);
+				state.bump_cooldowns.remove(id);
 			}
 		}
 
 		// normalize range ordering
-		let mut min_x: f32 = game_state.range_mins.get(id).copied().unwrap_or(position.x);
-		let mut max_x: f32 = game_state.range_maxes.get(id).copied().unwrap_or(position.x);
-		let speed = game_state.speeds.get(id).copied().unwrap_or(0) as f32;
+		let mut min_x: f32 = state.range_mins.get(id).copied().unwrap_or(position.x);
+		let mut max_x: f32 = state.range_maxes.get(id).copied().unwrap_or(position.x);
+		let speed = state.speeds.get(id).copied().unwrap_or(0) as f32;
 
-		let flip_now: bool = game_state.patrol_flips.take(id).unwrap_or(false);
+		let flip_now: bool = state.patrol_flips.take(id).unwrap_or(false);
 
 		if flip_now {
 			velocity.x = -velocity.x;
@@ -464,7 +461,7 @@ pub fn patrol(game_state: &mut GameState) {
 		}
 
 		// re-read x after clamping
-		let pos_x: f32 = match game_state.positions.get(id) {
+		let pos_x: f32 = match state.positions.get(id) {
 			Some(p) => p.x,
 			None => continue,
 		};
@@ -530,7 +527,7 @@ fn profile_for_kind(kind: EntityKind) -> CollisionProfile {
 #[inline(always)]
 fn resolve_entity_collisions(
 	level: &Level,
-	settings: &crate::game::Settings,
+	settings: &crate::runtime::Settings,
 	entity_id: EntityId,
 	kind: EntityKind,
 	is_patrolling: bool,

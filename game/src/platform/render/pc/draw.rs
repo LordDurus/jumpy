@@ -1,19 +1,19 @@
 use crate::{
-	GameSession,
+	Session,
 	common::coords::{PixelSize, Pointf32, Size, clamp_camera_to_level_world, get_screen, visible_tile_bounds},
 	debugln,
 	engine_math::Vec2,
-	game::{
-		game_state::{EntityKind, GameState},
-		level::Level,
-		triggers::TriggerKind,
-	},
 	platform::{
 		audio::backend::LocomotionAnim,
 		render::{
 			backend::RenderBackend,
 			icon_registry::{ICON_FRAME_HEIGHT_PIXELS, ICON_FRAME_WIDTH_PIXELS, get_icon_src_rect_pixels, resolve_icon},
 		},
+	},
+	runtime::{
+		level::Level,
+		state::{EntityKind, State},
+		triggers::TriggerKind,
 	},
 	tile::TileKind,
 };
@@ -40,19 +40,19 @@ impl PcRenderer {
 	// - draw_entities
 	// - draw_death_entity_internal (or whatever name you had)
 
-	fn draw_debug_triggers(&mut self, game_state: &GameState, session: &GameSession, cam_left_world: f32, cam_top_world: f32, scale: f32) {
+	fn draw_debug_triggers(&mut self, state: &State, session: &Session, cam_left_world: f32, cam_top_world: f32, scale: f32) {
 		if !session.settings.show_triggers {
 			return;
 		}
 
 		use sdl2::{pixels::Color, rect::Rect};
 
-		let tile_width_world: f32 = game_state.level.tile_width as f32;
-		let tile_height_world: f32 = game_state.level.tile_height as f32;
+		let tile_width_world: f32 = state.level.tile_width as f32;
+		let tile_height_world: f32 = state.level.tile_height as f32;
 
-		for t in &game_state.level.triggers {
+		for t in &state.level.triggers {
 			let idx: usize = t.id as usize;
-			if idx < game_state.trigger_armed.len() && game_state.trigger_armed[idx] {
+			if idx < state.triggers_armed.len() && state.triggers_armed[idx] {
 				continue; // consumed -> don't draw
 			}
 
@@ -336,29 +336,29 @@ impl PcRenderer {
 		return;
 	}
 
-	pub fn draw_level_internal(&mut self, game_state: &GameState, game_session: &GameSession) {
-		let (camera_left, camera_top) = self.common.compute_camera(self, game_state, game_session);
+	pub fn draw_level_internal(&mut self, state: &State, session: &Session) {
+		let (camera_left, camera_top) = self.common.compute_camera(self, state, session);
 		let scale: f32 = self.get_render_scale();
 
 		// background first, tiles on top
 		self.draw_background(camera_left, camera_top, scale);
 
 		let tile_cols: u32 = self.tile_texture.as_mut().expect("tile_texture does not have a value").query().width / self.atlas_tile_width_pixels;
-		for layer in 0..(game_state.level.layer_count as u32) {
-			self.draw_tiles_layer_atlas(&game_state.level, layer, camera_left as f32, camera_top as f32, scale, self.frame_index);
+		for layer in 0..(state.level.layer_count as u32) {
+			self.draw_tiles_layer_atlas(&state.level, layer, camera_left as f32, camera_top as f32, scale, self.frame_index);
 		}
 
 		self.frame_index = self.frame_index.wrapping_add(1);
-		self.draw_entities(game_state, game_session, tile_cols, camera_left as f32, camera_top as f32, scale, self.frame_index);
-		self.draw_debug_triggers(game_state, game_session, camera_left as f32, camera_top as f32, scale);
-		self.draw_trigger_icons(game_state, game_session, camera_left as f32, camera_top as f32, scale);
+		self.draw_entities(state, session, tile_cols, camera_left as f32, camera_top as f32, scale, self.frame_index);
+		self.draw_debug_triggers(state, session, camera_left as f32, camera_top as f32, scale);
+		self.draw_trigger_icons(state, session, camera_left as f32, camera_top as f32, scale);
 		return;
 	}
 
 	pub fn draw_death_entity_internal(
 		&mut self,
-		game_state: &GameState,
-		game_session: &GameSession,
+		state: &State,
+		session: &Session,
 		entity_kind: EntityKind,
 		pos: &Vec2,
 		half_height: f32,
@@ -371,10 +371,10 @@ impl PcRenderer {
 		let frame_size_pixels: i32 = 64;
 
 		// how long death lasts total
-		let total: u16 = game_session.settings.enemy_death_frame_count as u16;
+		let total: u16 = session.settings.enemy_death_frame_count as u16;
 
 		// how many frames are in the sheet (tune this once)
-		let frame_count: u32 = game_session.settings.frame_count;
+		let frame_count: u32 = session.settings.frame_count;
 
 		// elapsed frames since death started
 		let elapsed: u16 = total.saturating_sub(death_timer);
@@ -391,7 +391,7 @@ impl PcRenderer {
 		// let dest_width_pixels_u32: u32 = ((half_width * 2.0) * scale).round().max(1.0) as u32;
 		// let dest_height_pixels_u32: u32 = ((half_height * 2.0) * scale).round().max(1.0) as u32;
 
-		let sprite_world_scale: f32 = game_state.enemy_sprite_scale as f32;
+		let sprite_world_scale: f32 = state.enemy_sprite_scale as f32;
 		let dest_width_pixels_u32: u32 = (64.0 * sprite_world_scale * scale).round().max(1.0) as u32;
 		let dest_height_pixels_u32: u32 = (64.0 * sprite_world_scale * scale).round().max(1.0) as u32;
 
@@ -425,11 +425,11 @@ impl PcRenderer {
 		let _ = self.canvas.copy_ex(tex, src, dest, 0.0, None, false, false).unwrap();
 	}
 
-	fn draw_trigger_icons(&mut self, game_state: &GameState, _session: &GameSession, cam_left_world: f32, cam_top_world: f32, scale: f32) {
+	fn draw_trigger_icons(&mut self, state: &State, _session: &Session, cam_left_world: f32, cam_top_world: f32, scale: f32) {
 		let atlas: &Texture<'static> = &self.trigger_texture;
 
-		let tile_width: f32 = game_state.level.tile_width as f32;
-		let tile_height: f32 = game_state.level.tile_height as f32;
+		let tile_width: f32 = state.level.tile_width as f32;
+		let tile_height: f32 = state.level.tile_height as f32;
 
 		let (screen_width_pixels, screen_height_pixels) = self.screen_size();
 		let view_width_world: f32 = (screen_width_pixels as f32) / scale;
@@ -442,13 +442,13 @@ impl PcRenderer {
 
 		let padding_world: f32 = 16.0;
 
-		for trigger in &game_state.level.triggers {
+		for trigger in &state.level.triggers {
 			if trigger.icon_id == 0 {
 				continue;
 			}
 
 			let trigger_id: usize = trigger.id as usize;
-			if trigger_id < game_state.trigger_armed.len() && game_state.trigger_armed[trigger_id] {
+			if trigger_id < state.triggers_armed.len() && state.triggers_armed[trigger_id] {
 				continue; // consumed -> don't draw
 			}
 
@@ -502,10 +502,10 @@ impl PcRenderer {
 		}
 	}
 
-	fn draw_entities(&mut self, game_state: &GameState, game_session: &GameSession, tile_cols: u32, camera_left: f32, camera_top: f32, scale: f32, _frame_index: u32) {
+	fn draw_entities(&mut self, state: &State, session: &Session, tile_cols: u32, camera_left: f32, camera_top: f32, scale: f32, _frame_index: u32) {
 		//let texture = self.tile_texture.as_mut().expect("tile_texture does not have a value");
-		for (id, pos) in game_state.positions.iter() {
-			let kind = *game_state.entity_kinds.get(id).unwrap_or(&0);
+		for (id, pos) in state.positions.iter() {
+			let kind = *state.entity_kinds.get(id).unwrap_or(&0);
 			let entity_kind = EntityKind::from_u8(kind);
 
 			if entity_kind == EntityKind::Empty {
@@ -513,8 +513,8 @@ impl PcRenderer {
 				continue;
 			}
 
-			let style: u8 = *game_state.render_styles.get(id).unwrap_or(&0);
-			let (half_width, half_height) = game_state.get_entity_half_values(id);
+			let style: u8 = *state.render_styles.get(id).unwrap_or(&0);
+			let (half_width, half_height) = state.get_entity_half_values(id);
 			let world_left: f32 = pos.x - half_width;
 			let world_top: f32 = pos.y - half_height;
 			let cam: Pointf32 = Pointf32::new(camera_left, camera_top);
@@ -531,16 +531,16 @@ impl PcRenderer {
 			let height: u32 = ((half_height * 2.0) * scale).round() as u32;
 
 			if entity_kind == EntityKind::SlimeBlue || entity_kind == EntityKind::SlimeUndead || entity_kind == EntityKind::SlimeLava {
-				let death_timer: u16 = game_state.death_timers.get(id).copied().unwrap_or(0);
+				let death_timer: u16 = state.death_timers.get(id).copied().unwrap_or(0);
 				if death_timer > 0 {
-					self.draw_death_entity(game_state, game_session, entity_kind, pos, half_height, camera_left, camera_top, scale, death_timer);
+					self.draw_death_entity(state, session, entity_kind, pos, half_height, camera_left, camera_top, scale, death_timer);
 					continue;
 				}
 
-				let vel: Vec2 = game_state.velocities.get(id).copied().unwrap_or_default();
+				let vel: Vec2 = state.velocities.get(id).copied().unwrap_or_default();
 				let abs_vx: f32 = vel.x.abs();
 
-				let is_dying: bool = game_state.death_timers.get(id).copied().unwrap_or(0) > 0;
+				let is_dying: bool = state.death_timers.get(id).copied().unwrap_or(0) > 0;
 
 				let anim: LocomotionAnim = if is_dying {
 					LocomotionAnim::Death
@@ -560,7 +560,7 @@ impl PcRenderer {
 				let src_top_pixels: i32 = (row_index as i32) * 64;
 				let src: Rect = Rect::new(src_left_pixels, src_top_pixels, 64, 64);
 
-				let sprite_world_scale: f32 = game_state.enemy_sprite_scale as f32;
+				let sprite_world_scale: f32 = state.enemy_sprite_scale as f32;
 				let dest_width_pixels: u32 = (64.0 * sprite_world_scale * scale).round() as u32;
 				let dest_height_pixels: u32 = (64.0 * sprite_world_scale * scale).round() as u32;
 
@@ -603,8 +603,8 @@ impl PcRenderer {
 			}
 
 			if entity_kind == EntityKind::MovingPlatform {
-				let width_pixels: f32 = *game_state.widths.get(id).unwrap_or(&16) as f32;
-				let tile_width: f32 = game_state.level.tile_width as f32;
+				let width_pixels: f32 = *state.widths.get(id).unwrap_or(&16) as f32;
+				let tile_width: f32 = state.level.tile_width as f32;
 				let width_tiles: i32 = ((width_pixels / tile_width).ceil() as i32).max(1);
 
 				self.draw_platform_entity_tiles(
@@ -613,7 +613,7 @@ impl PcRenderer {
 					world_left,
 					world_top,
 					width_tiles,
-					&game_state.level,
+					&state.level,
 					camera_left,
 					camera_top,
 					scale,

@@ -1,6 +1,6 @@
 use std::{fs, path::Path};
 
-use crate::game::level::Level;
+use crate::runtime::level::Level;
 
 #[cfg(feature = "pc")]
 pub fn load_level_from_file(path: &Path) -> Level {
@@ -9,7 +9,7 @@ pub fn load_level_from_file(path: &Path) -> Level {
 }
 
 #[cfg(feature = "pc")]
-pub fn load_level_from_name(level_name: &str) -> Result<crate::game::level::Level, String> {
+pub fn load_level_from_name(level_name: &str) -> Result<crate::runtime::level::Level, String> {
 	use std::path::Path;
 	let path = Path::new(level_name);
 	let level = crate::platform::level_loader::load_level_from_file(path);

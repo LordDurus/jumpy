@@ -1,5 +1,4 @@
 use super::reader::BookTextSource;
-use crate::assets::get_books_root;
 use std::{fs, path::PathBuf};
 
 pub struct PcBookTextSource;
@@ -10,7 +9,7 @@ impl PcBookTextSource {
 	}
 
 	fn book_path(book_slug: &str) -> PathBuf {
-		let base_folder = get_books_root();
+		let base_folder = crate::runtime::assets::get_books_root();
 		return base_folder.join(format!("{}.txt", book_slug));
 	}
 }

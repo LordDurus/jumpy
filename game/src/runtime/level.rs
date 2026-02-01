@@ -1,6 +1,6 @@
 use crate::{
-	game::{game_state::EntityKind, music::MusicId, triggers::LevelTrigger},
 	platform::memory::fast_fn,
+	runtime::{music::MusicId, state::EntityKind, triggers::LevelTrigger},
 	tile::TileKind,
 };
 

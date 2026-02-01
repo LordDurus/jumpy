@@ -1,14 +1,14 @@
-use crate::game::{game_session::GameSession, game_state::GameState};
+use crate::runtime::{session::Session, state::State};
 
 #[inline(always)]
-pub fn apply(game_state: &mut GameState, game_session: &GameSession) {
-	for (id, vel) in game_state.velocities.iter_mut() {
-		let grav: u8 = *game_state.gravity_multipliers.get(id).unwrap_or(&1);
+pub fn apply(state: &mut State, session: &Session) {
+	for (id, vel) in state.velocities.iter_mut() {
+		let grav: u8 = *state.gravity_multipliers.get(id).unwrap_or(&1);
 
 		if grav == 0 {
 			continue;
 		}
 
-		vel.y += game_session.settings.gravity * grav as f32;
+		vel.y += session.settings.gravity * grav as f32;
 	}
 }

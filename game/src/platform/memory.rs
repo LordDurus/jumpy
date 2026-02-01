@@ -3,7 +3,7 @@
 #[cfg(feature = "gba")]
 macro_rules! fast_fn {
 	($item:item) => {
-		#[link_section = ".iwram.text"]
+		#[unsafe(link_section = ".iwram.text")]
 		$item
 	};
 }

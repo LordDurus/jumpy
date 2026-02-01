@@ -1,6 +1,6 @@
 use crate::{
-	GameState, debugln,
-	game::{
+	State, debugln,
+	runtime::{
 		Settings,
 		book::{ActiveBookReader, ActiveBookTextSource, reading_state::BookReadingState},
 		inventory::Inventory,
@@ -23,7 +23,7 @@ impl PlayerPersistentState {
 	}
 }
 
-pub struct GameSession {
+pub struct Session {
 	pub players: [PlayerPersistentState; MAX_PLAYERS],
 	pub current_level_name: Option<String>,
 	pub pending_level_name: Option<String>,
@@ -38,8 +38,8 @@ pub struct GameSession {
 	pub active_music_id: MusicId,
 }
 
-impl GameSession {
-	pub fn new() -> GameSession {
+impl Session {
+	pub fn new() -> Session {
 		const LINES_PER_PAGE: usize = 25;
 
 		let settings: Settings = Settings::new();
@@ -48,7 +48,7 @@ impl GameSession {
 			return MessageTable::load("en-us").unwrap();
 		});
 
-		return GameSession {
+		return Session {
 			players: [
 				PlayerPersistentState::new_default(),
 				PlayerPersistentState::new_default(),
@@ -68,12 +68,12 @@ impl GameSession {
 		};
 	}
 
-	pub fn transition_to_level<FLoad>(&mut self, game_state: &mut GameState, level_name: &str, load_level: FLoad) -> bool
+	pub fn transition_to_level<FLoad>(&mut self, state: &mut State, level_name: &str, load_level: FLoad) -> bool
 	where
 		FLoad: Fn(&str) -> Result<Level, String>,
 	{
 		// 1) save current runtime -> persistent
-		game_state.save_player_to_persistent(self);
+		state.save_player_to_persistent(self);
 
 		// 2) load next level (pc now; gba later via assets wrapper)
 		let next_level: Level = match load_level(level_name) {
@@ -87,23 +87,23 @@ impl GameSession {
 		let next_music_id: MusicId = next_level.music_id;
 
 		// 3) move audio backend into the new state (can't clone Box<dyn AudioEngine>)
-		let audio = game_state.take_audio();
+		let audio = state.take_audio();
 
 		// 4) make a fresh state
-		let mut new_state = GameState::new(next_level, audio);
+		let mut new_state = State::new(next_level, audio);
 
 		// 5) spawn entities + apply player persistent
 		new_state.spawn_level_entities();
 		new_state.apply_player_from_persistent(self);
 
 		// 7) swap
-		*game_state = new_state;
+		*state = new_state;
 
 		self.current_level_name = Some(level_name.to_string());
 
 		if self.active_music_id != next_music_id {
 			if self.settings.is_background_music_enabled {
-				game_state.audio.play_music(next_music_id, true);
+				state.audio.play_music(next_music_id, true);
 				self.active_music_id = next_music_id;
 			}
 		}

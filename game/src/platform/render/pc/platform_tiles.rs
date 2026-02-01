@@ -1,4 +1,4 @@
-use crate::{game::level::Level, tile::TileKind};
+use crate::{runtime::level::Level, tile::TileKind};
 
 use sdl2::rect::Rect;
 

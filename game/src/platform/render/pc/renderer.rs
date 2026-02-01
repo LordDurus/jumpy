@@ -1,10 +1,12 @@
 use super::window::{WindowSettings, load_window_settings, save_window_settings};
 use crate::{
-	GameSession, GameState, RenderBackend,
-	assets::{get_font_path, get_gfx_root},
+	RenderBackend, Session, State,
 	engine_math::Vec2,
-	game::game_state::EntityKind,
 	platform::{input::InputState, render::common::RenderCommon},
+	runtime::{
+		assets::{get_font_path, get_gfx_root},
+		state::EntityKind,
+	},
 };
 use sdl2::{
 	EventPump,
@@ -236,8 +238,8 @@ impl RenderBackend for PcRenderer {
 		return;
 	}
 
-	fn draw_level(&mut self, game_state: &GameState, game_session: &GameSession) {
-		self.draw_level_internal(game_state, game_session);
+	fn draw_level(&mut self, state: &State, session: &Session) {
+		self.draw_level_internal(state, session);
 	}
 
 	/*
@@ -249,8 +251,8 @@ impl RenderBackend for PcRenderer {
 
 	fn draw_death_entity(
 		&mut self,
-		game_state: &GameState,
-		game_session: &GameSession,
+		state: &State,
+		session: &Session,
 		entity_kind: EntityKind,
 		pos: &Vec2,
 		half_height: f32,
@@ -259,7 +261,7 @@ impl RenderBackend for PcRenderer {
 		scale: f32,
 		death_timer: u16,
 	) {
-		self.draw_death_entity_internal(game_state, game_session, entity_kind, pos, half_height, camera_left, camera_top, scale, death_timer);
+		self.draw_death_entity_internal(state, session, entity_kind, pos, half_height, camera_left, camera_top, scale, death_timer);
 	}
 
 	fn commit(&mut self) {

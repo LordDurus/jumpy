@@ -1,5 +1,5 @@
 use super::backend::RenderBackend;
-use crate::game::{game_session::GameSession, game_state::GameState};
+use crate::runtime::{session::Session, state::State};
 
 pub struct RenderCommon;
 
@@ -7,7 +7,7 @@ impl RenderCommon {
 	pub fn new() -> RenderCommon {
 		return RenderCommon;
 	}
-	pub fn compute_camera<B: RenderBackend>(&self, backend: &B, game_state: &GameState, game_session: &GameSession) -> (i32, i32) {
+	pub fn compute_camera<B: RenderBackend>(&self, backend: &B, state: &State, session: &Session) -> (i32, i32) {
 		let (screen_width_pixels, screen_height_pixels) = backend.screen_size();
 		let scale: f32 = backend.get_render_scale();
 
@@ -17,11 +17,11 @@ impl RenderCommon {
 		let mut focus_left: f32 = 0.0;
 		let mut focus_top: f32 = 0.0;
 
-		let focus_id: Option<u32> = if game_state.get_player_id() != 0 {
-			Some(game_state.get_player_id())
+		let focus_id: Option<u32> = if state.get_player_id() != 0 {
+			Some(state.get_player_id())
 		} else {
 			let mut best_id: Option<u32> = None;
-			for id in game_state.positions.keys() {
+			for id in state.positions.keys() {
 				if best_id.is_none() || id < best_id.unwrap() {
 					best_id = Some(id);
 				}
@@ -30,17 +30,17 @@ impl RenderCommon {
 		};
 
 		if let Some(id) = focus_id {
-			if let Some(p) = game_state.positions.get(id) {
+			if let Some(p) = state.positions.get(id) {
 				focus_left = p.x;
 				focus_top = p.y;
 			}
 		}
 
-		let tile_width: f32 = game_state.level.tile_width as f32;
-		let tile_height: f32 = game_state.level.tile_height as f32;
+		let tile_width: f32 = state.level.tile_width as f32;
+		let tile_height: f32 = state.level.tile_height as f32;
 
-		let level_width_world: f32 = (game_state.level.width as f32) * tile_width;
-		let level_height_world: f32 = (game_state.level.height as f32) * tile_height;
+		let level_width_world: f32 = (state.level.width as f32) * tile_width;
+		let level_height_world: f32 = (state.level.height as f32) * tile_height;
 
 		let mut camera_left: f32 = focus_left - (screen_width * 0.5);
 		let mut camera_top: f32 = focus_top - (screen_height * 0.5);
@@ -60,11 +60,11 @@ impl RenderCommon {
 		let max_x: f32 = (level_width_world - screen_width).max(0.0);
 		let mut max_y: f32 = (level_height_world - screen_height).max(0.0);
 
-		if let Some(baseline_max_bottom_world) = game_state.camera_baseline_max_bottom_world {
-			let (_half_width, half_height) = game_state.get_entity_half_values(focus_id.unwrap());
+		if let Some(baseline_max_bottom_world) = state.camera_baseline_max_bottom_world {
+			let (_half_width, half_height) = state.get_entity_half_values(focus_id.unwrap());
 			let player_bottom_world: f32 = focus_top + half_height;
 
-			let pad_world: f32 = game_session.settings.camera_bottom_padding_tiles as f32 * tile_height;
+			let pad_world: f32 = session.settings.camera_bottom_padding_tiles as f32 * tile_height;
 
 			let effective_max_bottom_world: f32 = baseline_max_bottom_world.max(player_bottom_world + pad_world);
 			let max_camera_top: f32 = (effective_max_bottom_world - screen_height).max(0.0);

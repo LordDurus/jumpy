@@ -1,11 +1,11 @@
 use crate::{
 	debugln,
 	engine_math::{do_they_overlap, random_u16},
-	game::{
-		game_session::GameSession,
-		game_state::{EntityId, GameState},
-	},
 	platform::input::TriggerPresses,
+	runtime::{
+		session::Session,
+		state::{EntityId, State},
+	},
 };
 
 pub const TRIGGER_MODE_AUTO: u16 = 0;
@@ -101,27 +101,27 @@ impl LevelTrigger {
 }
 
 /// returns true if an ACTION trigger consumed the action press (so caller should NOT jump)
-pub fn handle_message_triggers(session: &GameSession, game_state: &mut GameState, trigger_presses: TriggerPresses) -> bool {
-	let player_id: EntityId = game_state.get_player_id();
+pub fn handle_message_triggers(session: &Session, state: &mut State, trigger_presses: TriggerPresses) -> bool {
+	let player_id: EntityId = state.get_player_id();
 
-	let Some(player_pos) = game_state.positions.get(player_id) else {
+	let Some(player_pos) = state.positions.get(player_id) else {
 		return false;
 	};
 
-	let (player_half_width, player_half_height) = game_state.get_entity_half_values(player_id);
+	let (player_half_width, player_half_height) = state.get_entity_half_values(player_id);
 
 	let player_left_world: f32 = player_pos.x - player_half_width;
 	let player_top_world: f32 = player_pos.y - player_half_height;
 	let player_width_world: f32 = player_half_width * 2.0;
 	let player_height_world: f32 = player_half_height * 2.0;
 
-	let tile_width_world: f32 = game_state.level.tile_width as f32;
-	let tile_height_world: f32 = game_state.level.tile_height as f32;
+	let tile_width_world: f32 = state.level.tile_width as f32;
+	let tile_height_world: f32 = state.level.tile_height as f32;
 
-	let armed_len: usize = game_state.trigger_armed.len();
+	let armed_len: usize = state.triggers_armed.len();
 	let mut consumed_action: bool = false;
 
-	for trigger in &game_state.level.triggers {
+	for trigger in &state.level.triggers {
 		if TriggerKind::from_u8(trigger.kind) != TriggerKind::Message {
 			continue;
 		}
@@ -148,7 +148,7 @@ pub fn handle_message_triggers(session: &GameSession, game_state: &mut GameState
 		);
 
 		if !is_overlapping {
-			game_state.trigger_armed[trigger_index] = false;
+			state.triggers_armed[trigger_index] = false;
 			continue;
 		}
 
@@ -156,15 +156,15 @@ pub fn handle_message_triggers(session: &GameSession, game_state: &mut GameState
 		let message_id: u16 = trigger.get_message_id();
 
 		if activation_mode == TRIGGER_MODE_AUTO {
-			if !game_state.trigger_armed[trigger_index] {
-				game_state.trigger_armed[trigger_index] = true;
+			if !state.triggers_armed[trigger_index] {
+				state.triggers_armed[trigger_index] = true;
 
 				let msg: &str = session.message_table.get(message_id);
 				debugln!("{}", msg);
 			}
 		} else if activation_mode == TRIGGER_MODE_ACTION {
-			if trigger_presses.action_pressed && !game_state.trigger_armed[trigger_index] {
-				game_state.trigger_armed[trigger_index] = true;
+			if trigger_presses.action_pressed && !state.triggers_armed[trigger_index] {
+				state.triggers_armed[trigger_index] = true;
 
 				let msg: &str = session.message_table.get(message_id);
 				debugln!("{}", msg);
@@ -177,25 +177,25 @@ pub fn handle_message_triggers(session: &GameSession, game_state: &mut GameState
 	return consumed_action;
 }
 
-pub fn handle_level_exit_triggers(session: &mut GameSession, game_state: &mut GameState, presses: TriggerPresses) {
-	let player_id: EntityId = game_state.get_player_id();
-	let Some(player_pos) = game_state.positions.get(player_id) else {
+pub fn handle_level_exit_triggers(session: &mut Session, game: &mut State, presses: TriggerPresses) {
+	let player_id: EntityId = game.get_player_id();
+	let Some(player_pos) = game.positions.get(player_id) else {
 		return;
 	};
 
-	let (player_half_width, player_half_height) = game_state.get_entity_half_values(player_id);
+	let (player_half_width, player_half_height) = game.get_entity_half_values(player_id);
 
 	let player_left_world: f32 = player_pos.x - player_half_width;
 	let player_top_world: f32 = player_pos.y - player_half_height;
 	let player_width_world: f32 = player_half_width * 2.0;
 	let player_height_world: f32 = player_half_height * 2.0;
 
-	let tile_width_world: f32 = game_state.level.tile_width as f32;
-	let tile_height_world: f32 = game_state.level.tile_height as f32;
+	let tile_width_world: f32 = game.level.tile_width as f32;
+	let tile_height_world: f32 = game.level.tile_height as f32;
 
-	let armed_len: usize = game_state.trigger_armed.len();
+	let armed_len: usize = game.triggers_armed.len();
 
-	for trigger in &game_state.level.triggers {
+	for trigger in &game.level.triggers {
 		if TriggerKind::from_u8(trigger.kind) != TriggerKind::LevelExit {
 			continue;
 		}
@@ -222,14 +222,14 @@ pub fn handle_level_exit_triggers(session: &mut GameSession, game_state: &mut Ga
 		);
 
 		if !is_overlapping {
-			game_state.trigger_armed[trigger_index] = false;
+			game.triggers_armed[trigger_index] = false;
 			continue;
 		}
 
 		let mode: u16 = trigger.get_activation_mode();
 
 		// one-shot while overlapping for all modes
-		if game_state.trigger_armed[trigger_index] {
+		if game.triggers_armed[trigger_index] {
 			continue;
 		}
 
@@ -238,7 +238,7 @@ pub fn handle_level_exit_triggers(session: &mut GameSession, game_state: &mut Ga
 			continue;
 		}
 
-		game_state.trigger_armed[trigger_index] = true;
+		game.triggers_armed[trigger_index] = true;
 
 		let next_level_name: String = format!("../worlds/{:02}/{:02}.lvlb", trigger.get_world_id(), trigger.get_level_id());
 		session.pending_level_name = Some(next_level_name);
@@ -246,25 +246,25 @@ pub fn handle_level_exit_triggers(session: &mut GameSession, game_state: &mut Ga
 	}
 }
 
-pub fn handle_pickup_triggers(session: &mut GameSession, game_state: &mut GameState, presses: TriggerPresses) -> bool {
+pub fn handle_pickup_triggers(session: &mut Session, state: &mut State, presses: TriggerPresses) -> bool {
 	let mut consumed_action: bool = false;
-	let player_id: EntityId = game_state.get_player_id();
-	let Some(player_pos) = game_state.positions.get(player_id) else {
+	let player_id: EntityId = state.get_player_id();
+	let Some(player_pos) = state.positions.get(player_id) else {
 		return false;
 	};
 
-	let (player_half_width, player_half_height) = game_state.get_entity_half_values(player_id);
+	let (player_half_width, player_half_height) = state.get_entity_half_values(player_id);
 	let player_left_world: f32 = player_pos.x - player_half_width;
 	let player_top_world: f32 = player_pos.y - player_half_height;
 	let player_width_world: f32 = player_half_width * 2.0;
 	let player_height_world: f32 = player_half_height * 2.0;
 
-	let tile_width_world: f32 = game_state.level.tile_width as f32;
-	let tile_height_world: f32 = game_state.level.tile_height as f32;
+	let tile_width_world: f32 = state.level.tile_width as f32;
+	let tile_height_world: f32 = state.level.tile_height as f32;
 
-	let armed_len: usize = game_state.trigger_armed.len();
+	let armed_len: usize = state.triggers_armed.len();
 
-	for trigger in &game_state.level.triggers {
+	for trigger in &state.level.triggers {
 		let kind: TriggerKind = TriggerKind::from_u8(trigger.kind);
 		if kind != TriggerKind::Pickup {
 			continue;
@@ -276,7 +276,7 @@ pub fn handle_pickup_triggers(session: &mut GameSession, game_state: &mut GameSt
 		}
 
 		// already consumed -> never fire again
-		if game_state.trigger_armed[trigger_index] {
+		if state.triggers_armed[trigger_index] {
 			continue;
 		}
 
@@ -307,7 +307,7 @@ pub fn handle_pickup_triggers(session: &mut GameSession, game_state: &mut GameSt
 		}
 
 		// consume
-		game_state.trigger_armed[trigger_index] = true;
+		state.triggers_armed[trigger_index] = true;
 
 		if mode == TRIGGER_MODE_ACTION {
 			// todo remove trigger here
@@ -341,7 +341,7 @@ pub fn handle_pickup_triggers(session: &mut GameSession, game_state: &mut GameSt
 }
 
 #[inline(always)]
-fn apply_pickup(session: &mut GameSession, pickup_type: u16, value: u16) {
+fn apply_pickup(session: &mut Session, pickup_type: u16, value: u16) {
 	if pickup_type == 1 {
 		debugln!("adding coins({})", value);
 

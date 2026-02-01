@@ -1,4 +1,4 @@
-use crate::{engine_math::Vec2, game::level::Level, tile::TileCollision};
+use crate::{engine_math::Vec2, runtime::level::Level, tile::TileCollision};
 
 pub fn resolve_ceiling_collision(level: &Level, position: &mut Vec2, velocity: &mut Vec2, half_width: f32, half_height: f32) {
 	if velocity.y >= 0.0 {

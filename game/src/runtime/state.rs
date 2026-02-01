@@ -1,13 +1,13 @@
 use crate::{
 	ecs::component_store::ComponentStore,
 	engine_math::Vec2,
-	game::level::Level,
 	physics::collision,
 	platform::audio::{AudioEngine, SfxId},
+	runtime::level::Level,
 	tile::TileCollision,
 };
 
-use crate::{game::game_session::GameSession, platform::audio::null_audio::NullAudio};
+use crate::{platform::audio::null_audio::NullAudio, runtime::session::Session};
 
 pub const MAX_PLAYERS: usize = 4;
 
@@ -101,8 +101,8 @@ impl EntityKind {
 	}
 }
 
-/// Represents the game world, containing entities and their properties (runtime state).
-pub struct GameState {
+/// Represents the state, containing entities and their properties (runtime state).
+pub struct State {
 	pub level: Level,
 	pub positions: ComponentStore<Vec2>,
 	pub velocities: ComponentStore<Vec2>,
@@ -134,18 +134,18 @@ pub struct GameState {
 	pub audio: Box<dyn AudioEngine>,
 	pub death_animations: ComponentStore<u8>,
 	pub death_timers: ComponentStore<u16>,
-	pub trigger_armed: Vec<bool>,
+	pub triggers_armed: Vec<bool>,
 	pub enemy_sprite_scale: u8,
 	next_entity_id: EntityId,
 	pub player_ids: [Option<EntityId>; MAX_PLAYERS],
 }
 
-impl GameState {
-	pub fn new(current_level: Level, audio: Box<dyn AudioEngine>) -> GameState {
+impl State {
+	pub fn new(current_level: Level, audio: Box<dyn AudioEngine>) -> State {
 		let spawn_top_tiles: u16 = current_level.player_spawn_top as u16;
 		let spawn_left_tiles: u16 = current_level.player_spawn_left as u16;
 
-		let mut state = GameState {
+		let mut state = State {
 			level: current_level,
 			positions: ComponentStore::new(),
 			velocities: ComponentStore::new(),
@@ -176,7 +176,7 @@ impl GameState {
 			base_stomp_damages: ComponentStore::new(),
 			death_animations: ComponentStore::new(),
 			death_timers: ComponentStore::new(),
-			trigger_armed: Vec::new(),
+			triggers_armed: Vec::new(),
 			enemy_sprite_scale: 1,
 			audio,
 			tick: 0,
@@ -184,8 +184,8 @@ impl GameState {
 		};
 
 		let trigger_count: usize = state.level.triggers.len();
-		state.trigger_armed.clear();
-		state.trigger_armed.resize(trigger_count, false);
+		state.triggers_armed.clear();
+		state.triggers_armed.resize(trigger_count, false);
 		state.set_spawn_point_tiles(spawn_top_tiles, spawn_left_tiles);
 
 		return state;
@@ -210,7 +210,7 @@ impl GameState {
 		return;
 	}
 
-	pub fn apply_player_from_persistent(&mut self, session: &GameSession) {
+	pub fn apply_player_from_persistent(&mut self, session: &Session) {
 		for player_index in 0..MAX_PLAYERS {
 			let Some(id) = self.player_ids[player_index] else {
 				continue;
@@ -223,7 +223,7 @@ impl GameState {
 		return;
 	}
 
-	pub fn save_player_to_persistent(&self, session: &mut GameSession) {
+	pub fn save_player_to_persistent(&self, session: &mut Session) {
 		for player_index in 0..MAX_PLAYERS {
 			let Some(id) = self.player_ids[player_index] else {
 				continue;
@@ -242,7 +242,6 @@ impl GameState {
 		let tile_width: f32 = self.level.tile_width as f32;
 		let tile_height: f32 = self.level.tile_height as f32;
 
-		// player is 16x16 right now (or pull from game_state.width/height for player id if available)
 		let player_width: f32 = 16.0;
 		let player_height: f32 = 16.0;
 
@@ -255,12 +254,12 @@ impl GameState {
 		return;
 	}
 
-	pub fn kill_player(&mut self, game_session: &GameSession, player_id: EntityId) {
+	pub fn kill_player(&mut self, session: &Session, player_id: EntityId) {
 		if let Some(respawn_state) = self.respawn_states.get_mut(player_id) {
 			respawn_state.respawn_cooldown_frames = self.respawn_cooldown_frames;
 		}
 
-		if game_session.settings.are_sound_effects_enabled {
+		if session.settings.are_sound_effects_enabled {
 			self.audio.play_sfx_and_wait(SfxId::Player1Died);
 		}
 		self.respawn_cooldown_frames = 20;

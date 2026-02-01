@@ -1,4 +1,4 @@
-use crate::{BookSlug, debugln, game::book::reading_state::BookReadingState};
+use crate::{BookSlug, debugln, runtime::book::reading_state::BookReadingState};
 
 #[derive(Debug, Clone, Copy)]
 pub struct BookPage {

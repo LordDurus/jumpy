@@ -1,7 +1,7 @@
 #![cfg(feature = "psp")]
 
 use crate::{
-	game::game_state::GameState,
+	game::runtime::State,
 	platform::render::{InputState, Renderer},
 };
 

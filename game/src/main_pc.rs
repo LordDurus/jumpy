@@ -13,9 +13,7 @@ use jumpy::{
 
 use crate::main_pc::platform::render::pc::PcRenderer;
 use jumpy::{
-	BookId, BookSlug, debugln,
-	game::{game_session::GameSession, game_state::GameState, inventory::Inventory, music::MusicId, triggers},
-	physics,
+	BookId, BookSlug, debugln, physics,
 	platform::{
 		self,
 		audio::{AudioEngine, pc::PcAudio},
@@ -23,12 +21,13 @@ use jumpy::{
 		level_loader::{load_level_from_file, load_level_from_name},
 		render::backend::RenderBackend,
 	},
+	runtime::{inventory::Inventory, music::MusicId, session::Session, state::State, triggers},
 };
 
 pub fn run() {
 	use std::path::Path;
 
-	let mut game_session = GameSession::new();
+	let mut session = Session::new();
 
 	let audio: Box<dyn AudioEngine> = {
 		let mut a = PcAudio::new();
@@ -67,18 +66,16 @@ pub fn run() {
 
 	let path = Path::new(&first_level_path);
 	let bootstrap_level = load_level_from_file(path);
-	let mut state = GameState::new(bootstrap_level, audio);
-
-	// game_session.transition_to_level(&mut state, first_level_path);
+	let mut state = State::new(bootstrap_level, audio);
 
 	state.spawn_level_entities();
-	state.apply_player_from_persistent(&game_session);
-	game_session.current_level_name = Some(first_level_path.to_string());
+	state.apply_player_from_persistent(&session);
+	session.current_level_name = Some(first_level_path.to_string());
 
-	if game_session.settings.is_background_music_enabled {
+	if session.settings.is_background_music_enabled {
 		let music_id: MusicId = state.level.music_id;
 		state.audio.play_music(music_id, true);
-		game_session.active_music_id = music_id;
+		session.active_music_id = music_id;
 	}
 
 	let mut renderer = PcRenderer::new();
@@ -108,29 +105,29 @@ pub fn run() {
 
 		if inventory_pressed {
 			inventory_was_down = true;
-			print_inventory(&game_session.inventory);
+			print_inventory(&session.inventory);
 			continue;
 		}
 
-		if game_session.book_reading.is_open {
+		if session.book_reading.is_open {
 			if input.quit {
 				break;
 			}
 
 			if !copy_was_down && input.copy {
-				renderer.copy_book_page_to_clipboard(&game_session.book_reading.page_text);
+				renderer.copy_book_page_to_clipboard(&session.book_reading.page_text);
 			}
 
 			if !escape_was_down && input.escape {
-				game_session.book_reader.close_book(&mut game_session.book_reading);
+				session.book_reader.close_book(&mut session.book_reading);
 			}
 
 			if (!left_was_down && input.left) || (!page_up_was_down && input.page_up) {
-				let _ = game_session.book_reader.turn_book_page(&mut game_session.book_reading, -1);
+				let _ = session.book_reader.turn_book_page(&mut session.book_reading, -1);
 			}
 
 			if (!right_was_down && input.right) || (!page_down_was_down && input.page_down) {
-				let _ = game_session.book_reader.turn_book_page(&mut game_session.book_reading, 1);
+				let _ = session.book_reader.turn_book_page(&mut session.book_reading, 1);
 			}
 
 			right_was_down = input.right;
@@ -141,9 +138,9 @@ pub fn run() {
 			escape_was_down = input.escape;
 
 			renderer.begin_frame();
-			renderer.draw_level(&state, &game_session);
+			renderer.draw_level(&state, &session);
 
-			renderer.draw_book_overlay(&game_session);
+			renderer.draw_book_overlay(&session);
 			renderer.commit();
 			continue;
 		}
@@ -154,13 +151,13 @@ pub fn run() {
 			let book_id: BookId = 100;
 			let book_slug: BookSlug = "tom_sawyer";
 
-			let Some(_) = game_session.inventory.get_book(book_id) else {
+			let Some(_) = session.inventory.get_book(book_id) else {
 				debugln!("tom_sawyer not in inventory");
 				continue;
 			};
 
 			// open the ui at page 0 (or the saved page later)
-			let result = game_session.book_reader.open_book(&mut game_session.book_reading, book_slug, 0);
+			let result = session.book_reader.open_book(&mut session.book_reading, book_slug, 0);
 			if let Err(e) = result {
 				debugln!("open book failed: {}", e);
 			}
@@ -168,9 +165,8 @@ pub fn run() {
 		}
 
 		// if triggers requested a level change last frame, do it now
-		if let Some(next_level_name) = game_session.pending_level_name.take() {
-			// game_session.transition_to_level(&mut state, &next_level_name);
-			game_session.transition_to_level(&mut state, &next_level_name, load_level_from_name);
+		if let Some(next_level_name) = session.pending_level_name.take() {
+			session.transition_to_level(&mut state, &next_level_name, load_level_from_name);
 			renderer.set_level_background(state.level.background_id);
 		}
 
@@ -178,7 +174,7 @@ pub fn run() {
 			// no player yet; still tick/render so you can see what's going on
 			state.tick = state.tick.wrapping_add(1);
 			renderer.begin_frame();
-			renderer.draw_level(&state, &game_session);
+			renderer.draw_level(&state, &session);
 			renderer.commit();
 			continue;
 		};
@@ -230,27 +226,27 @@ pub fn run() {
 		// --- triggers run before gameplay consumes jump ---
 		let mut jump_consumed_by_triggers: bool = false;
 
-		if triggers::handle_message_triggers(&game_session, &mut state, presses) {
+		if triggers::handle_message_triggers(&session, &mut state, presses) {
 			jump_consumed_by_triggers = true;
 		}
 
-		triggers::handle_level_exit_triggers(&mut game_session, &mut state, presses);
+		triggers::handle_level_exit_triggers(&mut session, &mut state, presses);
 
-		if triggers::handle_pickup_triggers(&mut game_session, &mut state, presses) {
+		if triggers::handle_pickup_triggers(&mut session, &mut state, presses) {
 			jump_consumed_by_triggers = true;
 		}
 
 		// --- gameplay jump logic (only if not consumed) ---
 		if jump_pressed && !jump_consumed_by_triggers {
 			if let Some(jump_state) = state.jump_states.get_mut(player_id) {
-				jump_state.jump_buffer_frames_left = game_session.settings.jump_buffer_frames_max;
+				jump_state.jump_buffer_frames_left = session.settings.jump_buffer_frames_max;
 			}
 		}
 
 		if jump_released {
 			if let Some(velocity) = state.velocities.get_mut(player_id) {
 				if velocity.y < 0.0 {
-					velocity.y *= game_session.settings.jump_cut_multiplier;
+					velocity.y *= session.settings.jump_cut_multiplier;
 				}
 			}
 			if let Some(jump_state) = state.jump_states.get_mut(player_id) {
@@ -261,13 +257,13 @@ pub fn run() {
 		state.tick = state.tick.wrapping_add(1);
 
 		physics::movement::patrol(&mut state);
-		physics::gravity::apply(&mut state, &game_session);
-		physics::movement::move_and_collide(&mut state, &game_session);
+		physics::gravity::apply(&mut state, &session);
+		physics::movement::move_and_collide(&mut state, &session);
 
 		state.tick_enemy_deaths();
 
 		renderer.begin_frame();
-		renderer.draw_level(&state, &game_session);
+		renderer.draw_level(&state, &session);
 		renderer.commit();
 	}
 }

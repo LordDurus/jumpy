@@ -1,4 +1,4 @@
-use crate::game::book::Book;
+use crate::runtime::book::Book;
 pub type KeyId = u16;
 
 #[allow(dead_code)]
