@@ -3,6 +3,7 @@ cls
 setlocal enabledelayedexpansion
 
 rem echo === build ===
+del target\thumbv4t-none-eabi\debug\jumpy
 cargo +nightly build -Z build-std=core,alloc --no-default-features --features gba --target thumbv4t-none-eabi
 rem arm-none-eabi-readelf -h target\thumbv4t-none-eabi\debug\jumpy
 rem arm-none-eabi-readelf -l target\thumbv4t-none-eabi\debug\jumpy

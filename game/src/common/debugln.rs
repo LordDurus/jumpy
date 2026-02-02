@@ -1,15 +1,15 @@
-#[cfg(feature = "pc")]
+#[cfg(feature = "gba")]
 #[macro_export]
 macro_rules! debugln {
-	($($arg:tt)*) => {{
-		println!($($arg)*);
-	}};
+	($($arg:tt)*) => {
+		agb::println!($($arg)*);
+	};
 }
 
-#[cfg(not(feature = "pc"))]
+#[cfg(not(feature = "gba"))]
 #[macro_export]
 macro_rules! debugln {
-	($($arg:tt)*) => {{
-		// no-op on gba / constrained builds
-	}};
+	($($arg:tt)*) => {
+		println!($($arg)*);
+	};
 }
