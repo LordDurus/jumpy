@@ -2,7 +2,7 @@
 extern crate alloc;
 
 #[cfg(feature = "gba")]
-use alloc::{boxed::Box, string::String, vec::Vec};
+use alloc::{boxed::Box, vec::Vec};
 
 use crate::{
 	ecs::component_store::ComponentStore,

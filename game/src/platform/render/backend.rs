@@ -1,12 +1,13 @@
 use crate::{Session, State, engine_math::Vec2, platform::render::input::InputState, runtime::state::EntityKind};
 
 pub trait RenderBackend {
-	fn screen_size(&self) -> (i32, i32);
+	fn get_screen_size(&self) -> (i32, i32);
 	fn get_render_scale(&self) -> f32;
 
 	fn new() -> Self
 	where
 		Self: Sized;
+
 	fn init(&mut self);
 
 	fn poll_input(&mut self) -> InputState;

@@ -27,4 +27,5 @@ portable-atomic = { version = "1", default-features = true } #GBA
 libm = { version = "0.2", default-features = false }
 
 [profile.dev]
+opt-level = 3
 debug = true

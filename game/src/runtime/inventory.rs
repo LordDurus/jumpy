@@ -2,7 +2,7 @@
 extern crate alloc;
 
 #[cfg(feature = "gba")]
-use alloc::{boxed::Box, string::String, vec::Vec};
+use alloc::vec::Vec;
 
 use crate::runtime::book::Book;
 pub type KeyId = u16;

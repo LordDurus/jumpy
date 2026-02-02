@@ -222,7 +222,7 @@ impl RenderBackend for PcRenderer {
 		return renderer;
 	}
 
-	fn screen_size(&self) -> (i32, i32) {
+	fn get_screen_size(&self) -> (i32, i32) {
 		let (width_pixels, height_pixels) = self.screen_size_pixels();
 		return (width_pixels as i32, height_pixels as i32);
 	}

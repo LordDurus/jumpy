@@ -1,0 +1,7 @@
+[target.thumbv4t-none-eabi]
+rustflags = [
+	"-Clink-arg=-Tgba.ld",
+	"-Ctarget-cpu=arm7tdmi",
+	"-Cforce-frame-pointers=yes",
+]
+runner = ["mgba-qt", "-C", "logToStdout=1", "-C", "logLevel.gba.debug=127"]

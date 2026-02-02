@@ -1,4 +1,4 @@
 [toolchain]
 channel = "nightly"
-components = ["rust-src"]
+components = ["rust-src", "clippy", "rustfmt"]
 targets = ["thumbv4t-none-eabi"]

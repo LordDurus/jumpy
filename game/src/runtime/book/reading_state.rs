@@ -2,7 +2,7 @@
 extern crate alloc;
 
 #[cfg(feature = "gba")]
-use alloc::{boxed::Box, collections::BTreeMap, string::String, vec::Vec};
+use alloc::string::String;
 //use alloc::{boxed::Box, collections::BTreeMap, string::String, vec::Vec};
 
 #[derive(Clone, Debug)]

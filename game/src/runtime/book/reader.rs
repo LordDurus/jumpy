@@ -2,7 +2,7 @@
 extern crate alloc;
 
 #[cfg(feature = "gba")]
-use alloc::{boxed::Box, string::String, vec::Vec};
+use alloc::{string::String, vec::Vec};
 
 use crate::{BookSlug, debugln, runtime::book::reading_state::BookReadingState};
 

@@ -427,7 +427,7 @@ impl PcRenderer {
 		let tile_width: f32 = state.level.tile_width as f32;
 		let tile_height: f32 = state.level.tile_height as f32;
 
-		let (screen_width_pixels, screen_height_pixels) = self.screen_size();
+		let (screen_width_pixels, screen_height_pixels) = self.get_screen_size();
 		let view_width_world: f32 = (screen_width_pixels as f32) / scale;
 		let view_height_world: f32 = (screen_height_pixels as f32) / scale;
 

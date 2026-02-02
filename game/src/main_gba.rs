@@ -1,11 +1,16 @@
-#![no_std]
-#![no_main]
+use jumpy::platform::render::{backend::RenderBackend, gba::GbaRenderer};
 
-use agb::entry;
+pub fn run(mut gba: agb::Gba) -> ! {
+	let mut renderer = GbaRenderer::new_with_gba(&mut gba);
 
-#[entry]
-fn run(mut gba: agb::Gba) -> ! {
+	agb::println!("jumpy gba: alive");
+
+	renderer.init();
+
+	let mut gfx = gba.graphics.get();
+
 	loop {
-		gba.vblank.wait_for_vblank();
+		agb::println!("tick GbaRenderer");
+		renderer.commit();
 	}
 }

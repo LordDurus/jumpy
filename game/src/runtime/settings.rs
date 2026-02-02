@@ -2,7 +2,7 @@
 extern crate alloc;
 
 #[cfg(feature = "gba")]
-use alloc::{boxed::Box, string::String, vec::Vec};
+use alloc::string::String;
 
 #[derive(Clone, Debug)]
 pub struct Settings {

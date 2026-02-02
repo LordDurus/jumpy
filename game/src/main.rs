@@ -17,8 +17,8 @@ mod main_psp;
 use agb::entry;
 
 #[cfg(feature = "gba")]
-#[entry]
-fn main(gba: agb::Gba) -> ! {
+#[agb::entry]
+fn main(mut gba: agb::Gba) -> ! {
 	return main_gba::run(gba);
 }
 
