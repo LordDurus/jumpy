@@ -1,6 +1,9 @@
 use jumpy::platform::{
 	level_loader::load_level_from_name,
-	render::{backend::RenderBackend, gba::GbaRenderer},
+	render::{
+		backend::RenderBackend,
+		gba::{BackgroundId, GbaRenderer},
+	},
 };
 
 pub fn run(mut gba: agb::Gba) -> ! {
@@ -8,7 +11,7 @@ pub fn run(mut gba: agb::Gba) -> ! {
 	renderer.init();
 
 	let bootstrap_level = load_level_from_name("../worlds/01/01.lvlb");
-	agb::println!("loaded bootstrap level {:?}", bootstrap_level);
+	renderer.draw_background(BackgroundId::from_u8(bootstrap_level.unwrap().background_id));
 
 	loop {
 		// agb::println!("tick");
