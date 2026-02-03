@@ -2,6 +2,13 @@
 cls
 setlocal enabledelayedexpansion
 
+rem === prepare assets ===
+del /f /q ..\assets\gfx\gba\compiled\*.*
+rem C:\devkitPro\tools\bin\grit.exe ..\assets\gfx\gba\background\bg_parallax_forest.png -gB4 -gt -m -mp1 -pn16 -o ..\assets\gfx\gba\compiled\bg_parallax_forest
+rem C:\devkitPro\tools\bin\grit.exe ..\assets\gfx\gba\background\bg_parallax_forest.png -gB4 -gt -m -p -pe16 -ftb -fh! -o ..\assets\gfx\gba\compiled\bg_parallax_forest
+rem C:\devkitPro\tools\bin\grit.exe ..\assets\gfx\gba\background\bg_parallax_forest_256.png -gB8 -gt -m -p -pe256 -ftb -o ..\assets\gfx\gba\compiled\bg_parallax_forest
+C:\devkitPro\tools\bin\grit.exe ..\assets\gfx\gba\background\bg_parallax_forest_256.png -gB8 -gt -m -p -pe256 -pn256 -ftb -o ..\assets\gfx\gba\compiled\bg_parallax_forest
+
 rem echo === build ===
 del target\thumbv4t-none-eabi\debug\jumpy
 cargo +nightly build -Z build-std=core,alloc --no-default-features --features gba --target thumbv4t-none-eabi

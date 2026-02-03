@@ -19,15 +19,15 @@ use agb::entry;
 #[cfg(feature = "gba")]
 #[agb::entry]
 fn main(mut gba: agb::Gba) -> ! {
-	return main_gba::run(gba);
+	main_gba::run(gba);
 }
 
 #[cfg(feature = "pc")]
 fn main() {
-	return main_pc::run();
+	main_pc::run();
 }
 
 #[cfg(feature = "psp")]
 fn main() {
-	return main_psp::run();
+	main_psp::run();
 }
