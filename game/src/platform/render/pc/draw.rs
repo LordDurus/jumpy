@@ -17,29 +17,15 @@ use crate::{
 	},
 	tile::TileKind,
 };
-use sdl2::render::{BlendMode, Texture};
-
-use sdl2::{pixels::Color, rect::Rect};
+use sdl2::{
+	pixels::Color,
+	rect::Rect,
+	render::{BlendMode, Texture},
+};
 
 use super::{PcRenderer, renderer::SlimeTextureKey};
 
 impl PcRenderer {
-	// pasted from your original pc.rs starting at fn draw_debug_triggers(...)
-	// through the end of that impl block.
-	//
-	// NOTE: keep your existing method bodies exactly as-is here.
-	//
-	// this file should contain:
-	// - draw_debug_triggers
-	// - get_slime_texture_key
-	// - draw_filled_rect / circle / triangle helpers
-	// - draw_background
-	// - draw_tiles_layer_atlas
-	// - draw_level_internal
-	// - draw_trigger_icons
-	// - draw_entities
-	// - draw_death_entity_internal (or whatever name you had)
-
 	fn draw_debug_triggers(&mut self, state: &State, session: &Session, cam_left_world: f32, cam_top_world: f32, scale: f32) {
 		if !session.settings.show_triggers {
 			return;
@@ -215,13 +201,12 @@ impl PcRenderer {
 		return;
 	}
 
-	fn draw_background(&mut self, cam_left_world: i32, cam_top_world: i32, scale: f32) {
+	pub(crate) fn draw_background_internal(&mut self, camera_left: i32, camera_top: i32, scale: f32) {
 		let (sw_u32, sh_u32) = match self.canvas.output_size() {
 			Ok(v) => v,
 			Err(_) => self.canvas.window().size(),
 		};
 
-		// sky fallback
 		self.canvas.set_draw_color(Color::RGB(60, 110, 190));
 		let _ = self.canvas.fill_rect(Rect::new(0, 0, sw_u32, sh_u32));
 
@@ -245,8 +230,8 @@ impl PcRenderer {
 		let sh: i32 = sh_u32 as i32;
 
 		// camera -> pixels
-		let cam_left_pixels: f32 = cam_left_world as f32 * scale;
-		let cam_top_pixels: f32 = cam_top_world as f32 * scale;
+		let cam_left_pixels: f32 = camera_left as f32 * scale;
+		let cam_top_pixels: f32 = camera_top as f32 * scale;
 
 		// parallax offsets in pixels
 		let bg_cam_left_pixels: i32 = (cam_left_pixels * self.bg_parallax_x) as i32;
@@ -339,9 +324,6 @@ impl PcRenderer {
 	pub fn draw_level_internal(&mut self, state: &State, session: &Session) {
 		let (camera_left, camera_top) = self.common.compute_camera(self, state, session);
 		let scale: f32 = self.get_render_scale();
-
-		// background first, tiles on top
-		self.draw_background(camera_left, camera_top, scale);
 
 		let tile_cols: u32 = self.tile_texture.as_mut().expect("tile_texture does not have a value").query().width / self.atlas_tile_width_pixels;
 		for layer in 0..(state.level.layer_count as u32) {

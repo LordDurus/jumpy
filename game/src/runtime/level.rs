@@ -6,7 +6,7 @@ use alloc::{format, string::String, vec::Vec};
 
 use crate::{
 	debugln,
-	platform::memory::fast_fn,
+	platform::{memory::fast_fn, render::BackgroundId},
 	runtime::{music::MusicId, state::EntityKind, triggers::LevelTrigger},
 	tile::TileKind,
 };
@@ -50,7 +50,7 @@ pub struct Level {
 	pub player_spawn_left: f32,
 	pub entities: Vec<LevelEntity>,
 	pub triggers: Vec<LevelTrigger>,
-	pub background_id: u8,
+	pub background_id: BackgroundId,
 	pub music_id: MusicId,
 
 	#[allow(dead_code)]
@@ -158,7 +158,7 @@ impl Level {
 		let entity_count = read_u16(&bytes, &mut offset)? as usize;
 		let trigger_count = read_u16(&bytes, &mut offset)? as usize;
 		let _gravity_fixed = read_i16(&bytes, &mut offset)?;
-		let background_id = read_u8(&bytes, &mut offset)?;
+		let background_id = BackgroundId::from_u8(read_u8(&bytes, &mut offset)?);
 		let _gravity = read_u8(&bytes, &mut offset)?;
 		let music_id_u8 = read_u8(&bytes, &mut offset)?;
 		let reserved1 = read_u8(&bytes, &mut offset)?;

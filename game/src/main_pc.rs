@@ -67,7 +67,7 @@ pub fn run() {
 
 	let mut renderer = PcRenderer::new();
 	renderer.init();
-	renderer.set_level_background(state.level.background_id);
+	renderer.draw_background_by_id(state.level.background_id);
 
 	let mut up_was_down: bool = false;
 	let mut down_was_down: bool = false;
@@ -126,7 +126,6 @@ pub fn run() {
 
 			renderer.begin_frame();
 			renderer.draw_level(&state, &session);
-
 			renderer.draw_book_overlay(&session);
 			renderer.commit();
 			continue;
@@ -154,7 +153,7 @@ pub fn run() {
 		// if triggers requested a level change last frame, do it now
 		if let Some(next_level_name) = session.pending_level_name.take() {
 			session.transition_to_level(&mut state, &next_level_name, load_level_from_name);
-			renderer.set_level_background(state.level.background_id);
+			renderer.draw_background_by_id(state.level.background_id);
 		}
 
 		let Some(player_id) = state.try_get_player_id() else {

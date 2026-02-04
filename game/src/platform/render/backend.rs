@@ -1,4 +1,9 @@
-use crate::{Session, State, engine_math::Vec2, platform::render::input::InputState, runtime::state::EntityKind};
+use crate::{
+	Session, State,
+	engine_math::Vec2,
+	platform::render::{BackgroundDrawParams, input::InputState},
+	runtime::state::EntityKind,
+};
 
 pub trait RenderBackend {
 	fn get_screen_size(&self) -> (i32, i32);
@@ -14,6 +19,9 @@ pub trait RenderBackend {
 	fn begin_frame(&mut self);
 
 	fn draw_level(&mut self, world: &State, session: &Session);
+
+	// fn draw_background(&mut self, bg_id: BackgroundId, camera_left_world: i32, camera_top_world: i32, scale: f32);
+	fn draw_background(&mut self, params: &BackgroundDrawParams);
 
 	fn draw_death_entity(
 		&mut self,

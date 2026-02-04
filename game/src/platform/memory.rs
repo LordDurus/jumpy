@@ -30,5 +30,5 @@ macro_rules! fast_data {
 	};
 }
 
-pub(crate) use fast_data;
+// pub(crate) use fast_data;
 pub(crate) use fast_fn;

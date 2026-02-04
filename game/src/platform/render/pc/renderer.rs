@@ -2,7 +2,10 @@ use super::window::{WindowSettings, load_window_settings, save_window_settings};
 use crate::{
 	RenderBackend, Session, State,
 	engine_math::Vec2,
-	platform::{input::InputState, render::common::RenderCommon},
+	platform::{
+		input::InputState,
+		render::{BackgroundDrawParams, BackgroundId, common::RenderCommon},
+	},
 	runtime::{
 		assets::{get_font_path, get_gfx_root},
 		state::EntityKind,
@@ -51,7 +54,7 @@ pub struct PcRenderer {
 	pub atlas_tile_height_pixels: u32,
 	pub tile_texture: Option<Texture<'static>>,
 
-	bg_id: u8,
+	background_id: BackgroundId,
 	pub bg_texture: Option<Texture<'static>>,
 	pub bg_parallax_x: f32,
 	pub bg_parallax_y: f32,
@@ -74,12 +77,12 @@ impl PcRenderer {
 		return (width_pixels, height_pixels);
 	}
 
-	pub fn set_level_background(&mut self, background_id: u8) {
-		if self.bg_texture.is_some() && self.bg_id == background_id {
+	pub fn draw_background_by_id(&mut self, background_id: BackgroundId) {
+		if self.bg_texture.is_some() && self.background_id == background_id {
 			return;
 		}
 
-		self.bg_id = background_id;
+		self.background_id = background_id;
 		let file_name = parse_background_id(background_id);
 		let bg_path = gfx_pc_path(&["background", file_name]);
 
@@ -107,16 +110,11 @@ impl RenderBackend for PcRenderer {
 	fn new() -> Self {
 		let sdl = sdl2::init().unwrap();
 		let _ = sdl2::hint::set("SDL_RENDER_SCALE_QUALITY", "0"); // nearest
-
 		let _image = sdl2::image::init(sdl2::image::InitFlag::PNG).unwrap();
 		let video = sdl.video().unwrap();
 		let dm = video.desktop_display_mode(0).expect("desktop_display_mode failed");
-
-		// let desktop_width_pixels: u32 = dm.w as u32;
-
 		let desktop_height_pixels: u32 = dm.h as u32;
 		let target_aspect: f32 = 16.0 / 9.0;
-
 		let saved: Option<WindowSettings> = load_window_settings();
 
 		let (window_width_pixels, window_height_pixels) = if let Some(s) = saved {
@@ -209,7 +207,7 @@ impl RenderBackend for PcRenderer {
 			atlas_tile_width_pixels: 64,
 			atlas_tile_height_pixels: 64,
 			tile_texture: Some(tile_texture),
-			bg_id: 0,
+			background_id: BackgroundId::None,
 			bg_texture: None,
 			bg_parallax_x: 0.35,
 			bg_parallax_y: 0.15,
@@ -220,6 +218,10 @@ impl RenderBackend for PcRenderer {
 		};
 
 		return renderer;
+	}
+
+	fn draw_background(&mut self, params: &BackgroundDrawParams) {
+		self.draw_background_internal(params.camera_left, params.camera_top, params.scale);
 	}
 
 	fn get_screen_size(&self) -> (i32, i32) {
@@ -234,11 +236,19 @@ impl RenderBackend for PcRenderer {
 	fn begin_frame(&mut self) {
 		self.canvas.set_draw_color(Color::RGBA(0, 0, 0, 255));
 		self.canvas.clear();
-
 		return;
 	}
 
 	fn draw_level(&mut self, state: &State, session: &Session) {
+		let (camera_left, camera_top) = self.common.compute_camera(self, &state, &session);
+
+		let background_draw_params: BackgroundDrawParams = BackgroundDrawParams {
+			background_id: state.level.background_id,
+			camera_left: camera_left,
+			camera_top: camera_top,
+			scale: 4.0,
+		};
+		self.draw_background(&background_draw_params);
 		self.draw_level_internal(state, session);
 	}
 
@@ -279,11 +289,11 @@ fn gfx_pc_path(segments: &[&str]) -> PathBuf {
 	return path;
 }
 
-fn parse_background_id(background_id: u8) -> &'static str {
+fn parse_background_id(background_id: BackgroundId) -> &'static str {
 	match background_id {
-		super::BACKGROUND_ID_LIBRARY_STONE => "bg_library_stone.png",
-		super::BACKGROUND_PARALLAX_FOREST => "bg_parallax_forest.png",
-		_ => panic!("Unknown id: {}", background_id),
+		BackgroundId::Library => "bg_library_stone.png",
+		BackgroundId::ParallaxForest => "bg_parallax_forest.png",
+		_ => panic!("Unknown id: {:?}", background_id),
 	}
 }
 
